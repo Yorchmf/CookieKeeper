@@ -11,12 +11,13 @@ spring:
     open-in-view: false
   flyway:
     enabled: true
+  web:
+    error:
+      include-stacktrace: never
+      include-message: never
 
 server:
   port: 8080
-  error:
-    include-stacktrace: never
-    include-message: never
 
 management:
   endpoints:
