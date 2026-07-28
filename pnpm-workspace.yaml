@@ -1,0 +1,13 @@
+# pnpm workspace for the JS/TS packages of the monorepo.
+# backend/ is Gradle/Kotlin and intentionally not listed here.
+packages:
+  - dashboard
+  - widget
+# Dependency build scripts explicitly approved (pnpm 11 blocks them by default).
+# esbuild → vite (widget); @swc/core, sharp, @parcel/watcher, unrs-resolver → Next.js (dashboard).
+allowBuilds:
+  '@parcel/watcher': true
+  '@swc/core': true
+  esbuild: true
+  sharp: true
+  unrs-resolver: true

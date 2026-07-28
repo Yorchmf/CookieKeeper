@@ -1,0 +1,78 @@
+# Dev environment on the VPS.
+# Run as compose project `complyr-dev` from /opt/complyr/dev:
+#   docker compose -f compose.dev.yml --project-name complyr-dev up -d
+# Container names get the `complyr-dev-` prefix from the project name —
+# Caddy reaches them via the shared external `caddy-net` network.
+#
+# Images are pulled from GHCR (built by CI). IMAGE_TAG and GHCR_OWNER come
+# from ./.env (deploy.sh maintains IMAGE_TAG via .env.deploy).
+# Postgres has NO published ports; api/dashboard only `expose` to caddy-net.
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    env_file: ./.env
+    environment:
+      POSTGRES_DB: complyr
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d complyr"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    image: ghcr.io/${GHCR_OWNER}/complyr-api:${IMAGE_TAG}
+    restart: unless-stopped
+    env_file: ./.env
+    environment:
+      SPRING_PROFILES_ACTIVE: api,dev
+      # `:?` fails the deploy loudly if .env is missing these — otherwise the
+      # backend would silently fall back to built-in local defaults.
+      DB_USER: ${DB_USER:?DB_USER missing from .env}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD missing from .env}
+    expose:
+      - "8080"
+    networks:
+      - default
+      - caddy-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  scanner:
+    image: ghcr.io/${GHCR_OWNER}/complyr-scanner:${IMAGE_TAG}
+    restart: unless-stopped
+    env_file: ./.env
+    environment:
+      SPRING_PROFILES_ACTIVE: scanner,dev
+      DB_USER: ${DB_USER:?DB_USER missing from .env}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD missing from .env}
+    # No ports at all — scanner is outbound-only (SSRF posture, §4.4)
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  dashboard:
+    image: ghcr.io/${GHCR_OWNER}/complyr-dashboard:${IMAGE_TAG}
+    restart: unless-stopped
+    env_file: ./.env
+    # No NEXT_PUBLIC_API_URL: the client uses same-origin /api/v1/* (Caddy
+    # proxies it to the api container) — runtime env can't affect NEXT_PUBLIC_*
+    # anyway, they are baked at build time.
+    expose:
+      - "3000"
+    networks:
+      - default
+      - caddy-net
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+
+networks:
+  caddy-net:
+    external: true

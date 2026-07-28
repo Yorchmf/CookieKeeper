@@ -1,0 +1,9 @@
+# Local development (docker compose stack with Postgres + Mailpit).
+logging:
+  level:
+    com.complyr: DEBUG
+    org.springframework.security: DEBUG
+
+server:
+  error:
+    include-message: always

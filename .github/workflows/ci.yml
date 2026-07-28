@@ -1,0 +1,111 @@
+# CI — runs on every PR and on pushes to main.
+# Paths-filtered: only the modules a change touches actually build
+# (ARCHITECTURE.md §7).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Detect which modules changed so the heavy jobs can be skipped.
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      dashboard: ${{ steps.filter.outputs.dashboard }}
+      widget: ${{ steps.filter.outputs.widget }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - '.github/workflows/ci.yml'
+            dashboard:
+              - 'dashboard/**'
+              - 'pnpm-workspace.yaml'
+              - '.github/workflows/ci.yml'
+            widget:
+              - 'widget/**'
+              - 'pnpm-workspace.yaml'
+              - '.github/workflows/ci.yml'
+
+  # Spring Boot (Kotlin) — lint, static analysis, tests (Testcontainers uses
+  # the Docker daemon that ubuntu-latest provides out of the box).
+  backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build, lint and test
+        run: ./gradlew ktlintCheck detekt test build
+
+  # Next.js dashboard — lint, test (if present), production build.
+  dashboard:
+    needs: changes
+    if: needs.changes.outputs.dashboard == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      # TODO: switch to --frozen-lockfile once the workspace lockfile settles.
+      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm run --if-present test
+      - run: pnpm build
+
+  # Consent widget — tests, build, and the HARD 20KB gzip size gate.
+  widget:
+    needs: changes
+    if: needs.changes.outputs.widget == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: widget
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      # TODO: switch to --frozen-lockfile once the workspace lockfile settles.
+      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm test
+      - run: pnpm build
+      # size-limit exits non-zero over 20KB gzipped → fails the build (by design)
+      - run: pnpm size

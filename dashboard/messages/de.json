@@ -1,0 +1,46 @@
+{
+  "app": {
+    "name": "Complyr",
+    "tagline": "DSGVO-Cookie-Einwilligung, richtig gemacht"
+  },
+  "marketing": {
+    "hero": {
+      "title": "Complyr",
+      "pitch": "Kinderleichte DSGVO-Cookie-Einwilligung für kleine europäische Unternehmen — konformes Banner, Cookie-Scans und revisionssichere Einwilligungsprotokolle ab 9 €/Monat.",
+      "cta": "Jetzt starten",
+      "euBadge": "Entwickelt und gehostet in der EU"
+    },
+    "nav": {
+      "features": "Funktionen",
+      "pricing": "Preise",
+      "signIn": "Anmelden"
+    },
+    "footer": {
+      "legal": "Impressum",
+      "privacy": "Datenschutz"
+    }
+  },
+  "nav": {
+    "dashboard": "Übersicht",
+    "sites": "Websites",
+    "scans": "Scans",
+    "consentLog": "Einwilligungsprotokoll",
+    "policies": "Richtlinien",
+    "billing": "Abrechnung",
+    "settings": "Einstellungen",
+    "signOut": "Abmelden"
+  },
+  "dashboard": {
+    "title": "Übersicht",
+    "welcome": "Willkommen bei Complyr",
+    "placeholder": "Hier erscheinen Ihre Websites, Scans und Einwilligungsstatistiken.",
+    "cards": {
+      "sites": "Websites",
+      "sitesHint": "Registrierte Domains mit aktivem Widget",
+      "consents": "Einwilligungsereignisse",
+      "consentsHint": "Erfasst in den letzten 30 Tagen",
+      "scans": "Scans",
+      "scansHint": "Neueste Cookie-Scan-Ergebnisse"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+.git
+.gitignore
+.gradle
+.idea
+.kotlin
+.vscode
+build
+out
+bin
+Dockerfile
+Dockerfile.scanner
+.dockerignore
+*.md
+.env
+.env.*

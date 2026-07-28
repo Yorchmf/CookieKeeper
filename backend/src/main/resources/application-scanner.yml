@@ -1,0 +1,5 @@
+# Scanner runtime role: no web server — polls the Postgres job queue.
+# Combine with an environment profile, e.g. --spring.profiles.active=scanner,prd
+spring:
+  main:
+    web-application-type: none

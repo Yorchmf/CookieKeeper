@@ -1,0 +1,5 @@
+# Production environment (Hetzner VPS, compose project complyr-prd).
+logging:
+  level:
+    root: WARN
+    com.complyr: INFO

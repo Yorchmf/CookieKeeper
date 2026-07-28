@@ -1,0 +1,31 @@
+# Single shared Caddy instance for the whole VPS — routes BOTH dev and prd
+# stacks by hostname over the external `caddy-net` docker network.
+# One-time setup: docker network create caddy-net   (see scripts/server-setup.md)
+# Run from /opt/complyr/caddy:
+#   docker compose -f compose.caddy.yml --project-name complyr-caddy up -d
+
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Widget static assets (v1.js + per-site config JSON), uploaded by CI:
+      #   /srv/cdn/dev ← deploy-dev.yml   /srv/cdn/prd ← deploy-prd.yml
+      - /srv/cdn:/srv/cdn:ro
+      - caddy-data:/data # TLS certificates
+      - caddy-config:/config
+    networks:
+      - caddy-net
+
+volumes:
+  caddy-data:
+  caddy-config:
+
+networks:
+  caddy-net:
+    external: true

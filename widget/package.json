@@ -1,0 +1,28 @@
+{
+  "name": "@complyr/widget",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Complyr embeddable consent banner — vanilla TypeScript, zero runtime dependencies, <=20KB gzipped",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "size": "size-limit"
+  },
+  "devDependencies": {
+    "@size-limit/file": "^11.2.0",
+    "happy-dom": "^18.0.1",
+    "size-limit": "^11.2.0",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5",
+    "vitest": "^3.2.4"
+  },
+  "size-limit": [
+    {
+      "path": "dist/v1.js",
+      "limit": "20 KB",
+      "gzip": true
+    }
+  ]
+}

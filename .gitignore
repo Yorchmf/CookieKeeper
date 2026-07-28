@@ -1,0 +1,29 @@
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Backend (Gradle/Kotlin)
+backend/build/
+backend/.gradle/
+backend/out/
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# JS workspaces
+node_modules/
+dashboard/.next/
+dashboard/out/
+widget/dist/
+*.tsbuildinfo
+.pnpm-store/
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# Logs / temp
+*.log
+tmp/

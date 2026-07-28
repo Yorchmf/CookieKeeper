@@ -1,0 +1,13 @@
+# Complyr backend detekt configuration.
+# Builds upon the detekt default ruleset (buildUponDefaultConfig = true in build.gradle.kts);
+# only deviations from the defaults are listed here.
+
+performance:
+  SpreadOperator:
+    # Idiomatic Spring Boot entrypoint: runApplication<App>(*args).
+    active: false
+
+style:
+  MagicNumber:
+    ignoreAnnotated:
+      - "Configuration"

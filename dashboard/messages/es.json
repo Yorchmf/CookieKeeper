@@ -1,0 +1,46 @@
+{
+  "app": {
+    "name": "Complyr",
+    "tagline": "Consentimiento de cookies RGPD, bien hecho"
+  },
+  "marketing": {
+    "hero": {
+      "title": "Complyr",
+      "pitch": "Consentimiento de cookies RGPD súper sencillo para pequeñas empresas europeas — banner conforme, escaneos de cookies y registros de consentimiento listos para auditoría desde 9 €/mes.",
+      "cta": "Empezar",
+      "euBadge": "Creado y alojado en la UE"
+    },
+    "nav": {
+      "features": "Funciones",
+      "pricing": "Precios",
+      "signIn": "Iniciar sesión"
+    },
+    "footer": {
+      "legal": "Aviso legal",
+      "privacy": "Privacidad"
+    }
+  },
+  "nav": {
+    "dashboard": "Panel",
+    "sites": "Sitios",
+    "scans": "Escaneos",
+    "consentLog": "Registro de consentimientos",
+    "policies": "Políticas",
+    "billing": "Facturación",
+    "settings": "Configuración",
+    "signOut": "Cerrar sesión"
+  },
+  "dashboard": {
+    "title": "Panel",
+    "welcome": "Bienvenido a Complyr",
+    "placeholder": "Aquí aparecerán tus sitios, escaneos y estadísticas de consentimiento.",
+    "cards": {
+      "sites": "Sitios",
+      "sitesHint": "Dominios registrados con el widget activo",
+      "consents": "Eventos de consentimiento",
+      "consentsHint": "Registrados en los últimos 30 días",
+      "scans": "Escaneos",
+      "scansHint": "Últimos resultados del escaneo de cookies"
+    }
+  }
+}

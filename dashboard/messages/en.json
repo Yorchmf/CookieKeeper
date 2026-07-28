@@ -1,0 +1,46 @@
+{
+  "app": {
+    "name": "Complyr",
+    "tagline": "GDPR cookie consent, done right"
+  },
+  "marketing": {
+    "hero": {
+      "title": "Complyr",
+      "pitch": "Dead-simple GDPR cookie consent for small European businesses — compliant banner, cookie scans, and audit-ready consent logs from €9/month.",
+      "cta": "Get started",
+      "euBadge": "Built and hosted in the EU"
+    },
+    "nav": {
+      "features": "Features",
+      "pricing": "Pricing",
+      "signIn": "Sign in"
+    },
+    "footer": {
+      "legal": "Legal",
+      "privacy": "Privacy"
+    }
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "sites": "Sites",
+    "scans": "Scans",
+    "consentLog": "Consent log",
+    "policies": "Policies",
+    "billing": "Billing",
+    "settings": "Settings",
+    "signOut": "Sign out"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome to Complyr",
+    "placeholder": "Your sites, scans, and consent analytics will appear here.",
+    "cards": {
+      "sites": "Sites",
+      "sitesHint": "Registered domains running the widget",
+      "consents": "Consent events",
+      "consentsHint": "Recorded in the last 30 days",
+      "scans": "Scans",
+      "scansHint": "Latest cookie scan results"
+    }
+  }
+}

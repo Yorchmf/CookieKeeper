@@ -1,0 +1,46 @@
+{
+  "app": {
+    "name": "Complyr",
+    "tagline": "Consenso ai cookie GDPR, fatto bene"
+  },
+  "marketing": {
+    "hero": {
+      "title": "Complyr",
+      "pitch": "Consenso ai cookie GDPR semplicissimo per le piccole imprese europee — banner conforme, scansioni dei cookie e registri di consenso pronti per l'audit da 9 €/mese.",
+      "cta": "Inizia ora",
+      "euBadge": "Sviluppato e ospitato nell'UE"
+    },
+    "nav": {
+      "features": "Funzionalità",
+      "pricing": "Prezzi",
+      "signIn": "Accedi"
+    },
+    "footer": {
+      "legal": "Note legali",
+      "privacy": "Privacy"
+    }
+  },
+  "nav": {
+    "dashboard": "Pannello",
+    "sites": "Siti",
+    "scans": "Scansioni",
+    "consentLog": "Registro dei consensi",
+    "policies": "Politiche",
+    "billing": "Fatturazione",
+    "settings": "Impostazioni",
+    "signOut": "Esci"
+  },
+  "dashboard": {
+    "title": "Pannello",
+    "welcome": "Benvenuto in Complyr",
+    "placeholder": "Qui appariranno i tuoi siti, le scansioni e le statistiche sui consensi.",
+    "cards": {
+      "sites": "Siti",
+      "sitesHint": "Domini registrati con il widget attivo",
+      "consents": "Eventi di consenso",
+      "consentsHint": "Registrati negli ultimi 30 giorni",
+      "scans": "Scansioni",
+      "scansHint": "Ultimi risultati della scansione dei cookie"
+    }
+  }
+}

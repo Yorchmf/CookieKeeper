@@ -1,0 +1,89 @@
+# Complyr — single Caddy instance routing dev + prd by hostname.
+#
+# NOTE: complyr.eu is a PLACEHOLDER domain — replace everywhere once the real
+# domain is bought (and update Cloudflare DNS + the .env files to match).
+#
+# TLS: Cloudflare sits in front in "Full (strict)" mode; Caddy obtains
+# certificates automatically (ACME) or use Cloudflare origin certs.
+#
+# Upstreams are container names on the external `caddy-net` network, prefixed
+# by compose project name (complyr-dev / complyr-prd).
+
+# --- Shared security headers (web security baseline) -------------------------
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+	# CSP is intentionally NOT set here: the dashboard emits a nonce-based CSP
+	# per request (app-level), and the widget CDN must stay embeddable anywhere.
+}
+
+# --- CDN vhosts: widget bundle + per-site config, served from disk -----------
+# CI uploads content-hashed/versioned assets; cache hard, Cloudflare absorbs
+# the read load. Config JSON (cfg/*.json) revalidates every 5 minutes.
+(cdn_site) {
+	root * {args[0]}
+	file_server
+	encode gzip zstd
+	import security_headers
+	header Access-Control-Allow-Origin "*"
+	@config path /cfg/*
+	header @config Cache-Control "public, max-age=300"
+	# The stable embed URLs (/v1.js, future /v2.js) are OVERWRITTEN in place by
+	# deploys — a long/immutable TTL here would pin a buggy widget in browsers
+	# and Cloudflare for a year with no cache-busting lever left.
+	@entry path /v*.js
+	header @entry Cache-Control "public, max-age=3600, stale-while-revalidate=86400"
+	# Everything else must be content-hashed — only then is immutable safe.
+	header ?Cache-Control "public, max-age=31536000, immutable"
+	# X-Frame-Options DENY is fine here — the widget is a <script>, not a frame.
+}
+
+# ============================== PRODUCTION ===================================
+
+app.complyr.eu {
+	import security_headers
+	# Same-origin API for the dashboard client: one image serves dev AND prd
+	# (no NEXT_PUBLIC_* URL baked at build time). /api/health stays with Next.js.
+	handle /api/v1/* {
+		reverse_proxy complyr-prd-api-1:8080
+	}
+	handle {
+		reverse_proxy complyr-prd-dashboard-1:3000
+	}
+}
+
+api.complyr.eu {
+	import security_headers
+	reverse_proxy complyr-prd-api-1:8080
+}
+
+cdn.complyr.eu {
+	import cdn_site /srv/cdn/prd
+}
+
+# ================================== DEV ======================================
+
+dev.complyr.eu {
+	import security_headers
+	handle /api/v1/* {
+		reverse_proxy complyr-dev-api-1:8080
+	}
+	handle {
+		reverse_proxy complyr-dev-dashboard-1:3000
+	}
+}
+
+api.dev.complyr.eu {
+	import security_headers
+	reverse_proxy complyr-dev-api-1:8080
+}
+
+cdn.dev.complyr.eu {
+	import cdn_site /srv/cdn/dev
+}

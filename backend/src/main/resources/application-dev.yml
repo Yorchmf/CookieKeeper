@@ -1,0 +1,4 @@
+# Dev environment (Hetzner VPS, compose project complyr-dev, dev.* subdomains).
+logging:
+  level:
+    com.complyr: DEBUG

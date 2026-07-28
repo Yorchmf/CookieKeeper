@@ -1,0 +1,87 @@
+# Local development stack: `docker compose -f infra/compose.local.yml up`
+# Postgres + Mailpit always; api/dashboard build from source; scanner is
+# opt-in via `--profile scanner` (heavy Playwright image).
+# Reads ../.env (copy from ../.env.example).
+
+name: complyr-local
+
+services:
+  postgres:
+    image: postgres:16
+    # Local credentials are deliberately FIXED (not read from .env): they are
+    # throwaway, and reading them from two places (compose interpolation vs
+    # env_file) caused postgres/api credential drift. Real secrets exist only
+    # in the dev/prd server .env files.
+    environment:
+      POSTGRES_DB: complyr
+      POSTGRES_USER: complyr
+      POSTGRES_PASSWORD: complyr
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432" # local convenience only — never published on the server
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U complyr -d complyr"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Catches all outgoing email locally (SMTP :1025, web UI :8025)
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  api:
+    build:
+      context: ../backend
+    env_file:
+      - path: ../.env
+        required: false # copy .env.example → .env for real values
+    environment:
+      SPRING_PROFILES_ACTIVE: api,local
+      DB_URL: jdbc:postgresql://postgres:5432/complyr
+      DB_USER: complyr # matches the fixed local postgres credentials above
+      DB_PASSWORD: complyr
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Cookie scanner worker (same jar, Spring profile `scanner`, Playwright base
+  # image). Opt-in locally: docker compose --profile scanner up
+  scanner:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.scanner
+    profiles: ["scanner"]
+    env_file:
+      - path: ../.env
+        required: false # copy .env.example → .env for real values
+    environment:
+      SPRING_PROFILES_ACTIVE: scanner,local
+      DB_URL: jdbc:postgresql://postgres:5432/complyr
+      DB_USER: complyr
+      DB_PASSWORD: complyr
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  dashboard:
+    build:
+      context: ../dashboard
+      args:
+        # Baked into the client bundle at BUILD time (runtime env is useless
+        # for NEXT_PUBLIC_*). Local-only: dev/prd use same-origin via Caddy.
+        NEXT_PUBLIC_API_URL: http://localhost:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
