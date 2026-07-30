@@ -65,6 +65,11 @@ interface SiteRepository : JpaRepository<SiteEntity, UUID> {
         userId: UUID,
     ): SiteEntity?
 
+    fun findBySiteKeyAndStatus(
+        siteKey: String,
+        status: SiteStatus,
+    ): SiteEntity?
+
     fun existsByUserIdAndDomainAndStatus(
         userId: UUID,
         domain: String,

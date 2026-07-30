@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -48,10 +49,10 @@ export function UserNav() {
       />
       <DropdownMenuContent align="end">
         {me.data ? (
-          <>
+          <DropdownMenuGroup>
             <DropdownMenuLabel>{me.data.email}</DropdownMenuLabel>
             <DropdownMenuSeparator />
-          </>
+          </DropdownMenuGroup>
         ) : null}
         <DropdownMenuItem
           onClick={() => void handleSignOut()}

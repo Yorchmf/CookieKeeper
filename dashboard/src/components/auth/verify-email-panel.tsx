@@ -43,12 +43,26 @@ export function VerifyEmailPanel() {
     // while still verifying again if a *different* ?token= arrives.
     attemptedToken.current = token;
     setState("verifying");
+    // Ignore a response that resolves after unmount or after a newer ?token=
+    // superseded this run (last-write-wins race). apiFetch takes no signal, so
+    // an ignore flag is the pragmatic guard.
+    let ignore = false;
     verifyEmail(token)
-      .then(() => setState("success"))
+      .then(() => {
+        if (!ignore) {
+          setState("success");
+        }
+      })
       .catch((error: unknown) => {
+        if (ignore) {
+          return;
+        }
         setErrorCode(getApiErrorCode(error));
         setState("invalid");
       });
+    return () => {
+      ignore = true;
+    };
   }, [token]);
 
   const resendSchema = z.object({

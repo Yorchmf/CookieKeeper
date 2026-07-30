@@ -121,6 +121,9 @@ export function SignupForm() {
             className="w-full"
             onClick={handleResend}
             disabled={isResending || cooldown > 0}
+            // Stable accessible name: the visible label ticks every second during
+            // cooldown, which would otherwise re-announce the button each tick.
+            aria-label={t("signup.success.resend")}
           >
             {cooldown > 0
               ? t("signup.success.resendCooldown", { seconds: cooldown })

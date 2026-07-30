@@ -176,6 +176,12 @@ class AuthFlowIntegrationTest {
         assertTrue(accessCookie.contains("SameSite=Lax") && accessCookie.contains("Secure"))
         assertTrue(refreshCookie.contains("Path=/api/v1/auth") && refreshCookie.contains("HttpOnly"))
 
+        // Non-secret session marker: Path=/ (so the dashboard middleware sees it on any
+        // navigation, unlike the path-scoped refresh cookie) and carrying no token material.
+        val markerCookie = assertNotNull(cookies["cmplyr_session"], "login must set cmplyr_session")
+        assertTrue(markerCookie.contains("Path=/;"), "marker must be Path=/")
+        assertTrue(cookieValue(markerCookie) == "1", "marker value must be the opaque, non-secret constant")
+
         // --- me with the access cookie ---------------------------------------------------
         mockMvc
             .perform(get("/api/v1/auth/me").cookie(Cookie("cmplyr_at", cookieValue(accessCookie))))

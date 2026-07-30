@@ -14,7 +14,12 @@ import {
   type ConsentDecision,
 } from './consent-mode';
 import { fetchConfig, resolveTexts, type WidgetConfig } from './config';
-import { readConsent, writeConsent, type ConsentState } from './storage';
+import {
+  getOrCreateVid,
+  readConsent,
+  writeConsent,
+  type ConsentState,
+} from './storage';
 
 interface ComplyrApi {
   /** Reopen the banner ("withdraw consent as easily as given"). */
@@ -91,7 +96,8 @@ function applyChoice(
     categories[category.id] = category.required || granted;
   }
 
-  writeConsent(categories);
+  const vid = getOrCreateVid();
+  writeConsent(categories, vid);
   updateConsent(categories);
   removeBanner();
 
@@ -102,6 +108,7 @@ function applyChoice(
       categories,
       lang,
       ts: Date.now(),
+      vid,
     });
   }
 }

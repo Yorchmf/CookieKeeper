@@ -38,9 +38,15 @@ data class ComplyrProperties(
     data class RateLimit(
         // Requests per minute per client IP on the auth endpoints (raised in tests).
         val authPerMinute: Long = DEFAULT_AUTH_PER_MINUTE,
+        // Requests per minute per client IP on public consent ingestion. Set generously:
+        // large corporate NATs / carrier CGNAT share one IP across many visitors, and a
+        // single visitor emits ~1 event per choice. Edge rate limiting (Cloudflare) absorbs
+        // volumetric floods; this is only the coarse per-IP backstop.
+        val consentPerMinute: Long = DEFAULT_CONSENT_PER_MINUTE,
     ) {
         companion object {
             const val DEFAULT_AUTH_PER_MINUTE = 10L
+            const val DEFAULT_CONSENT_PER_MINUTE = 120L
         }
     }
 }

@@ -22,7 +22,7 @@ class RateLimitFilterTest {
                     verificationTokenTtl = Duration.ofHours(24),
                     resetTokenTtl = Duration.ofHours(1),
                 ),
-            rateLimit = ComplyrProperties.RateLimit(authPerMinute = 2),
+            rateLimit = ComplyrProperties.RateLimit(authPerMinute = 2, consentPerMinute = 3),
             appBaseUrl = "http://localhost:3000",
             cdnBaseUrl = "http://localhost:8081",
             mailFrom = "no-reply@complyr.eu",
@@ -67,6 +67,63 @@ class RateLimitFilterTest {
         filter.doFilter(request("/api/v1/auth/login", ip = "203.0.113.2"), otherClient, chain)
 
         assertEquals(200, otherClient.status)
+    }
+
+    @Test
+    fun `consent ingestion uses its own generous tier independent of the auth limit`() {
+        val chain = mockk<FilterChain>(relaxed = true)
+
+        // Auth tier (2/min) is unaffected by consent traffic and vice-versa: the consent
+        // tier allows 3 before the 4th is throttled.
+        repeat(3) {
+            val response = MockHttpServletResponse()
+            filter.doFilter(request("/api/v1/consent"), response, chain)
+            assertEquals(200, response.status)
+        }
+
+        val limited = MockHttpServletResponse()
+        filter.doFilter(request("/api/v1/consent"), limited, chain)
+        assertEquals(429, limited.status)
+        assertTrue(limited.contentAsString.contains("\"RATE_LIMITED\""), limited.contentAsString)
+    }
+
+    @Test
+    fun `CORS preflight OPTIONS on a public endpoint is never counted`() {
+        val chain = mockk<FilterChain>(relaxed = true)
+
+        repeat(10) {
+            val preflight =
+                MockHttpServletRequest("OPTIONS", "/api/v1/consent").apply {
+                    remoteAddr = "203.0.113.10"
+                    requestURI = "/api/v1/consent"
+                }
+            filter.doFilter(preflight, MockHttpServletResponse(), chain)
+        }
+
+        // All 3 real-POST slots remain, proving preflight consumed none of them.
+        repeat(3) {
+            val response = MockHttpServletResponse()
+            filter.doFilter(request("/api/v1/consent"), response, chain)
+            assertEquals(200, response.status)
+        }
+    }
+
+    @Test
+    fun `a matrix-parameter suffix cannot slip a public endpoint past tier matching`() {
+        val chain = mockk<FilterChain>(relaxed = true)
+
+        // `/api/v1/consent;x=1` must still be treated as the consent path: the tier is
+        // resolved from the path with matrix params stripped, so the 3/min cap applies and
+        // the 4th request is throttled rather than sailing through unlimited.
+        repeat(3) {
+            val response = MockHttpServletResponse()
+            filter.doFilter(request("/api/v1/consent;jsessionid=abc"), response, chain)
+            assertEquals(200, response.status)
+        }
+
+        val limited = MockHttpServletResponse()
+        filter.doFilter(request("/api/v1/consent;jsessionid=abc"), limited, chain)
+        assertEquals(429, limited.status)
     }
 
     @Test

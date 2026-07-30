@@ -49,8 +49,14 @@ const bases = resolveBases(
 export const CDN_BASE = bases.cdn;
 export const API_BASE = bases.api;
 
-/** Consent cookie schema version — bump when the cookie payload shape changes. */
-export const COOKIE_SCHEMA_VERSION = 1;
+/**
+ * Consent cookie schema version — bump when the cookie payload shape changes.
+ * v2 added `vid`, a stable per-browser id sent with each consent event so a
+ * visitor's audit history correlates without storing any reversible identifier.
+ * v1 cookies (no `vid`) are still honored on read; the vid is minted on the
+ * next choice.
+ */
+export const COOKIE_SCHEMA_VERSION = 2;
 
 /** 12-month consent expiry, per GDPR guidance and ARCHITECTURE.md §4.3. */
 export const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;

@@ -71,8 +71,10 @@ class SecurityConfigIntegrationTest {
 
     @Test
     fun `widget config and consent ingestion stay public`() {
-        // No controllers yet (W3) — public matchers must yield 404, not 401.
+        // Public matchers must reach the app (anything but 401/403). The widget-config
+        // controller does not exist yet (W3 Slice 2), so it 404s; the consent endpoint is
+        // live, so an empty body reaches bean validation and 400s — both prove open access.
         mockMvc.perform(get("/api/v1/widget-config/pk_test")).andExpect(status().isNotFound)
-        mockMvc.perform(post("/api/v1/consent")).andExpect(status().isNotFound)
+        mockMvc.perform(post("/api/v1/consent")).andExpect(status().isBadRequest)
     }
 }

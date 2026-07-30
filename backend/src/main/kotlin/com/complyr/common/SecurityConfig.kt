@@ -16,6 +16,9 @@ import org.springframework.security.oauth2.server.resource.web.DefaultBearerToke
 import org.springframework.security.web.AuthenticationEntryPoint
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.access.AccessDeniedHandler
+import org.springframework.web.cors.CorsConfiguration
+import org.springframework.web.cors.CorsConfigurationSource
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 import tools.jackson.databind.ObjectMapper
 
 /**
@@ -26,7 +29,9 @@ import tools.jackson.databind.ObjectMapper
  * read from the `cmplyr_at` cookie or the `Authorization: Bearer` header.
  * Auth failures are returned as the standard `{ success, data, error, meta }` envelope.
  *
- * TODO(W3): CORS for the public widget endpoints.
+ * CORS is opened (credential-less) only for the public widget endpoints — see
+ * [publicWidgetCorsSource]. Everything else has no CORS config, so the browser blocks
+ * cross-origin calls; the dashboard reaches the API same-origin through its Next proxy.
  */
 @Configuration
 @EnableWebSecurity
@@ -37,8 +42,10 @@ class SecurityConfig(
     fun apiSecurityFilterChain(
         http: HttpSecurity,
         jwtDecoder: JwtDecoder,
+        publicWidgetCorsSource: CorsConfigurationSource,
     ): SecurityFilterChain {
         http
+            .cors { cors -> cors.configurationSource(publicWidgetCorsSource) }
             // CSRF tokens are deliberately not used: auth cookies are SameSite=Lax, every
             // state-changing endpoint is JSON-only POST/PATCH/DELETE (cross-site form posts
             // can't set Content-Type: application/json), and there are no state-changing GETs.
@@ -69,6 +76,28 @@ class SecurityConfig(
             }.httpBasic { basic -> basic.disable() }
             .formLogin { form -> form.disable() }
         return http.build()
+    }
+
+    /**
+     * Credential-less open CORS for the public widget endpoints only. The widget runs on
+     * arbitrary customer origins, so any origin is allowed — but `allowCredentials = false`
+     * means no cookies/authorization are ever accepted cross-origin, so this can never expose
+     * an authenticated endpoint. Non-matching paths get no CORS headers at all.
+     */
+    @Bean
+    fun publicWidgetCorsSource(): CorsConfigurationSource {
+        val open =
+            CorsConfiguration().apply {
+                allowedOriginPatterns = listOf("*")
+                allowedMethods = listOf("GET", "POST", "OPTIONS")
+                allowedHeaders = listOf("Content-Type")
+                allowCredentials = false
+                maxAge = CORS_PREFLIGHT_MAX_AGE_SECONDS
+            }
+        return UrlBasedCorsConfigurationSource().apply {
+            registerCorsConfiguration("/api/v1/consent", open)
+            registerCorsConfiguration("/api/v1/widget-config/**", open)
+        }
     }
 
     /** Reads the bearer token from the Authorization header or the `cmplyr_at` cookie. */
@@ -108,6 +137,7 @@ class SecurityConfig(
     }
 
     companion object {
+        private const val CORS_PREFLIGHT_MAX_AGE_SECONDS = 3600L
         private val PUBLIC_AUTH_ENDPOINTS =
             arrayOf(
                 "/api/v1/auth/signup",

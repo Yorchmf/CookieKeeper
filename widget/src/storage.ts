@@ -1,6 +1,10 @@
 /**
  * First-party consent cookie `cmplyr`.
- * JSON payload: { version, categories, ts } — 12-month expiry, SameSite=Lax.
+ * JSON payload: { version, categories, ts, vid } — 12-month expiry, SameSite=Lax.
+ *
+ * `vid` is a random per-browser UUID (schema v2). It lives in this necessary,
+ * first-party cookie and is sent with every consent event so a visitor's audit
+ * history correlates server-side, while the stored IP stays irreversibly hashed.
  */
 
 import { COOKIE_MAX_AGE_SECONDS, COOKIE_SCHEMA_VERSION } from './constants';
@@ -15,7 +19,12 @@ export interface ConsentState {
   categories: ConsentDecision;
   /** Unix ms timestamp of the choice. */
   ts: number;
+  /** Stable per-browser id (UUID). Absent in v1 cookies. */
+  vid?: string;
 }
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Read and validate the consent cookie. Returns null when absent or invalid. */
 export function readConsent(): ConsentState | null {
@@ -35,12 +44,25 @@ export function readConsent(): ConsentState | null {
   }
 }
 
-/** Persist a consent choice; returns the stored state. */
-export function writeConsent(categories: ConsentDecision): ConsentState {
+/**
+ * Return the visitor's existing vid, or mint a fresh UUID when there is none
+ * (first visit, corrupt cookie, or a v1 cookie predating `vid`).
+ */
+export function getOrCreateVid(): string {
+  const existing = readConsent()?.vid;
+  return existing && UUID_PATTERN.test(existing) ? existing : generateVid();
+}
+
+/** Persist a consent choice keyed to [vid]; returns the stored state. */
+export function writeConsent(
+  categories: ConsentDecision,
+  vid: string,
+): ConsentState {
   const state: ConsentState = {
     version: COOKIE_SCHEMA_VERSION,
     categories,
     ts: Date.now(),
+    vid,
   };
   const value = encodeURIComponent(JSON.stringify(state));
   // Secure only on https so the local dev harness (http) keeps working.
@@ -50,13 +72,33 @@ export function writeConsent(categories: ConsentDecision): ConsentState {
   return state;
 }
 
+/** RFC 4122 v4 UUID — native when available, else derived from CSPRNG bytes. */
+function generateVid(): string {
+  const cryptoObj = globalThis.crypto;
+  if (cryptoObj && typeof cryptoObj.randomUUID === 'function') {
+    return cryptoObj.randomUUID();
+  }
+  const bytes = new Uint8Array(16);
+  cryptoObj?.getRandomValues(bytes);
+  bytes[6] = (bytes[6]! & 0x0f) | 0x40; // version 4
+  bytes[8] = (bytes[8]! & 0x3f) | 0x80; // variant 10xx
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0'));
+  return (
+    `${hex.slice(0, 4).join('')}-${hex.slice(4, 6).join('')}-` +
+    `${hex.slice(6, 8).join('')}-${hex.slice(8, 10).join('')}-` +
+    `${hex.slice(10, 16).join('')}`
+  );
+}
+
 function isConsentState(value: unknown): value is ConsentState {
   if (typeof value !== 'object' || value === null) return false;
   const candidate = value as Record<string, unknown>;
+  const vid = candidate['vid'];
   return (
     typeof candidate['version'] === 'number' &&
     typeof candidate['ts'] === 'number' &&
     typeof candidate['categories'] === 'object' &&
-    candidate['categories'] !== null
+    candidate['categories'] !== null &&
+    (vid === undefined || typeof vid === 'string')
   );
 }

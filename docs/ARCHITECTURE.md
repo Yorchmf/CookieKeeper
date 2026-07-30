@@ -144,13 +144,15 @@ scans            id, site_id, status, started_at, finished_at, pages_crawled, er
 scan_cookies     id, scan_id, name, domain, expiry, category, provider, is_known
 cookie_overrides id, site_id, cookie_name, category                     -- customer categorizations
 policies         id, site_id, version, language, html, published_at
-consent_events   id, site_id, visitor_id (widget UUID), action, categories_jsonb,
+consent_events   id (UUIDv7), site_id, visitor_id (widget UUID), action, categories_jsonb,
                  banner_version, policy_version, lang, ip_hash, ua_trimmed, created_at
-                 -- APPEND-ONLY. Partition by month when volume demands (§11).
+                 -- APPEND-ONLY (DB-enforced). Monthly RANGE partitions from day one.
 jobs             id, type, payload_jsonb, status, attempts, locked_until, created_at
 ```
 
 - `consent_events` is the audit product: no raw IP (SHA-256 with a rotating daily salt — enough for uniqueness/abuse analysis, not re-identifiable), no raw UA, retention default 3 years (configurable, deleted only by the scheduled retention job).
+- **Physical shape (V3 migration):** monthly `RANGE (created_at)` partitions with a `DEFAULT` safety-net partition; composite PK `(id, created_at)` (Postgres requires the partition key in every unique constraint); the id is a time-ordered **UUIDv7** (Hibernate `@UuidGenerator` VERSION_7) for sequential B-tree insert locality on the hot write path. A maintenance job pre-creates the current+next month so the `DEFAULT` partition stays empty and reclaimable months can be dropped. **This is a hard requirement, not a nicety:** with the V4 append-only trigger in place, any row that lands in `DEFAULT` can be removed only by dropping the whole `DEFAULT` partition (age-blind) — it can neither be aged out by monthly `DROP PARTITION` nor `DELETE`d, so it would breach GDPR storage-limitation (Art. 5(1)(e)). The partition-provisioning job must therefore monitor `DEFAULT` and alert if it is ever non-empty.
+- **Append-only is enforced in the database (V4 migration), not just in code:** a `BEFORE UPDATE OR DELETE` row trigger raises on any row mutation. This applies to **every** role including the schema owner the app connects as — chosen over `REVOKE UPDATE, DELETE` precisely because REVOKE is bypassed by the owner and would otherwise force a separate non-owner runtime role + secret. Retention is `DROP PARTITION` (DDL — does not fire row-level DELETE triggers), so time-based deletion still works while individual-row mutation is impossible. Targeted per-row erasure is intentionally unsupported: there is no direct PII (hashed IP, opaque visitor UUID, trimmed UA) and the log is the evidence GDPR Art. 7(1) requires us to be able to produce. The `ConsentEventRepository` also extends the bare Spring Data `Repository` marker (not `JpaRepository`/`CrudRepository`) so no delete/bulk-update method is inherited — the type system reinforces the DB guarantee.
 - Flyway migrations, Testcontainers-backed integration tests, `database-reviewer` on every migration PR.
 
 ## 6. Environments & Configuration
@@ -225,7 +227,7 @@ Stripe Checkout + Customer Portal (no custom card UI), Stripe Tax for EU VAT (�
 Ordered by trigger, not by ambition:
 
 1. **>~50 customers / noisy neighbors:** second VPS — prd gets its own box (compose files already split; move = restore backup + DNS).
-2. **Consent write volume:** partition `consent_events` by month; batch inserts already in place via queue.
+2. **Consent write volume:** `consent_events` is already monthly-partitioned (§5); scaling here is automating partition roll-forward (pg_partman) and, if needed, moving cold partitions to cheaper storage.
 3. **DB risk tolerance drops (real revenue):** move Postgres to a managed EU offering or a dedicated Hetzner box with streaming replica.
 4. **Scan queue depth:** scale scanner containers horizontally (SKIP LOCKED queue already supports N workers).
 5. **Widget global latency:** config JSON to Cloudflare Workers/KV at the edge (read path already CDN-shaped).

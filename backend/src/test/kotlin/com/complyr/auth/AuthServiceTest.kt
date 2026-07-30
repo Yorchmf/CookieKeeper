@@ -68,6 +68,7 @@ class AuthServiceTest {
 
     private fun stubSaves() {
         every { userRepository.save(any()) } answers { firstArg() }
+        every { userRepository.saveAndFlush(any()) } answers { firstArg() }
         every { authTokenRepository.save(any()) } answers { firstArg() }
         every { eventPublisher.publishEvent(any<Any>()) } just runs
     }
@@ -91,7 +92,7 @@ class AuthServiceTest {
 
         service.signup(SignupRequest(email = " Alice@Example.com ", password = "s3cret-password", locale = "de"))
 
-        verify { userRepository.save(capture(savedUser)) }
+        verify { userRepository.saveAndFlush(capture(savedUser)) }
         assertEquals("alice@example.com", savedUser.captured.email, "email must be normalized")
         assertNotEquals("s3cret-password", savedUser.captured.passwordHash)
         assertTrue(passwordEncoder.matches("s3cret-password", savedUser.captured.passwordHash))
@@ -122,7 +123,7 @@ class AuthServiceTest {
             service.signup(SignupRequest(email = "alice@example.com", password = "s3cret-password", locale = "en"))
         }
 
-        verify(exactly = 0) { userRepository.save(any()) }
+        verify(exactly = 0) { userRepository.saveAndFlush(any()) }
     }
 
     @Test

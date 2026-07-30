@@ -5,9 +5,11 @@ import com.complyr.auth.dto.SignupRequest
 import com.complyr.auth.dto.UserResponse
 import com.complyr.common.ComplyrProperties
 import com.complyr.common.UnauthenticatedException
+import com.complyr.common.violatedConstraint
 import com.complyr.notify.PasswordResetEmailRequested
 import com.complyr.notify.VerificationEmailRequested
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -43,7 +45,7 @@ class AuthService(
         // on signup. Accepted for launch velocity — revisit before public launch.
         if (userRepository.findByEmail(email) != null) throw EmailAlreadyRegisteredException()
         val user =
-            userRepository.save(
+            saveEnsuringEmailUniqueness(
                 UserEntity(
                     email = email,
                     passwordHash = hashPassword(request.password),
@@ -54,6 +56,20 @@ class AuthService(
         sendVerificationEmail(user)
         return UserResponse.from(user)
     }
+
+    /**
+     * Persists (with flush) so a concurrent signup racing past the [findByEmail][UserRepository]
+     * check is decided by the `uq_users_email` unique index and surfaces as a 409 — rather than an
+     * uncaught [DataIntegrityViolationException] whose Postgres detail message would leak the email
+     * address (PII) into logs and return a 500. Any other integrity violation is rethrown.
+     */
+    private fun saveEnsuringEmailUniqueness(user: UserEntity): UserEntity =
+        try {
+            userRepository.saveAndFlush(user)
+        } catch (ex: DataIntegrityViolationException) {
+            if (ex.violatedConstraint() == UNIQUE_EMAIL_CONSTRAINT) throw EmailAlreadyRegisteredException()
+            throw ex
+        }
 
     @Transactional
     fun login(request: LoginRequest): AuthSession {
@@ -174,5 +190,6 @@ class AuthService(
 
     companion object {
         private const val TIMING_EQUALIZER_PASSWORD = "complyr-login-timing-equalizer"
+        private const val UNIQUE_EMAIL_CONSTRAINT = "uq_users_email"
     }
 }

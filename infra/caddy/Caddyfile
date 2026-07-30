@@ -9,6 +9,18 @@
 # Upstreams are container names on the external `caddy-net` network, prefixed
 # by compose project name (complyr-dev / complyr-prd).
 
+# --- Public consent ingestion: cap body at the edge -------------------------
+# POST /api/v1/consent is public, unauthenticated and CORS-open. A legitimate
+# consent event is a few hundred bytes; 8KB is generous. Rejecting oversized
+# bodies here (413) keeps hostile payloads off the app entirely — the Jackson
+# stream limits in the backend are the in-process backstop, not the front line.
+(consent_body_cap) {
+	@consent path /api/v1/consent
+	request_body @consent {
+		max_size 8KB
+	}
+}
+
 # --- Shared security headers (web security baseline) -------------------------
 (security_headers) {
 	header {
@@ -48,6 +60,7 @@
 
 app.complyr.eu {
 	import security_headers
+	import consent_body_cap
 	# Same-origin API for the dashboard client: one image serves dev AND prd
 	# (no NEXT_PUBLIC_* URL baked at build time). /api/health stays with Next.js.
 	handle /api/v1/* {
@@ -60,6 +73,7 @@ app.complyr.eu {
 
 api.complyr.eu {
 	import security_headers
+	import consent_body_cap
 	reverse_proxy complyr-prd-api-1:8080
 }
 
@@ -71,6 +85,7 @@ cdn.complyr.eu {
 
 dev.complyr.eu {
 	import security_headers
+	import consent_body_cap
 	handle /api/v1/* {
 		reverse_proxy complyr-dev-api-1:8080
 	}
@@ -81,6 +96,7 @@ dev.complyr.eu {
 
 api.dev.complyr.eu {
 	import security_headers
+	import consent_body_cap
 	reverse_proxy complyr-dev-api-1:8080
 }
 

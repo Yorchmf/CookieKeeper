@@ -14,6 +14,8 @@ export interface ConsentEventPayload {
   categories: ConsentDecision;
   lang: string;
   ts: number;
+  /** Stable per-browser id (UUID) for audit correlation. */
+  vid: string;
 }
 
 export function sendConsentEvent(payload: ConsentEventPayload): void {

@@ -4,9 +4,9 @@ import com.complyr.auth.EmailNotVerifiedException
 import com.complyr.auth.UserRepository
 import com.complyr.common.ComplyrProperties
 import com.complyr.common.UnauthenticatedException
+import com.complyr.common.violatedConstraint
 import com.complyr.site.dto.SiteDetailResponse
 import com.complyr.site.dto.SiteResponse
-import org.hibernate.exception.ConstraintViolationException
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -101,17 +101,9 @@ class SiteService(
         try {
             siteRepository.saveAndFlush(site)
         } catch (ex: DataIntegrityViolationException) {
-            if (violatedConstraint(ex) == UNIQUE_USER_DOMAIN_CONSTRAINT) throw DomainAlreadyRegisteredException()
+            if (ex.violatedConstraint() == UNIQUE_USER_DOMAIN_CONSTRAINT) throw DomainAlreadyRegisteredException()
             throw ex
         }
-
-    private fun violatedConstraint(ex: DataIntegrityViolationException): String? =
-        generateSequence(ex.cause) { it.cause }
-            .filterIsInstance<ConstraintViolationException>()
-            .firstOrNull()
-            ?.constraintName
-            ?.trim('"')
-            ?.lowercase()
 
     private fun owned(
         userId: UUID,

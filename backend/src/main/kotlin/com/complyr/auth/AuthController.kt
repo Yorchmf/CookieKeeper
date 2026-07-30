@@ -66,6 +66,7 @@ class AuthController(
             .ok()
             .header(HttpHeaders.SET_COOKIE, cookieFactory.expiredAccessCookie().toString())
             .header(HttpHeaders.SET_COOKIE, cookieFactory.expiredRefreshCookie().toString())
+            .header(HttpHeaders.SET_COOKIE, cookieFactory.expiredSessionMarkerCookie().toString())
             .body(ApiResponse.success(OkResponse()))
     }
 
@@ -106,14 +107,16 @@ class AuthController(
             .ok()
             .header(HttpHeaders.SET_COOKIE, cookieFactory.accessCookie(session.accessToken).toString())
             .header(HttpHeaders.SET_COOKIE, cookieFactory.refreshCookie(session.refreshToken).toString())
+            .header(HttpHeaders.SET_COOKIE, cookieFactory.sessionMarkerCookie().toString())
             .body(ApiResponse.success(session.user))
 
-    /** Missing/invalid/reused refresh token: clear both cookies so the client fully logs out. */
+    /** Missing/invalid/reused refresh token: clear all session cookies so the client fully logs out. */
     private fun clearedSessionUnauthorized(ex: InvalidRefreshTokenException): ResponseEntity<ApiResponse<UserResponse>> =
         ResponseEntity
             .status(HttpStatus.UNAUTHORIZED)
             .header(HttpHeaders.SET_COOKIE, cookieFactory.expiredAccessCookie().toString())
             .header(HttpHeaders.SET_COOKIE, cookieFactory.expiredRefreshCookie().toString())
+            .header(HttpHeaders.SET_COOKIE, cookieFactory.expiredSessionMarkerCookie().toString())
             .body(
                 ApiResponse(
                     success = false,
