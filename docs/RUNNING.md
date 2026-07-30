@@ -110,7 +110,7 @@ pnpm install
 pnpm dev
 ```
 
-Dashboard runs at `http://localhost:3000`. It reads `NEXT_PUBLIC_API_URL` from `dashboard/.env.local` (defaults to `http://localhost:8080` — point it at your locally running backend from §1).
+Dashboard runs at `http://localhost:3000`. The browser always calls same-origin `/api/v1/*` (that keeps the httpOnly auth cookies first-party); the Next server forwards those calls to the backend named by `API_PROXY_TARGET` in `dashboard/.env.local` (defaults to `http://localhost:8080` — point it at your locally running backend from §1).
 
 Lint/build:
 
@@ -124,12 +124,12 @@ pnpm build && pnpm start   # production build + serve
 
 ```bash
 docker build -t complyr-dashboard \
-  --build-arg NEXT_PUBLIC_API_URL=http://localhost:8080 \
+  --build-arg API_PROXY_TARGET=http://host.docker.internal:8080 \
   dashboard/
 docker run --rm -p 3000:3000 complyr-dashboard
 ```
 
-`NEXT_PUBLIC_API_URL` is baked in at build time (Next.js inlines `NEXT_PUBLIC_*` vars into the client bundle) — pass it as a `--build-arg`, not a runtime `-e`. In deployed dev/prd this is unset on purpose; the dashboard calls same-origin `/api/v1/*` and Caddy proxies it (see `docs/ARCHITECTURE.md` §6).
+`API_PROXY_TARGET` is server-side only — it never reaches the client bundle, which always calls same-origin `/api/v1/*`. The Next server proxies those calls to the target via a rewrite that is resolved at **build** time (baked into the route manifest), so pass it as a `--build-arg`, not a runtime `-e`. In deployed dev/prd it is unset on purpose — Caddy proxies `/api/v1/*` on the app domain to the backend instead (see `docs/ARCHITECTURE.md` §6), and the same unset-built image serves both.
 
 ---
 

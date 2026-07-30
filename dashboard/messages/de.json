@@ -3,6 +3,9 @@
     "name": "Complyr",
     "tagline": "DSGVO-Cookie-Einwilligung, richtig gemacht"
   },
+  "common": {
+    "close": "Schließen"
+  },
   "marketing": {
     "hero": {
       "title": "Complyr",
@@ -28,7 +31,129 @@
     "policies": "Richtlinien",
     "billing": "Abrechnung",
     "settings": "Einstellungen",
-    "signOut": "Abmelden"
+    "account": "Konto",
+    "signOut": "Abmelden",
+    "signOutError": "Die Abmeldung ist fehlgeschlagen. Bitte versuchen Sie es erneut."
+  },
+  "auth": {
+    "fields": {
+      "email": "E-Mail",
+      "password": "Passwort",
+      "confirmPassword": "Passwort bestätigen",
+      "newPassword": "Neues Passwort"
+    },
+    "validation": {
+      "emailInvalid": "Geben Sie eine gültige E-Mail-Adresse ein",
+      "passwordRequired": "Geben Sie Ihr Passwort ein",
+      "passwordMin": "Das Passwort muss mindestens {min} Zeichen lang sein",
+      "passwordMax": "Das Passwort darf höchstens {max} Zeichen lang sein",
+      "passwordMismatch": "Die Passwörter stimmen nicht überein"
+    },
+    "errors": {
+      "EMAIL_IN_USE": "Ein Konto mit dieser E-Mail-Adresse existiert bereits",
+      "INVALID_CREDENTIALS": "E-Mail-Adresse oder Passwort ist falsch",
+      "INVALID_TOKEN": "Dieser Link ist ungültig oder abgelaufen",
+      "RATE_LIMITED": "Zu viele Versuche — bitte versuchen Sie es gleich erneut",
+      "EMAIL_NOT_VERIFIED": "Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse",
+      "DOMAIN_ALREADY_REGISTERED": "Diese Domain ist bereits registriert",
+      "INVALID_DOMAIN": "Geben Sie eine gültige Domain ein, z. B. www.beispiel.eu",
+      "GENERIC": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
+    },
+    "login": {
+      "title": "Anmelden",
+      "description": "Willkommen zurück — melden Sie sich bei Ihrem Konto an.",
+      "submit": "Anmelden",
+      "forgotPassword": "Passwort vergessen?",
+      "noAccount": "Noch kein Konto?",
+      "signUpLink": "Registrieren"
+    },
+    "signup": {
+      "title": "Konto erstellen",
+      "description": "Verwalten Sie Cookie-Einwilligungen in wenigen Minuten.",
+      "submit": "Konto erstellen",
+      "haveAccount": "Sie haben bereits ein Konto?",
+      "signInLink": "Anmelden",
+      "success": {
+        "title": "Prüfen Sie Ihren Posteingang",
+        "description": "Wir haben einen Bestätigungslink an {email} gesendet.",
+        "resend": "Bestätigungs-E-Mail erneut senden",
+        "resent": "Bestätigungs-E-Mail wurde gesendet",
+        "goToLogin": "Zur Anmeldung"
+      }
+    },
+    "verifyEmail": {
+      "title": "E-Mail wird bestätigt",
+      "verifying": "Einen Moment — wir bestätigen Ihre E-Mail-Adresse…",
+      "successTitle": "E-Mail bestätigt",
+      "successDescription": "Ihre E-Mail-Adresse wurde bestätigt. Sie können sich jetzt anmelden.",
+      "goToLogin": "Zur Anmeldung",
+      "invalidTitle": "Bestätigung fehlgeschlagen",
+      "invalidDescription": "Dieser Bestätigungslink ist ungültig oder abgelaufen. Geben Sie Ihre E-Mail-Adresse ein, um einen neuen Link zu erhalten.",
+      "resend": "Neuen Link senden",
+      "resent": "Falls ein Konto mit dieser Adresse existiert, ist eine neue Bestätigungs-E-Mail unterwegs."
+    },
+    "forgotPassword": {
+      "title": "Passwort zurücksetzen",
+      "description": "Geben Sie Ihre E-Mail-Adresse ein und wir senden Ihnen einen Link zum Zurücksetzen.",
+      "submit": "Link senden",
+      "confirmationTitle": "Prüfen Sie Ihren Posteingang",
+      "confirmationDescription": "Falls ein Konto mit dieser Adresse existiert, erhalten Sie in Kürze einen Link zum Zurücksetzen des Passworts.",
+      "backToLogin": "Zurück zur Anmeldung"
+    },
+    "resetPassword": {
+      "title": "Neues Passwort wählen",
+      "description": "Geben Sie ein neues Passwort für Ihr Konto ein.",
+      "submit": "Neues Passwort speichern",
+      "successTitle": "Passwort aktualisiert",
+      "successDescription": "Ihr Passwort wurde geändert. Sie können sich jetzt damit anmelden.",
+      "goToLogin": "Zur Anmeldung"
+    }
+  },
+  "sites": {
+    "title": "Websites",
+    "subtitle": "Domains, auf denen das Complyr-Consent-Widget läuft",
+    "loadError": "Ihre Websites konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
+    "verifiedBadge": "Verifiziert",
+    "unverifiedBadge": "Nicht verifiziert",
+    "status": {
+      "active": "Aktiv",
+      "archived": "Archiviert"
+    },
+    "empty": {
+      "title": "Noch keine Websites",
+      "description": "Fügen Sie Ihre erste Website hinzu, um den Einbettungscode für das Consent-Banner zu erhalten und Einwilligungen zu erfassen."
+    },
+    "addDialog": {
+      "trigger": "Website hinzufügen",
+      "title": "Website hinzufügen",
+      "description": "Registrieren Sie die Domain, auf der das Consent-Banner laufen soll.",
+      "domainLabel": "Domain",
+      "domainPlaceholder": "www.beispiel.eu",
+      "invalidDomain": "Geben Sie eine gültige Domain ein, z. B. www.beispiel.eu",
+      "submit": "Website hinzufügen",
+      "cancel": "Abbrechen",
+      "created": "{domain} wurde hinzugefügt",
+      "notVerifiedHint": "Sie müssen zuerst Ihre E-Mail-Adresse bestätigen, bevor Sie eine Website hinzufügen können.",
+      "resendVerification": "Bestätigungs-E-Mail erneut senden",
+      "verificationResent": "Bestätigungs-E-Mail wurde gesendet"
+    },
+    "detail": {
+      "loadError": "Diese Website konnte nicht geladen werden. Sie wurde möglicherweise archiviert oder entfernt.",
+      "siteKey": "Site-Schlüssel",
+      "siteKeyHint": "Eindeutige Kennung dieser Website für das Widget.",
+      "embedTitle": "Einbettungscode",
+      "embedDescription": "Fügen Sie dieses Snippet vor dem schließenden </head>-Tag auf jeder Seite Ihrer Website ein.",
+      "copy": "Kopieren",
+      "copied": "Kopiert!",
+      "dangerZone": "Gefahrenbereich",
+      "archiveHint": "Beim Archivieren wird das Banner deaktiviert und die Website aus Ihrer Liste ausgeblendet.",
+      "archive": "Website archivieren",
+      "archiveConfirmTitle": "Diese Website archivieren?",
+      "archiveConfirmDescription": "{domain} wird archiviert. Das Banner wird nicht mehr ausgeliefert und die Website verschwindet aus Ihrer Liste.",
+      "archiveConfirm": "Archivieren",
+      "cancel": "Abbrechen",
+      "archivedToast": "Website archiviert"
+    }
   },
   "dashboard": {
     "title": "Übersicht",

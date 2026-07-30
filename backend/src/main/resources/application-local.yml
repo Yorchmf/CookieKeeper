@@ -1,4 +1,10 @@
 # Local development (docker compose stack with Postgres + Mailpit).
+complyr:
+  auth:
+    # Dev-only fallback (>= 32 chars) so `bootRun`/compose work out of the box.
+    # dev/prd have NO fallback and fail fast when JWT_SECRET is unset.
+    jwt-secret: ${JWT_SECRET:local-dev-only-jwt-secret-do-not-use-in-prd-0123456789}
+
 logging:
   level:
     com.complyr: DEBUG

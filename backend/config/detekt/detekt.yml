@@ -2,12 +2,28 @@
 # Builds upon the detekt default ruleset (buildUponDefaultConfig = true in build.gradle.kts);
 # only deviations from the defaults are listed here.
 
+complexity:
+  LongParameterList:
+    # JPA entities and boundary DTOs are immutable data classes mirroring table/JSON shape.
+    ignoreDataClasses: true
+    # Constructor injection only (CLAUDE.md): DI constructors legitimately reach 7 collaborators.
+    constructorThreshold: 8
+  LongMethod:
+    # Full-wire integration tests read best as one linear scenario.
+    excludes: ['**/src/test/**']
+  TooManyFunctions:
+    # Count only the public API surface; private helpers keep functions small.
+    ignorePrivate: true
+
+style:
+  # Align with ktlint's official-style line length (ktlintFormat reflows to 140).
+  MaxLineLength:
+    maxLineLength: 140
+  MagicNumber:
+    ignoreAnnotated:
+      - "Configuration"
+
 performance:
   SpreadOperator:
     # Idiomatic Spring Boot entrypoint: runApplication<App>(*args).
     active: false
-
-style:
-  MagicNumber:
-    ignoreAnnotated:
-      - "Configuration"

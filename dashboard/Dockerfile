@@ -35,9 +35,12 @@ RUN if [ -f pnpm-lock.yaml ]; then \
 FROM base AS builder
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
-# NEXT_PUBLIC_* vars are inlined into the client bundle at build time.
-ARG NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+# Server-side only (never reaches the client bundle): when set, `next build`
+# bakes a rewrite proxying same-origin /api/v1/* to this backend into the
+# routes manifest. Local compose sets it to http://api:8080; CI/deployed
+# images leave it unset — Caddy proxies /api/v1 on the app domain there.
+ARG API_PROXY_TARGET
+ENV API_PROXY_TARGET=$API_PROXY_TARGET
 COPY --from=deps /app/node_modules ./node_modules
 # Bring the lockfile + build-script approvals along so pnpm's pre-run
 # dependency check passes without re-installing.

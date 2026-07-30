@@ -3,6 +3,9 @@
     "name": "Complyr",
     "tagline": "Le consentement aux cookies RGPD, bien fait"
   },
+  "common": {
+    "close": "Fermer"
+  },
   "marketing": {
     "hero": {
       "title": "Complyr",
@@ -28,7 +31,129 @@
     "policies": "Politiques",
     "billing": "Facturation",
     "settings": "Paramètres",
-    "signOut": "Se déconnecter"
+    "account": "Compte",
+    "signOut": "Se déconnecter",
+    "signOutError": "Échec de la déconnexion. Veuillez réessayer."
+  },
+  "auth": {
+    "fields": {
+      "email": "E-mail",
+      "password": "Mot de passe",
+      "confirmPassword": "Confirmer le mot de passe",
+      "newPassword": "Nouveau mot de passe"
+    },
+    "validation": {
+      "emailInvalid": "Saisissez une adresse e-mail valide",
+      "passwordRequired": "Saisissez votre mot de passe",
+      "passwordMin": "Le mot de passe doit contenir au moins {min} caractères",
+      "passwordMax": "Le mot de passe ne doit pas dépasser {max} caractères",
+      "passwordMismatch": "Les mots de passe ne correspondent pas"
+    },
+    "errors": {
+      "EMAIL_IN_USE": "Un compte avec cette adresse e-mail existe déjà",
+      "INVALID_CREDENTIALS": "E-mail ou mot de passe incorrect",
+      "INVALID_TOKEN": "Ce lien est invalide ou a expiré",
+      "RATE_LIMITED": "Trop de tentatives — veuillez réessayer dans un instant",
+      "EMAIL_NOT_VERIFIED": "Veuillez d'abord vérifier votre adresse e-mail",
+      "DOMAIN_ALREADY_REGISTERED": "Ce domaine est déjà enregistré",
+      "INVALID_DOMAIN": "Saisissez un domaine valide, p. ex. www.exemple.eu",
+      "GENERIC": "Une erreur est survenue. Veuillez réessayer."
+    },
+    "login": {
+      "title": "Se connecter",
+      "description": "Bon retour — connectez-vous à votre compte.",
+      "submit": "Se connecter",
+      "forgotPassword": "Mot de passe oublié ?",
+      "noAccount": "Pas encore de compte ?",
+      "signUpLink": "S'inscrire"
+    },
+    "signup": {
+      "title": "Créer votre compte",
+      "description": "Gérez le consentement aux cookies en quelques minutes.",
+      "submit": "Créer un compte",
+      "haveAccount": "Vous avez déjà un compte ?",
+      "signInLink": "Se connecter",
+      "success": {
+        "title": "Vérifiez votre boîte de réception",
+        "description": "Nous avons envoyé un lien de vérification à {email}.",
+        "resend": "Renvoyer l'e-mail de vérification",
+        "resent": "E-mail de vérification envoyé",
+        "goToLogin": "Aller à la connexion"
+      }
+    },
+    "verifyEmail": {
+      "title": "Vérification de votre e-mail",
+      "verifying": "Un instant — nous vérifions votre adresse e-mail…",
+      "successTitle": "E-mail vérifié",
+      "successDescription": "Votre adresse e-mail a été vérifiée. Vous pouvez maintenant vous connecter.",
+      "goToLogin": "Aller à la connexion",
+      "invalidTitle": "Échec de la vérification",
+      "invalidDescription": "Ce lien de vérification est invalide ou a expiré. Saisissez votre adresse e-mail pour en recevoir un nouveau.",
+      "resend": "Envoyer un nouveau lien",
+      "resent": "Si un compte existe pour cette adresse, un nouvel e-mail de vérification est en route."
+    },
+    "forgotPassword": {
+      "title": "Réinitialiser votre mot de passe",
+      "description": "Saisissez votre adresse e-mail et nous vous enverrons un lien de réinitialisation.",
+      "submit": "Envoyer le lien",
+      "confirmationTitle": "Vérifiez votre boîte de réception",
+      "confirmationDescription": "Si un compte existe pour cette adresse, vous recevrez sous peu un lien de réinitialisation du mot de passe.",
+      "backToLogin": "Retour à la connexion"
+    },
+    "resetPassword": {
+      "title": "Choisir un nouveau mot de passe",
+      "description": "Saisissez un nouveau mot de passe pour votre compte.",
+      "submit": "Enregistrer le nouveau mot de passe",
+      "successTitle": "Mot de passe mis à jour",
+      "successDescription": "Votre mot de passe a été modifié. Vous pouvez maintenant vous connecter avec celui-ci.",
+      "goToLogin": "Aller à la connexion"
+    }
+  },
+  "sites": {
+    "title": "Sites",
+    "subtitle": "Domaines utilisant le widget de consentement Complyr",
+    "loadError": "Impossible de charger vos sites. Veuillez réessayer.",
+    "verifiedBadge": "Vérifié",
+    "unverifiedBadge": "Non vérifié",
+    "status": {
+      "active": "Actif",
+      "archived": "Archivé"
+    },
+    "empty": {
+      "title": "Aucun site pour le moment",
+      "description": "Ajoutez votre premier site pour obtenir le code d'intégration de la bannière de consentement et commencer à enregistrer les consentements."
+    },
+    "addDialog": {
+      "trigger": "Ajouter un site",
+      "title": "Ajouter un site",
+      "description": "Enregistrez le domaine sur lequel la bannière de consentement sera affichée.",
+      "domainLabel": "Domaine",
+      "domainPlaceholder": "www.exemple.eu",
+      "invalidDomain": "Saisissez un domaine valide, p. ex. www.exemple.eu",
+      "submit": "Ajouter le site",
+      "cancel": "Annuler",
+      "created": "{domain} a été ajouté",
+      "notVerifiedHint": "Vous devez vérifier votre adresse e-mail avant d'ajouter un site.",
+      "resendVerification": "Renvoyer l'e-mail de vérification",
+      "verificationResent": "E-mail de vérification envoyé"
+    },
+    "detail": {
+      "loadError": "Impossible de charger ce site. Il a peut-être été archivé ou supprimé.",
+      "siteKey": "Clé du site",
+      "siteKeyHint": "Identifiant unique de ce site pour le widget.",
+      "embedTitle": "Code d'intégration",
+      "embedDescription": "Collez cet extrait avant la balise fermante </head> sur chaque page de votre site.",
+      "copy": "Copier",
+      "copied": "Copié !",
+      "dangerZone": "Zone de danger",
+      "archiveHint": "L'archivage désactive la bannière et masque le site de votre liste.",
+      "archive": "Archiver le site",
+      "archiveConfirmTitle": "Archiver ce site ?",
+      "archiveConfirmDescription": "{domain} sera archivé. La bannière ne sera plus diffusée et le site disparaîtra de votre liste.",
+      "archiveConfirm": "Archiver",
+      "cancel": "Annuler",
+      "archivedToast": "Site archivé"
+    }
   },
   "dashboard": {
     "title": "Tableau de bord",

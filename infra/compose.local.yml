@@ -46,6 +46,9 @@ services:
       DB_PASSWORD: complyr
       SMTP_HOST: mailpit
       SMTP_PORT: "1025"
+      # Throwaway local-only secret (matches the application-local.yml fallback);
+      # real values live in the dev/prd server .env files.
+      JWT_SECRET: local-dev-only-jwt-secret-do-not-use-in-prd-0123456789
     ports:
       - "8080:8080"
     depends_on:
@@ -75,9 +78,12 @@ services:
     build:
       context: ../dashboard
       args:
-        # Baked into the client bundle at BUILD time (runtime env is useless
-        # for NEXT_PUBLIC_*). Local-only: dev/prd use same-origin via Caddy.
-        NEXT_PUBLIC_API_URL: http://localhost:8080
+        # The Next server proxies same-origin /api/v1/* calls to the backend
+        # (next.config.ts rewrite — baked into the route manifest at BUILD
+        # time, so this is a build arg, not runtime env). Keeps the httpOnly
+        # auth cookies first-party. Local-only: dev/prd builds leave it unset
+        # (Caddy proxies /api/v1 on the app domain there).
+        API_PROXY_TARGET: http://api:8080
     ports:
       - "3000:3000"
     depends_on:

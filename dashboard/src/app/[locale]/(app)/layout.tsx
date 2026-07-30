@@ -1,14 +1,12 @@
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { UserNav } from "@/components/app/user-nav";
 
+// Only routes that exist today; scans/consent-log/policies/billing/settings
+// return here as their pages are built in later weeks.
 const NAV_ITEMS = [
   { key: "dashboard", href: "/dashboard" },
-  { key: "sites", href: "/dashboard" },
-  { key: "scans", href: "/dashboard" },
-  { key: "consentLog", href: "/dashboard" },
-  { key: "policies", href: "/dashboard" },
-  { key: "billing", href: "/dashboard" },
-  { key: "settings", href: "/dashboard" },
+  { key: "sites", href: "/sites" },
 ] as const;
 
 export default function AppShellLayout({
@@ -46,9 +44,7 @@ export default function AppShellLayout({
           <span className="font-semibold tracking-tight md:hidden">
             {t("app.name")}
           </span>
-          <span className="text-sm text-muted-foreground">
-            {t("nav.signOut")}
-          </span>
+          <UserNav />
         </header>
         {children}
       </div>

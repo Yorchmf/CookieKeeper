@@ -3,6 +3,9 @@
     "name": "Complyr",
     "tagline": "GDPR cookie consent, done right"
   },
+  "common": {
+    "close": "Close"
+  },
   "marketing": {
     "hero": {
       "title": "Complyr",
@@ -28,7 +31,129 @@
     "policies": "Policies",
     "billing": "Billing",
     "settings": "Settings",
-    "signOut": "Sign out"
+    "account": "Account",
+    "signOut": "Sign out",
+    "signOutError": "Sign-out failed. Please try again."
+  },
+  "auth": {
+    "fields": {
+      "email": "Email",
+      "password": "Password",
+      "confirmPassword": "Confirm password",
+      "newPassword": "New password"
+    },
+    "validation": {
+      "emailInvalid": "Enter a valid email address",
+      "passwordRequired": "Enter your password",
+      "passwordMin": "The password must be at least {min} characters long",
+      "passwordMax": "The password must be at most {max} characters long",
+      "passwordMismatch": "The passwords do not match"
+    },
+    "errors": {
+      "EMAIL_IN_USE": "An account with this email address already exists",
+      "INVALID_CREDENTIALS": "Incorrect email or password",
+      "INVALID_TOKEN": "This link is invalid or has expired",
+      "RATE_LIMITED": "Too many attempts — please try again in a moment",
+      "EMAIL_NOT_VERIFIED": "Please verify your email address first",
+      "DOMAIN_ALREADY_REGISTERED": "This domain is already registered",
+      "INVALID_DOMAIN": "Enter a valid domain, e.g. www.example.eu",
+      "GENERIC": "Something went wrong. Please try again."
+    },
+    "login": {
+      "title": "Sign in",
+      "description": "Welcome back — sign in to your account.",
+      "submit": "Sign in",
+      "forgotPassword": "Forgot your password?",
+      "noAccount": "No account yet?",
+      "signUpLink": "Sign up"
+    },
+    "signup": {
+      "title": "Create your account",
+      "description": "Start managing cookie consent in minutes.",
+      "submit": "Create account",
+      "haveAccount": "Already have an account?",
+      "signInLink": "Sign in",
+      "success": {
+        "title": "Check your inbox",
+        "description": "We sent a verification link to {email}.",
+        "resend": "Resend verification email",
+        "resent": "Verification email sent",
+        "goToLogin": "Go to sign-in"
+      }
+    },
+    "verifyEmail": {
+      "title": "Verifying your email",
+      "verifying": "Hold on while we verify your email address…",
+      "successTitle": "Email verified",
+      "successDescription": "Your email address has been verified. You can sign in now.",
+      "goToLogin": "Go to sign-in",
+      "invalidTitle": "Verification failed",
+      "invalidDescription": "This verification link is invalid or has expired. Enter your email address to receive a new one.",
+      "resend": "Send new link",
+      "resent": "If an account exists for this address, a new verification email is on its way."
+    },
+    "forgotPassword": {
+      "title": "Reset your password",
+      "description": "Enter your email address and we will send you a reset link.",
+      "submit": "Send reset link",
+      "confirmationTitle": "Check your inbox",
+      "confirmationDescription": "If an account exists for this address, you will receive a password reset link shortly.",
+      "backToLogin": "Back to sign-in"
+    },
+    "resetPassword": {
+      "title": "Choose a new password",
+      "description": "Enter a new password for your account.",
+      "submit": "Set new password",
+      "successTitle": "Password updated",
+      "successDescription": "Your password has been changed. You can sign in with it now.",
+      "goToLogin": "Go to sign-in"
+    }
+  },
+  "sites": {
+    "title": "Sites",
+    "subtitle": "Domains running the Complyr consent widget",
+    "loadError": "Your sites could not be loaded. Please try again.",
+    "verifiedBadge": "Verified",
+    "unverifiedBadge": "Not verified",
+    "status": {
+      "active": "Active",
+      "archived": "Archived"
+    },
+    "empty": {
+      "title": "No sites yet",
+      "description": "Add your first site to get the consent banner embed code and start recording consent."
+    },
+    "addDialog": {
+      "trigger": "Add site",
+      "title": "Add a site",
+      "description": "Register the domain where the consent banner will run.",
+      "domainLabel": "Domain",
+      "domainPlaceholder": "www.example.eu",
+      "invalidDomain": "Enter a valid domain, e.g. www.example.eu",
+      "submit": "Add site",
+      "cancel": "Cancel",
+      "created": "{domain} has been added",
+      "notVerifiedHint": "You need to verify your email address before adding a site.",
+      "resendVerification": "Resend verification email",
+      "verificationResent": "Verification email sent"
+    },
+    "detail": {
+      "loadError": "This site could not be loaded. It may have been archived or removed.",
+      "siteKey": "Site key",
+      "siteKeyHint": "Unique identifier of this site for the widget.",
+      "embedTitle": "Embed code",
+      "embedDescription": "Paste this snippet before the closing </head> tag on every page of your site.",
+      "copy": "Copy",
+      "copied": "Copied!",
+      "dangerZone": "Danger zone",
+      "archiveHint": "Archiving stops the banner and hides the site from your list.",
+      "archive": "Archive site",
+      "archiveConfirmTitle": "Archive this site?",
+      "archiveConfirmDescription": "{domain} will be archived. The banner stops being served and the site disappears from your list.",
+      "archiveConfirm": "Archive",
+      "cancel": "Cancel",
+      "archivedToast": "Site archived"
+    }
   },
   "dashboard": {
     "title": "Dashboard",

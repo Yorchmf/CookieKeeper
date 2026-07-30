@@ -30,7 +30,7 @@ export default function LandingPage(props: {
         <p className="max-w-prose text-lg text-pretty text-muted-foreground">
           {t("pitch")}
         </p>
-        <Button size="lg" render={<Link href="/dashboard" />}>
+        <Button size="lg" nativeButton={false} render={<Link href="/dashboard" />}>
           {t("cta")}
         </Button>
       </section>

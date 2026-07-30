@@ -11,6 +11,19 @@ spring:
     open-in-view: false
   flyway:
     enabled: true
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:1025}
+    properties:
+      # JavaMail defaults to infinite timeouts — bound every phase so a hung relay
+      # can never pin the (async) mail executor threads indefinitely.
+      mail:
+        smtp:
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+  messages:
+    basename: messages/notify
   web:
     error:
       include-stacktrace: never
@@ -18,9 +31,34 @@ spring:
 
 server:
   port: 8080
+  # All dev/prd traffic arrives via the Caddy container, so remoteAddr would otherwise be
+  # Caddy's IP for every client (collapsing per-IP rate limiting into one global bucket).
+  # `native` enables Tomcat's RemoteIpValve, which honors X-Forwarded-For only when the
+  # immediate peer matches its internal-proxies list (by default RFC1918/docker subnets —
+  # i.e. only our Caddy container). A spoofed XFF on a direct external connection is not
+  # trusted, so request.remoteAddr stays authentic.
+  forward-headers-strategy: native
+
+complyr:
+  # No default for JWT_SECRET here on purpose: dev/prd fail fast at startup if unset.
+  # A dev-only fallback exists in application-local.yml; tests set it in test resources.
+  auth:
+    jwt-secret: ${JWT_SECRET}
+    access-token-ttl: 15m
+    refresh-token-ttl: 30d
+    verification-token-ttl: 24h
+    reset-token-ttl: 1h
+  app-base-url: ${APP_BASE_URL:http://localhost:3000}
+  cdn-base-url: ${CDN_BASE_URL:http://localhost:8081}
+  mail-from: ${MAIL_FROM:no-reply@complyr.eu}
 
 management:
   endpoints:
     web:
       exposure:
         include: health
+  health:
+    mail:
+      # Email is best-effort (failures never break signup) — an unreachable SMTP
+      # host must not flip the container health probe to DOWN.
+      enabled: false

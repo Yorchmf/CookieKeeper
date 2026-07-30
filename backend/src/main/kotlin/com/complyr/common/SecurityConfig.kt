@@ -1,29 +1,48 @@
 package com.complyr.common
 
+import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
+import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
+import org.springframework.security.oauth2.jwt.JwtDecoder
+import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver
+import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver
+import org.springframework.security.web.AuthenticationEntryPoint
 import org.springframework.security.web.SecurityFilterChain
+import org.springframework.security.web.access.AccessDeniedHandler
+import tools.jackson.databind.ObjectMapper
 
 /**
- * Security skeleton for the stateless REST API.
+ * Stateless JWT resource-server security for the REST API.
  *
- * Public (unauthenticated) endpoints: actuator health, widget config reads, consent ingestion.
- * Everything else requires authentication.
+ * Public (unauthenticated) endpoints: actuator health, widget config reads, consent
+ * ingestion, and the auth entry endpoints. Everything else requires a valid access JWT,
+ * read from the `cmplyr_at` cookie or the `Authorization: Bearer` header.
+ * Auth failures are returned as the standard `{ success, data, error, meta }` envelope.
  *
- * TODO(W2): add JWT auth — access token (15 min) + rotating refresh tokens (hashed at rest),
- *  bcrypt passwords, and a JWT authentication filter / resource-server configuration.
- * TODO(W3): rate limiting (Bucket4j) and CORS for the public widget endpoints.
+ * TODO(W3): CORS for the public widget endpoints.
  */
 @Configuration
 @EnableWebSecurity
-class SecurityConfig {
+class SecurityConfig(
+    private val objectMapper: ObjectMapper,
+) {
     @Bean
-    fun apiSecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
+    fun apiSecurityFilterChain(
+        http: HttpSecurity,
+        jwtDecoder: JwtDecoder,
+    ): SecurityFilterChain {
         http
+            // CSRF tokens are deliberately not used: auth cookies are SameSite=Lax, every
+            // state-changing endpoint is JSON-only POST/PATCH/DELETE (cross-site form posts
+            // can't set Content-Type: application/json), and there are no state-changing GETs.
+            // Those are two independent layers against cross-site request forgery.
             .csrf { csrf -> csrf.disable() }
             .sessionManagement { session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests { auth ->
@@ -34,10 +53,73 @@ class SecurityConfig {
                     .permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/v1/consent")
                     .permitAll()
+                    .requestMatchers(HttpMethod.POST, *PUBLIC_AUTH_ENDPOINTS)
+                    .permitAll()
                     .anyRequest()
                     .authenticated()
+            }.oauth2ResourceServer { resourceServer ->
+                resourceServer
+                    .bearerTokenResolver(cookieOrHeaderBearerTokenResolver())
+                    .jwt { jwt -> jwt.decoder(jwtDecoder) }
+                    .authenticationEntryPoint(unauthenticatedEntryPoint())
+            }.exceptionHandling { exceptions ->
+                exceptions
+                    .authenticationEntryPoint(unauthenticatedEntryPoint())
+                    .accessDeniedHandler(forbiddenHandler())
             }.httpBasic { basic -> basic.disable() }
             .formLogin { form -> form.disable() }
         return http.build()
+    }
+
+    /** Reads the bearer token from the Authorization header or the `cmplyr_at` cookie. */
+    private fun cookieOrHeaderBearerTokenResolver(): BearerTokenResolver {
+        val headerResolver = DefaultBearerTokenResolver()
+        return BearerTokenResolver { request: HttpServletRequest ->
+            headerResolver.resolve(request)
+                ?: request.cookies?.firstOrNull { it.name == AuthCookies.ACCESS_TOKEN }?.value
+        }
+    }
+
+    private fun unauthenticatedEntryPoint() =
+        AuthenticationEntryPoint { _, response, _ ->
+            writeEnvelope(
+                response,
+                HttpStatus.UNAUTHORIZED,
+                code = "UNAUTHENTICATED",
+                message = "Authentication required",
+            )
+        }
+
+    private fun forbiddenHandler() =
+        AccessDeniedHandler { _, response, _ ->
+            writeEnvelope(response, HttpStatus.FORBIDDEN, code = "FORBIDDEN", message = "Access denied")
+        }
+
+    private fun writeEnvelope(
+        response: HttpServletResponse,
+        status: HttpStatus,
+        code: String,
+        message: String,
+    ) {
+        response.status = status.value()
+        response.contentType = MediaType.APPLICATION_JSON_VALUE
+        response.characterEncoding = Charsets.UTF_8.name()
+        response.writer.write(objectMapper.writeValueAsString(ApiResponse.error(code, message)))
+    }
+
+    companion object {
+        private val PUBLIC_AUTH_ENDPOINTS =
+            arrayOf(
+                "/api/v1/auth/signup",
+                "/api/v1/auth/login",
+                "/api/v1/auth/refresh",
+                // Public so a user whose access JWT already expired can still clear cookies —
+                // it only revokes the refresh token presented in the HttpOnly cookie.
+                "/api/v1/auth/logout",
+                "/api/v1/auth/verify-email",
+                "/api/v1/auth/resend-verification",
+                "/api/v1/auth/forgot-password",
+                "/api/v1/auth/reset-password",
+            )
     }
 }

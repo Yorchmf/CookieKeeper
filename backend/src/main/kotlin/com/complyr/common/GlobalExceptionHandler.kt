@@ -3,11 +3,13 @@ package com.complyr.common
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.core.AuthenticationException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 import org.springframework.web.servlet.resource.NoResourceFoundException
 
 /**
@@ -33,9 +35,19 @@ class GlobalExceptionHandler {
         )
     }
 
-    @ExceptionHandler(IllegalArgumentException::class)
-    fun handleIllegalArgument(ex: IllegalArgumentException): ResponseEntity<ApiResponse<Nothing>> =
-        respond(HttpStatus.BAD_REQUEST, code = "BAD_REQUEST", message = ex.message ?: "Invalid request")
+    @ExceptionHandler(ApiException::class)
+    fun handleApiException(ex: ApiException): ResponseEntity<ApiResponse<Nothing>> =
+        respond(ex.status, code = ex.code, message = ex.message ?: "Request failed")
+
+    // Note: no blanket IllegalArgumentException handler — raw IAE messages are internal detail
+    // and must fall through to the generic 500 path. Client-facing 400s use typed ApiExceptions.
+    @ExceptionHandler(HttpMessageNotReadableException::class)
+    fun handleUnreadableBody(): ResponseEntity<ApiResponse<Nothing>> =
+        respond(HttpStatus.BAD_REQUEST, code = "BAD_REQUEST", message = "Malformed request body")
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException::class)
+    fun handleTypeMismatch(ex: MethodArgumentTypeMismatchException): ResponseEntity<ApiResponse<Nothing>> =
+        respond(HttpStatus.BAD_REQUEST, code = "BAD_REQUEST", message = "Invalid value for parameter '${ex.name}'")
 
     @ExceptionHandler(NoResourceFoundException::class)
     fun handleNotFound(): ResponseEntity<ApiResponse<Nothing>> =

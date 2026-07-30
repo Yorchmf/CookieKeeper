@@ -3,6 +3,9 @@
     "name": "Complyr",
     "tagline": "Consentimiento de cookies RGPD, bien hecho"
   },
+  "common": {
+    "close": "Cerrar"
+  },
   "marketing": {
     "hero": {
       "title": "Complyr",
@@ -28,7 +31,129 @@
     "policies": "Políticas",
     "billing": "Facturación",
     "settings": "Configuración",
-    "signOut": "Cerrar sesión"
+    "account": "Cuenta",
+    "signOut": "Cerrar sesión",
+    "signOutError": "No se ha podido cerrar la sesión. Inténtalo de nuevo."
+  },
+  "auth": {
+    "fields": {
+      "email": "Correo electrónico",
+      "password": "Contraseña",
+      "confirmPassword": "Confirmar contraseña",
+      "newPassword": "Nueva contraseña"
+    },
+    "validation": {
+      "emailInvalid": "Introduce una dirección de correo válida",
+      "passwordRequired": "Introduce tu contraseña",
+      "passwordMin": "La contraseña debe tener al menos {min} caracteres",
+      "passwordMax": "La contraseña no puede tener más de {max} caracteres",
+      "passwordMismatch": "Las contraseñas no coinciden"
+    },
+    "errors": {
+      "EMAIL_IN_USE": "Ya existe una cuenta con esta dirección de correo",
+      "INVALID_CREDENTIALS": "Correo o contraseña incorrectos",
+      "INVALID_TOKEN": "Este enlace no es válido o ha caducado",
+      "RATE_LIMITED": "Demasiados intentos — inténtalo de nuevo en un momento",
+      "EMAIL_NOT_VERIFIED": "Primero verifica tu dirección de correo",
+      "DOMAIN_ALREADY_REGISTERED": "Este dominio ya está registrado",
+      "INVALID_DOMAIN": "Introduce un dominio válido, p. ej. www.ejemplo.eu",
+      "GENERIC": "Algo ha salido mal. Inténtalo de nuevo."
+    },
+    "login": {
+      "title": "Iniciar sesión",
+      "description": "Bienvenido de nuevo — inicia sesión en tu cuenta.",
+      "submit": "Iniciar sesión",
+      "forgotPassword": "¿Has olvidado tu contraseña?",
+      "noAccount": "¿Aún no tienes cuenta?",
+      "signUpLink": "Regístrate"
+    },
+    "signup": {
+      "title": "Crea tu cuenta",
+      "description": "Empieza a gestionar el consentimiento de cookies en minutos.",
+      "submit": "Crear cuenta",
+      "haveAccount": "¿Ya tienes una cuenta?",
+      "signInLink": "Inicia sesión",
+      "success": {
+        "title": "Revisa tu bandeja de entrada",
+        "description": "Hemos enviado un enlace de verificación a {email}.",
+        "resend": "Reenviar correo de verificación",
+        "resent": "Correo de verificación enviado",
+        "goToLogin": "Ir a inicio de sesión"
+      }
+    },
+    "verifyEmail": {
+      "title": "Verificando tu correo",
+      "verifying": "Un momento — estamos verificando tu dirección de correo…",
+      "successTitle": "Correo verificado",
+      "successDescription": "Tu dirección de correo ha sido verificada. Ya puedes iniciar sesión.",
+      "goToLogin": "Ir a inicio de sesión",
+      "invalidTitle": "Error de verificación",
+      "invalidDescription": "Este enlace de verificación no es válido o ha caducado. Introduce tu correo para recibir uno nuevo.",
+      "resend": "Enviar nuevo enlace",
+      "resent": "Si existe una cuenta con esta dirección, un nuevo correo de verificación está en camino."
+    },
+    "forgotPassword": {
+      "title": "Restablecer tu contraseña",
+      "description": "Introduce tu correo y te enviaremos un enlace para restablecerla.",
+      "submit": "Enviar enlace",
+      "confirmationTitle": "Revisa tu bandeja de entrada",
+      "confirmationDescription": "Si existe una cuenta con esta dirección, recibirás en breve un enlace para restablecer la contraseña.",
+      "backToLogin": "Volver a inicio de sesión"
+    },
+    "resetPassword": {
+      "title": "Elige una nueva contraseña",
+      "description": "Introduce una nueva contraseña para tu cuenta.",
+      "submit": "Guardar nueva contraseña",
+      "successTitle": "Contraseña actualizada",
+      "successDescription": "Tu contraseña ha sido cambiada. Ya puedes iniciar sesión con ella.",
+      "goToLogin": "Ir a inicio de sesión"
+    }
+  },
+  "sites": {
+    "title": "Sitios",
+    "subtitle": "Dominios con el widget de consentimiento de Complyr",
+    "loadError": "No se han podido cargar tus sitios. Inténtalo de nuevo.",
+    "verifiedBadge": "Verificado",
+    "unverifiedBadge": "Sin verificar",
+    "status": {
+      "active": "Activo",
+      "archived": "Archivado"
+    },
+    "empty": {
+      "title": "Aún no hay sitios",
+      "description": "Añade tu primer sitio para obtener el código de inserción del banner de consentimiento y empezar a registrar consentimientos."
+    },
+    "addDialog": {
+      "trigger": "Añadir sitio",
+      "title": "Añadir un sitio",
+      "description": "Registra el dominio donde se mostrará el banner de consentimiento.",
+      "domainLabel": "Dominio",
+      "domainPlaceholder": "www.ejemplo.eu",
+      "invalidDomain": "Introduce un dominio válido, p. ej. www.ejemplo.eu",
+      "submit": "Añadir sitio",
+      "cancel": "Cancelar",
+      "created": "{domain} se ha añadido",
+      "notVerifiedHint": "Debes verificar tu dirección de correo antes de añadir un sitio.",
+      "resendVerification": "Reenviar correo de verificación",
+      "verificationResent": "Correo de verificación enviado"
+    },
+    "detail": {
+      "loadError": "No se ha podido cargar este sitio. Puede que haya sido archivado o eliminado.",
+      "siteKey": "Clave del sitio",
+      "siteKeyHint": "Identificador único de este sitio para el widget.",
+      "embedTitle": "Código de inserción",
+      "embedDescription": "Pega este fragmento antes de la etiqueta de cierre </head> en todas las páginas de tu sitio.",
+      "copy": "Copiar",
+      "copied": "¡Copiado!",
+      "dangerZone": "Zona de peligro",
+      "archiveHint": "Al archivar se desactiva el banner y el sitio se oculta de tu lista.",
+      "archive": "Archivar sitio",
+      "archiveConfirmTitle": "¿Archivar este sitio?",
+      "archiveConfirmDescription": "{domain} se archivará. El banner dejará de mostrarse y el sitio desaparecerá de tu lista.",
+      "archiveConfirm": "Archivar",
+      "cancel": "Cancelar",
+      "archivedToast": "Sitio archivado"
+    }
   },
   "dashboard": {
     "title": "Panel",

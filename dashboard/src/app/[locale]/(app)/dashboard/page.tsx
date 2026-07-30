@@ -7,9 +7,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { SitesCountCard } from "@/components/dashboard/sites-count-card";
 
 const OVERVIEW_CARDS = [
-  { titleKey: "cards.sites", hintKey: "cards.sitesHint" },
   { titleKey: "cards.consents", hintKey: "cards.consentsHint" },
   { titleKey: "cards.scans", hintKey: "cards.scansHint" },
 ] as const;
@@ -34,6 +34,7 @@ export default function DashboardPage(props: {
           </p>
         </header>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <SitesCountCard />
           {OVERVIEW_CARDS.map((card) => (
             <Card key={card.titleKey}>
               <CardHeader>

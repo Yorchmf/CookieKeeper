@@ -3,7 +3,11 @@
  *
  * Every backend response uses the envelope defined in CLAUDE.md:
  * `{ success, data, error, meta }`.
+ *
+ * Client-only: the module-level single-flight refresh state must never be
+ * shared across requests in a server runtime.
  */
+import "client-only";
 
 export interface ApiMeta {
   total?: number;
@@ -36,24 +40,42 @@ export class ApiError extends Error {
   }
 }
 
-// Empty string = same-origin: in dev/prd, Caddy proxies /api/v1/* on the app
-// domain to the backend, so ONE image serves both environments (nothing baked
-// at build time). Set NEXT_PUBLIC_API_URL only for local dev (`pnpm dev`
-// against localhost:8080) or the local compose stack.
-const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
+/**
+ * Thrown when the session cannot be recovered (refresh failed or the retried
+ * request still came back 401). Callers should redirect to the login page.
+ */
+export class UnauthenticatedError extends ApiError {
+  constructor(message = "Not authenticated") {
+    super(message, 401, "UNAUTHENTICATED");
+    this.name = "UnauthenticatedError";
+  }
+}
+
+// All requests are same-origin relative paths: in deployed dev/prd, Caddy
+// proxies /api/v1/* on the app domain to the backend; in local development,
+// a Next rewrite forwards them to API_PROXY_TARGET (see next.config.ts).
+// Same-origin keeps the httpOnly auth cookies first-party everywhere.
+const AUTH_PATH_PREFIX = "/api/v1/auth";
+const REFRESH_PATH = "/api/v1/auth/refresh";
+const ME_PATH = "/api/v1/auth/me";
 
 /**
- * Fetch a resource from the backend API and unwrap the response envelope.
- *
- * @param path - API path starting with `/`, e.g. `/api/v1/sites`
- * @throws {ApiError} when the request fails or the envelope reports failure
+ * Auth endpoints must never trigger the refresh-and-retry flow: a 401 there
+ * is a definitive answer (bad credentials, invalid token, …), not an expired
+ * access token. The one exception is `/auth/me`, which behaves like a normal
+ * protected resource read.
  */
-export async function apiFetch<T>(
+function isRefreshExempt(path: string): boolean {
+  return path.startsWith(AUTH_PATH_PREFIX) && path !== ME_PATH;
+}
+
+async function rawFetch<T>(
   path: string,
   init?: RequestInit,
 ): Promise<{ data: T; meta?: ApiMeta }> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(path, {
     ...init,
+    credentials: "same-origin",
     headers: {
       "Content-Type": "application/json",
       ...init?.headers,
@@ -70,7 +92,7 @@ export async function apiFetch<T>(
     );
   }
 
-  if (!response.ok || !envelope.success || envelope.data === null) {
+  if (!response.ok || !envelope.success) {
     throw new ApiError(
       envelope.error?.message ?? `API request failed (${response.status})`,
       response.status,
@@ -78,5 +100,73 @@ export async function apiFetch<T>(
     );
   }
 
-  return { data: envelope.data, meta: envelope.meta };
+  // Some endpoints (logout, forgot-password, …) legitimately return an empty
+  // payload; normalize `null` to `{}` so callers with `Record<string, never>`
+  // style types don't blow up.
+  return { data: (envelope.data ?? {}) as T, meta: envelope.meta };
+}
+
+/**
+ * Single-flight session refresh: concurrent 401s share one in-flight
+ * POST /auth/refresh instead of stampeding the backend (and burning the
+ * one-time-use rotated refresh token).
+ */
+let refreshInFlight: Promise<void> | null = null;
+
+function refreshSession(): Promise<void> {
+  refreshInFlight ??= (async () => {
+    try {
+      await rawFetch<Record<string, never>>(REFRESH_PATH, { method: "POST" });
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+  return refreshInFlight;
+}
+
+/**
+ * Fetch a resource from the backend API and unwrap the response envelope.
+ *
+ * Cookies (httpOnly `cmplyr_at` / `cmplyr_rt`) are attached by the browser;
+ * client code never reads tokens. On a 401 from a non-auth endpoint, the
+ * session is refreshed once (deduped across parallel callers) and the
+ * original request retried once; a second 401 throws {@link UnauthenticatedError}.
+ *
+ * @param path - API path starting with `/`, e.g. `/api/v1/sites`
+ * @throws {ApiError} when the request fails or the envelope reports failure
+ * @throws {UnauthenticatedError} when the session cannot be recovered
+ */
+export async function apiFetch<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<{ data: T; meta?: ApiMeta }> {
+  try {
+    return await rawFetch<T>(path, init);
+  } catch (error) {
+    const isExpiredSession =
+      error instanceof ApiError &&
+      error.status === 401 &&
+      !isRefreshExempt(path);
+    if (!isExpiredSession) {
+      throw error;
+    }
+
+    try {
+      await refreshSession();
+    } catch (refreshError) {
+      if (refreshError instanceof ApiError && refreshError.status === 401) {
+        throw new UnauthenticatedError();
+      }
+      throw refreshError;
+    }
+
+    try {
+      return await rawFetch<T>(path, init);
+    } catch (retryError) {
+      if (retryError instanceof ApiError && retryError.status === 401) {
+        throw new UnauthenticatedError();
+      }
+      throw retryError;
+    }
+  }
 }

@@ -3,6 +3,9 @@
     "name": "Complyr",
     "tagline": "Consenso ai cookie GDPR, fatto bene"
   },
+  "common": {
+    "close": "Chiudi"
+  },
   "marketing": {
     "hero": {
       "title": "Complyr",
@@ -28,7 +31,129 @@
     "policies": "Politiche",
     "billing": "Fatturazione",
     "settings": "Impostazioni",
-    "signOut": "Esci"
+    "account": "Account",
+    "signOut": "Esci",
+    "signOutError": "Disconnessione non riuscita. Riprova."
+  },
+  "auth": {
+    "fields": {
+      "email": "E-mail",
+      "password": "Password",
+      "confirmPassword": "Conferma password",
+      "newPassword": "Nuova password"
+    },
+    "validation": {
+      "emailInvalid": "Inserisci un indirizzo e-mail valido",
+      "passwordRequired": "Inserisci la tua password",
+      "passwordMin": "La password deve contenere almeno {min} caratteri",
+      "passwordMax": "La password non può superare i {max} caratteri",
+      "passwordMismatch": "Le password non coincidono"
+    },
+    "errors": {
+      "EMAIL_IN_USE": "Esiste già un account con questo indirizzo e-mail",
+      "INVALID_CREDENTIALS": "E-mail o password errati",
+      "INVALID_TOKEN": "Questo link non è valido o è scaduto",
+      "RATE_LIMITED": "Troppi tentativi — riprova tra qualche istante",
+      "EMAIL_NOT_VERIFIED": "Verifica prima il tuo indirizzo e-mail",
+      "DOMAIN_ALREADY_REGISTERED": "Questo dominio è già registrato",
+      "INVALID_DOMAIN": "Inserisci un dominio valido, ad es. www.esempio.eu",
+      "GENERIC": "Qualcosa è andato storto. Riprova."
+    },
+    "login": {
+      "title": "Accedi",
+      "description": "Bentornato — accedi al tuo account.",
+      "submit": "Accedi",
+      "forgotPassword": "Password dimenticata?",
+      "noAccount": "Non hai ancora un account?",
+      "signUpLink": "Registrati"
+    },
+    "signup": {
+      "title": "Crea il tuo account",
+      "description": "Inizia a gestire il consenso ai cookie in pochi minuti.",
+      "submit": "Crea account",
+      "haveAccount": "Hai già un account?",
+      "signInLink": "Accedi",
+      "success": {
+        "title": "Controlla la tua casella di posta",
+        "description": "Abbiamo inviato un link di verifica a {email}.",
+        "resend": "Invia di nuovo l'e-mail di verifica",
+        "resent": "E-mail di verifica inviata",
+        "goToLogin": "Vai all'accesso"
+      }
+    },
+    "verifyEmail": {
+      "title": "Verifica dell'e-mail in corso",
+      "verifying": "Un attimo — stiamo verificando il tuo indirizzo e-mail…",
+      "successTitle": "E-mail verificata",
+      "successDescription": "Il tuo indirizzo e-mail è stato verificato. Ora puoi accedere.",
+      "goToLogin": "Vai all'accesso",
+      "invalidTitle": "Verifica non riuscita",
+      "invalidDescription": "Questo link di verifica non è valido o è scaduto. Inserisci il tuo indirizzo e-mail per riceverne uno nuovo.",
+      "resend": "Invia nuovo link",
+      "resent": "Se esiste un account con questo indirizzo, una nuova e-mail di verifica è in arrivo."
+    },
+    "forgotPassword": {
+      "title": "Reimposta la password",
+      "description": "Inserisci il tuo indirizzo e-mail e ti invieremo un link per reimpostarla.",
+      "submit": "Invia link",
+      "confirmationTitle": "Controlla la tua casella di posta",
+      "confirmationDescription": "Se esiste un account con questo indirizzo, riceverai a breve un link per reimpostare la password.",
+      "backToLogin": "Torna all'accesso"
+    },
+    "resetPassword": {
+      "title": "Scegli una nuova password",
+      "description": "Inserisci una nuova password per il tuo account.",
+      "submit": "Salva nuova password",
+      "successTitle": "Password aggiornata",
+      "successDescription": "La tua password è stata modificata. Ora puoi accedere con quella nuova.",
+      "goToLogin": "Vai all'accesso"
+    }
+  },
+  "sites": {
+    "title": "Siti",
+    "subtitle": "Domini con il widget di consenso Complyr attivo",
+    "loadError": "Impossibile caricare i tuoi siti. Riprova.",
+    "verifiedBadge": "Verificato",
+    "unverifiedBadge": "Non verificato",
+    "status": {
+      "active": "Attivo",
+      "archived": "Archiviato"
+    },
+    "empty": {
+      "title": "Ancora nessun sito",
+      "description": "Aggiungi il tuo primo sito per ottenere il codice di incorporamento del banner di consenso e iniziare a registrare i consensi."
+    },
+    "addDialog": {
+      "trigger": "Aggiungi sito",
+      "title": "Aggiungi un sito",
+      "description": "Registra il dominio su cui verrà mostrato il banner di consenso.",
+      "domainLabel": "Dominio",
+      "domainPlaceholder": "www.esempio.eu",
+      "invalidDomain": "Inserisci un dominio valido, ad es. www.esempio.eu",
+      "submit": "Aggiungi sito",
+      "cancel": "Annulla",
+      "created": "{domain} è stato aggiunto",
+      "notVerifiedHint": "Devi verificare il tuo indirizzo e-mail prima di aggiungere un sito.",
+      "resendVerification": "Invia di nuovo l'e-mail di verifica",
+      "verificationResent": "E-mail di verifica inviata"
+    },
+    "detail": {
+      "loadError": "Impossibile caricare questo sito. Potrebbe essere stato archiviato o rimosso.",
+      "siteKey": "Chiave del sito",
+      "siteKeyHint": "Identificatore univoco di questo sito per il widget.",
+      "embedTitle": "Codice di incorporamento",
+      "embedDescription": "Incolla questo snippet prima del tag di chiusura </head> in ogni pagina del tuo sito.",
+      "copy": "Copia",
+      "copied": "Copiato!",
+      "dangerZone": "Zona di pericolo",
+      "archiveHint": "L'archiviazione disattiva il banner e nasconde il sito dal tuo elenco.",
+      "archive": "Archivia sito",
+      "archiveConfirmTitle": "Archiviare questo sito?",
+      "archiveConfirmDescription": "{domain} verrà archiviato. Il banner non sarà più mostrato e il sito scomparirà dal tuo elenco.",
+      "archiveConfirm": "Archivia",
+      "cancel": "Annulla",
+      "archivedToast": "Sito archiviato"
+    }
   },
   "dashboard": {
     "title": "Pannello",
