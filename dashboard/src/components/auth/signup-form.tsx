@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -23,6 +23,11 @@ import { getApiErrorCode } from "@/lib/api-error-codes";
 import { resendVerification } from "@/lib/api/auth";
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "@/lib/password";
 
+// Client-side guard against resend spamming; the backend also rate-limits this
+// endpoint per IP. The countdown doubles as visible confirmation that the mail
+// was (re)sent.
+const RESEND_COOLDOWN_SECONDS = 60;
+
 export function SignupForm() {
   const t = useTranslations("auth");
   const locale = useLocale();
@@ -30,6 +35,15 @@ export function SignupForm() {
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
   const [isResending, setIsResending] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) {
+      return;
+    }
+    const timer = setTimeout(() => setCooldown((seconds) => seconds - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
 
   const schema = z
     .object({
@@ -67,19 +81,23 @@ export function SignupForm() {
         locale,
       });
       setSubmittedEmail(values.email);
+      // Signup already sent a verification email — start the cooldown so the
+      // user can't immediately fire another one.
+      setCooldown(RESEND_COOLDOWN_SECONDS);
     } catch (error) {
       setErrorCode(getApiErrorCode(error));
     }
   });
 
   const handleResend = async () => {
-    if (!submittedEmail) {
+    if (!submittedEmail || cooldown > 0 || isResending) {
       return;
     }
     setIsResending(true);
     try {
       await resendVerification(submittedEmail);
       toast.success(t("signup.success.resent"));
+      setCooldown(RESEND_COOLDOWN_SECONDS);
     } catch (error) {
       toast.error(t(`errors.${getApiErrorCode(error)}`));
     } finally {
@@ -102,9 +120,11 @@ export function SignupForm() {
             variant="outline"
             className="w-full"
             onClick={handleResend}
-            disabled={isResending}
+            disabled={isResending || cooldown > 0}
           >
-            {t("signup.success.resend")}
+            {cooldown > 0
+              ? t("signup.success.resendCooldown", { seconds: cooldown })
+              : t("signup.success.resend")}
           </Button>
           <Link
             href="/login"

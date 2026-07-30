@@ -94,6 +94,7 @@ export function VerifyEmailPanel() {
         </CardHeader>
         <CardFooter>
           <Button
+            nativeButton={false}
             render={<Link href="/login" />}
             className="w-full"
           >

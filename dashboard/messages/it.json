@@ -78,6 +78,7 @@
         "description": "Abbiamo inviato un link di verifica a {email}.",
         "resend": "Invia di nuovo l'e-mail di verifica",
         "resent": "E-mail di verifica inviata",
+        "resendCooldown": "Potrai reinviare tra {seconds} s",
         "goToLogin": "Vai all'accesso"
       }
     },

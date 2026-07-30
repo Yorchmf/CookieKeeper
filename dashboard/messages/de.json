@@ -78,6 +78,7 @@
         "description": "Wir haben einen Bestätigungslink an {email} gesendet.",
         "resend": "Bestätigungs-E-Mail erneut senden",
         "resent": "Bestätigungs-E-Mail wurde gesendet",
+        "resendCooldown": "Erneut senden in {seconds}s möglich",
         "goToLogin": "Zur Anmeldung"
       }
     },

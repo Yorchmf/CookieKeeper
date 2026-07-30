@@ -78,6 +78,7 @@
         "description": "Hemos enviado un enlace de verificación a {email}.",
         "resend": "Reenviar correo de verificación",
         "resent": "Correo de verificación enviado",
+        "resendCooldown": "Podrás reenviar en {seconds} s",
         "goToLogin": "Ir a inicio de sesión"
       }
     },

@@ -78,6 +78,7 @@
         "description": "We sent a verification link to {email}.",
         "resend": "Resend verification email",
         "resent": "Verification email sent",
+        "resendCooldown": "Resend available in {seconds}s",
         "goToLogin": "Go to sign-in"
       }
     },

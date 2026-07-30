@@ -80,7 +80,11 @@ export function ResetPasswordForm() {
           </CardDescription>
         </CardHeader>
         <CardFooter>
-          <Button render={<Link href="/login" />} className="w-full">
+          <Button
+            nativeButton={false}
+            render={<Link href="/login" />}
+            className="w-full"
+          >
             {t("resetPassword.goToLogin")}
           </Button>
         </CardFooter>

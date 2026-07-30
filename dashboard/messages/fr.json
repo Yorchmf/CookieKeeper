@@ -78,6 +78,7 @@
         "description": "Nous avons envoyé un lien de vérification à {email}.",
         "resend": "Renvoyer l'e-mail de vérification",
         "resent": "E-mail de vérification envoyé",
+        "resendCooldown": "Renvoi possible dans {seconds} s",
         "goToLogin": "Aller à la connexion"
       }
     },
