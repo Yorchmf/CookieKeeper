@@ -14,6 +14,7 @@ import {
   type ConsentDecision,
 } from './consent-mode';
 import { fetchConfig, resolveTexts, type WidgetConfig } from './config';
+import { grantedCategories, unblockScripts } from './script-blocking';
 import {
   getOrCreateVid,
   readConsent,
@@ -65,7 +66,10 @@ function readSiteKey(): string | null {
 async function init(): Promise<void> {
   const stored = readConsent();
   if (stored) {
+    // Returning visitor: re-signal consent and run the tags they already allowed,
+    // before any banner work — no page render is ever blocked on this.
     updateConsent(stored.categories);
+    unblockScripts(grantedCategories(stored.categories));
     return;
   }
   await loadAndShowBanner();
@@ -99,6 +103,7 @@ function applyChoice(
   const vid = getOrCreateVid();
   writeConsent(categories, vid);
   updateConsent(categories);
+  unblockScripts(grantedCategories(categories));
   removeBanner();
 
   if (siteKey) {

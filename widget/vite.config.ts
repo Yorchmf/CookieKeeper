@@ -27,6 +27,11 @@ export default defineConfig({
   },
   test: {
     environment: 'happy-dom',
+    // Script-blocking tests inject <script src> nodes; we assert the DOM swap,
+    // never execution. Stop happy-dom from fetching those URLs over the network.
+    environmentOptions: {
+      happyDOM: { settings: { disableJavaScriptFileLoading: true } },
+    },
     include: ['test/**/*.test.ts'],
   },
 });
