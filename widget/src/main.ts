@@ -6,7 +6,7 @@
  * fetch, banner render) and therefore before vendor tags can consume consent.
  */
 
-import { sendConsentEvent } from './api';
+import { sendConsentEvent, type ConsentEventPayload } from './api';
 import { removeBanner, renderBanner, type BannerAction } from './banner';
 import {
   setConsentDefaults,
@@ -14,6 +14,11 @@ import {
   type ConsentDecision,
 } from './consent-mode';
 import { fetchConfig, resolveTexts, type WidgetConfig } from './config';
+import {
+  isPreferencesOpen,
+  removePreferences,
+  renderPreferences,
+} from './preferences';
 import { grantedCategories, unblockScripts } from './script-blocking';
 import {
   getOrCreateVid,
@@ -77,18 +82,28 @@ async function init(): Promise<void> {
 
 async function loadAndShowBanner(): Promise<void> {
   if (!siteKey) return; // Misconfigured embed — do nothing, never break the page.
+  // Never re-render the banner underneath an open preferences modal — that
+  // would mount an interactive surface behind the inert background barrier.
+  if (isPreferencesOpen()) return;
 
   const config = await fetchConfig(siteKey);
   const lang = navigator.language || config.defaultLanguage;
   renderBanner(config, resolveTexts(config, lang), {
     onAction: (action) => applyChoice(config, action, lang),
-    onPreferences: () => {
-      // Preferences panel ships in the widget-core milestone; until then the
-      // button is a visible placeholder and simply keeps the banner open.
-    },
+    onPreferences: () => openPreferences(config, lang),
   });
 }
 
+/** Open the granular preferences panel, seeded with any prior choice. */
+function openPreferences(config: WidgetConfig, lang: string): void {
+  const current = readConsent()?.categories ?? {};
+  renderPreferences(config, resolveTexts(config, lang), lang, current, {
+    onSave: (categories) => commit(categories, 'custom', lang),
+    onCancel: () => removePreferences(),
+  });
+}
+
+/** Whole-banner accept/reject → a full category decision, then commit. */
 function applyChoice(
   config: WidgetConfig,
   action: BannerAction,
@@ -99,21 +114,27 @@ function applyChoice(
   for (const category of config.categories) {
     categories[category.id] = category.required || granted;
   }
+  commit(categories, action, lang);
+}
 
+/**
+ * Persist and enact a consent decision from any surface (banner or panel):
+ * store it, signal Consent Mode, run the now-allowed scripts, tear down the UI,
+ * and record the audit event. Shared so every path stays consistent.
+ */
+function commit(
+  categories: ConsentDecision,
+  action: ConsentEventPayload['action'],
+  lang: string,
+): void {
   const vid = getOrCreateVid();
   writeConsent(categories, vid);
   updateConsent(categories);
   unblockScripts(grantedCategories(categories));
+  removePreferences();
   removeBanner();
 
   if (siteKey) {
-    sendConsentEvent({
-      siteKey,
-      action,
-      categories,
-      lang,
-      ts: Date.now(),
-      vid,
-    });
+    sendConsentEvent({ siteKey, action, categories, lang, ts: Date.now(), vid });
   }
 }

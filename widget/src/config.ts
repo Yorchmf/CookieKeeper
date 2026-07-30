@@ -6,12 +6,28 @@
 
 import { CDN_BASE } from './constants';
 
+/** Localized label + description for one consent category in the panel. */
+export interface CategoryText {
+  label: string;
+  description: string;
+}
+
 export interface BannerTexts {
   title: string;
   message: string;
   acceptAll: string;
   rejectAll: string;
   preferences: string;
+  /** Preferences panel heading. */
+  preferencesTitle: string;
+  /** Confirm-choices button in the panel. */
+  save: string;
+  /** Close/dismiss control in the panel (pointer-operable exit). */
+  close: string;
+  /** Shown beside required categories that can never be switched off. */
+  alwaysActive: string;
+  /** Category id → localized label + description shown in the preferences panel. */
+  categoryLabels: Record<string, CategoryText>;
 }
 
 export interface CategoryDef {
@@ -53,6 +69,30 @@ export const DEFAULT_CONFIG: WidgetConfig = {
       acceptAll: 'Accept all',
       rejectAll: 'Reject all',
       preferences: 'Preferences',
+      preferencesTitle: 'Privacy preferences',
+      save: 'Save my choices',
+      close: 'Close',
+      alwaysActive: 'Always active',
+      categoryLabels: {
+        necessary: {
+          label: 'Strictly necessary',
+          description:
+            'Required for the site to work. These cannot be switched off.',
+        },
+        preferences: {
+          label: 'Preferences',
+          description: 'Remember your settings and choices on this site.',
+        },
+        statistics: {
+          label: 'Statistics',
+          description:
+            'Help us understand how visitors use the site, anonymously.',
+        },
+        marketing: {
+          label: 'Marketing',
+          description: 'Used to personalize ads and measure their performance.',
+        },
+      },
     },
   },
   defaultLanguage: 'en',
@@ -72,20 +112,59 @@ export async function fetchConfig(siteKey: string): Promise<WidgetConfig> {
     );
     if (!response.ok) return DEFAULT_CONFIG;
     const config = (await response.json()) as WidgetConfig;
-    return isUsableConfig(config) ? config : DEFAULT_CONFIG;
+    if (!isUsableConfig(config)) return DEFAULT_CONFIG;
+    // Colors are interpolated verbatim into the shadow <style>; sanitize them
+    // so a hostile/malformed value can't inject arbitrary CSS rules.
+    return { ...config, colors: sanitizeColors(config.colors) };
   } catch {
     return DEFAULT_CONFIG;
   }
 }
 
-/** Pick banner texts for the visitor's language, falling back sanely. */
+/**
+ * Color tokens allowed verbatim in a stylesheet: hex, the common CSS color
+ * functions, or a bare keyword. Anything containing `;`, `{`, `}`, `url(...)`
+ * etc. fails to match and is replaced with the default — closing the CSS
+ * injection sink at the point untrusted config meets the `<style>` element.
+ */
+const SAFE_COLOR =
+  /^(#[0-9a-f]{3,8}|(?:rgb|rgba|hsl|hsla|oklch|oklab|lab|lch)\([0-9a-z%.,/\s-]+\)|[a-z]+)$/i;
+
+export function sanitizeColors(
+  colors: WidgetConfig['colors'],
+): WidgetConfig['colors'] {
+  const fallback = DEFAULT_CONFIG.colors;
+  const safe = (value: unknown, backup: string): string =>
+    typeof value === 'string' && SAFE_COLOR.test(value.trim())
+      ? value.trim()
+      : backup;
+  return {
+    background: safe(colors?.background, fallback.background),
+    text: safe(colors?.text, fallback.text),
+    button: safe(colors?.button, fallback.button),
+    buttonText: safe(colors?.buttonText, fallback.buttonText),
+  };
+}
+
+/**
+ * Pick banner texts for the visitor's language, merged over the English default
+ * so the returned object is always complete: a per-site config (or an older
+ * cached one) that omits the newer panel fields still renders, and the panel
+ * never shows an empty label.
+ */
 export function resolveTexts(config: WidgetConfig, lang: string): BannerTexts {
   const short = lang.slice(0, 2).toLowerCase();
-  return (
-    config.texts[short] ??
-    config.texts[config.defaultLanguage] ??
-    DEFAULT_CONFIG.texts['en']!
-  );
+  const fallback = DEFAULT_CONFIG.texts['en']!;
+  const chosen =
+    config.texts[short] ?? config.texts[config.defaultLanguage] ?? fallback;
+  return {
+    ...fallback,
+    ...chosen,
+    categoryLabels: {
+      ...fallback.categoryLabels,
+      ...chosen.categoryLabels,
+    },
+  };
 }
 
 function isUsableConfig(value: unknown): value is WidgetConfig {

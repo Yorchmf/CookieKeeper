@@ -2,23 +2,27 @@
  * Consent banner rendered inside a Shadow DOM host, so customer CSS cannot
  * break the banner and banner styles never leak out.
  *
- * Functional skeleton: accept-all / reject-all / preferences placeholder,
- * basic styling from config colors, minimal focus handling. Final design,
- * full preferences panel, and the a11y pass (focus trap, ESC, ARIA audit)
- * come in the widget-core milestone (ARCHITECTURE.md §13, W3).
+ * Accept-all / reject-all / preferences entry, styled from config colors.
+ * role="dialog" named by its heading; focus is moved into the banner on show
+ * and restored on removal. Granular choices live in the preferences panel
+ * (preferences.ts), which owns the modal focus trap and inert background.
  */
 
+import { deepActiveElement } from './focus';
 import type { BannerTexts, WidgetConfig } from './config';
 
 export type BannerAction = 'accept_all' | 'reject_all';
 
 export interface BannerHandlers {
   onAction: (action: BannerAction) => void;
-  /** Preferences panel is a later milestone — stub hook for now. */
+  /** Open the granular preferences panel. */
   onPreferences: () => void;
 }
 
 const HOST_ID = 'complyr-host';
+
+/** Where focus was before the banner appeared, restored when it is removed. */
+let previouslyFocused: HTMLElement | null = null;
 
 export function renderBanner(
   config: WidgetConfig,
@@ -26,6 +30,7 @@ export function renderBanner(
   handlers: BannerHandlers,
 ): void {
   removeBanner();
+  previouslyFocused = deepActiveElement();
 
   const host = document.createElement('div');
   host.id = HOST_ID;
@@ -37,10 +42,12 @@ export function renderBanner(
   const dialog = document.createElement('div');
   dialog.className = 'banner';
   dialog.setAttribute('role', 'dialog');
-  dialog.setAttribute('aria-live', 'polite');
-  dialog.setAttribute('aria-label', texts.title);
+  // Named by its own heading; no aria-live (it would double-announce and
+  // contradicts the dialog role).
+  dialog.setAttribute('aria-labelledby', 'complyr-banner-title');
 
-  const heading = document.createElement('p');
+  const heading = document.createElement('h2');
+  heading.id = 'complyr-banner-title';
   heading.className = 'title';
   heading.textContent = texts.title;
 
@@ -69,7 +76,14 @@ export function renderBanner(
 }
 
 export function removeBanner(): void {
-  document.getElementById(HOST_ID)?.remove();
+  const host = document.getElementById(HOST_ID);
+  if (!host) return;
+  host.remove();
+  // Return focus to wherever it was before the banner showed, so tearing the
+  // banner down (e.g. after saving from the preferences panel) never dumps
+  // keyboard/AT focus at the top of the page (WCAG 2.4.3).
+  previouslyFocused?.focus();
+  previouslyFocused = null;
 }
 
 function button(
@@ -106,6 +120,9 @@ button {
 }
 button.primary { background: ${colors.button}; color: ${colors.buttonText}; }
 button.ghost { background: transparent; color: ${colors.text}; text-decoration: underline; }
-button:focus-visible { outline: 2px solid ${colors.buttonText}; outline-offset: 2px; }
+/* Ring contrasts with what it rings: colors.text over the panel, but the
+   primary buttons' fill is colors.button, so their ring uses colors.buttonText. */
+button:focus-visible { outline: 2px solid ${colors.text}; outline-offset: 2px; }
+button.primary:focus-visible { outline-color: ${colors.buttonText}; outline-offset: -4px; }
 `;
 }
