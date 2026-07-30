@@ -2,6 +2,7 @@ package com.complyr.site
 
 import com.complyr.auth.EmailNotVerifiedException
 import com.complyr.auth.UserRepository
+import com.complyr.banner.BannerConfigService
 import com.complyr.common.ComplyrProperties
 import com.complyr.common.UnauthenticatedException
 import com.complyr.common.violatedConstraint
@@ -22,6 +23,7 @@ import java.util.UUID
 class SiteService(
     private val siteRepository: SiteRepository,
     private val userRepository: UserRepository,
+    private val bannerConfigService: BannerConfigService,
     private val properties: ComplyrProperties,
     private val clock: Clock,
 ) {
@@ -51,6 +53,9 @@ class SiteService(
                     updatedAt = clock.instant(),
                 ),
             )
+        // Every site is renderable from creation: seed and publish its default v1 banner config
+        // in the same transaction so the widget-config read never 404s for an active site.
+        bannerConfigService.createDefaultFor(site.id)
         return SiteResponse.from(site)
     }
 

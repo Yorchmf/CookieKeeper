@@ -3,6 +3,7 @@ package com.complyr.site
 import com.complyr.auth.EmailNotVerifiedException
 import com.complyr.auth.UserEntity
 import com.complyr.auth.UserRepository
+import com.complyr.banner.BannerConfigService
 import com.complyr.common.ComplyrProperties
 import io.mockk.every
 import io.mockk.mockk
@@ -41,7 +42,9 @@ class SiteServiceTest {
     private val now: Instant = Instant.parse("2026-07-28T12:00:00Z")
     private val siteRepository = mockk<SiteRepository>()
     private val userRepository = mockk<UserRepository>()
-    private val service = SiteService(siteRepository, userRepository, properties, Clock.fixed(now, ZoneOffset.UTC))
+    private val bannerConfigService = mockk<BannerConfigService>(relaxed = true)
+    private val service =
+        SiteService(siteRepository, userRepository, bannerConfigService, properties, Clock.fixed(now, ZoneOffset.UTC))
 
     private val userId: UUID = UUID.randomUUID()
 
@@ -76,6 +79,18 @@ class SiteServiceTest {
         assertEquals("foo.example.com", response.domain)
         assertTrue(saved.captured.siteKey.matches(Regex("^pk_[A-Za-z0-9]{32}$")), "bad key: ${saved.captured.siteKey}")
         assertEquals("active", response.status)
+    }
+
+    @Test
+    fun `create seeds the default banner config for the new site`() {
+        stubUser()
+        every { siteRepository.existsByUserIdAndDomainAndStatus(any(), any(), any()) } returns false
+        val saved = slot<SiteEntity>()
+        every { siteRepository.saveAndFlush(capture(saved)) } answers { firstArg() }
+
+        service.create(userId, "example.com")
+
+        verify(exactly = 1) { bannerConfigService.createDefaultFor(saved.captured.id) }
     }
 
     @Test

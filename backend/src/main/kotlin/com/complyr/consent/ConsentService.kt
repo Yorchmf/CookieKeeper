@@ -1,5 +1,7 @@
 package com.complyr.consent
 
+import com.complyr.banner.BannerConfigService
+import com.complyr.banner.ConsentCategory
 import com.complyr.common.ApiException
 import com.complyr.common.IpHasher
 import com.complyr.consent.dto.ConsentEventRequest
@@ -51,6 +53,7 @@ data class ConsentRequestMeta(
 class ConsentService(
     private val siteRepository: SiteRepository,
     private val consentEventRepository: ConsentEventRepository,
+    private val bannerConfigService: BannerConfigService,
     private val ipHasher: IpHasher,
     private val clock: Clock,
 ) {
@@ -71,7 +74,11 @@ class ConsentService(
                 siteId = site.id,
                 visitorId = resolveVisitorId(request.vid),
                 action = action.clientValue,
-                categories = sanitizeCategories(request.categories),
+                categories = validateCategories(request.categories, categoryRules(site.id)),
+                // Recorded verbatim by design (D3): the version reflects the banner/policy the visitor
+                // actually saw — possibly a cached one lagging a fresh republish — so it is honest audit
+                // metadata, not something to overwrite with the server's current version. Only the
+                // category set is server-validated above.
                 bannerVersion = request.bannerVersion,
                 policyVersion = request.policyVersion,
                 lang = normalizeLang(request.lang),
@@ -89,12 +96,57 @@ class ConsentService(
             ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
             ?: UUID.randomUUID()
 
-    private fun sanitizeCategories(categories: Map<String, Boolean>): Map<String, Boolean> {
-        if (categories.keys.any { it.length > ConsentEventRequest.MAX_CATEGORY_KEY_LENGTH }) {
-            throw InvalidConsentPayloadException("Category key too long")
+    /** The allow-list and mandatory categories a consent payload is validated against. */
+    private data class CategoryRules(
+        val allowed: Set<String>,
+        val required: Set<String>,
+    )
+
+    /**
+     * The category rules a consent event is validated against: derived from the site's current
+     * published banner config, falling back to the full [ConsentCategory] taxonomy when no config
+     * is published yet (e.g. a race during site creation). This is the D3 anti-forgery source —
+     * a tampered widget cannot invent categories the site never offered, nor reject a mandatory one.
+     */
+    private fun categoryRules(siteId: UUID): CategoryRules {
+        val configured = bannerConfigService.currentPublished(siteId)?.config?.categories
+        if (configured != null) {
+            return CategoryRules(
+                allowed = configured.map { it.key }.toSet(),
+                required = configured.filter { it.required }.map { it.key }.toSet(),
+            )
         }
+        return CategoryRules(
+            allowed = ConsentCategory.KEYS,
+            required =
+                ConsentCategory.entries
+                    .filter { it.required }
+                    .map { it.key }
+                    .toSet(),
+        )
+    }
+
+    private fun validateCategories(
+        categories: Map<String, Boolean>,
+        rules: CategoryRules,
+    ): Map<String, Boolean> {
+        categoryViolation(categories, rules)?.let { throw InvalidConsentPayloadException(it) }
         return categories
     }
+
+    /** The first D3 rule the payload breaks, or null if it is valid audit evidence. */
+    private fun categoryViolation(
+        categories: Map<String, Boolean>,
+        rules: CategoryRules,
+    ): String? =
+        when {
+            categories.keys.any { it.length > ConsentEventRequest.MAX_CATEGORY_KEY_LENGTH } -> "Category key too long"
+            (categories.keys - rules.allowed).isNotEmpty() -> "Unknown consent category"
+            // GDPR invariant (ConsentCategory.required): strictly-necessary categories can never be
+            // rejected — a forged payload that omits or denies one is not valid audit evidence.
+            rules.required.any { categories[it] != true } -> "Required category cannot be rejected"
+            else -> null
+        }
 
     private fun normalizeLang(lang: String?): String? = lang?.trim()?.lowercase()?.takeIf { it.isNotEmpty() }
 

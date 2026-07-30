@@ -1,5 +1,8 @@
 package com.complyr.consent
 
+import com.complyr.banner.BannerConfigEntity
+import com.complyr.banner.BannerConfigService
+import com.complyr.banner.DefaultBannerConfig
 import com.complyr.common.IpHasher
 import com.complyr.consent.dto.ConsentEventRequest
 import com.complyr.site.SiteEntity
@@ -24,8 +27,10 @@ class ConsentServiceTest {
     private val now: Instant = Instant.parse("2026-07-30T12:00:00Z")
     private val siteRepository = mockk<SiteRepository>()
     private val consentEventRepository = mockk<ConsentEventRepository>(relaxed = true)
+    private val bannerConfigService = mockk<BannerConfigService>()
     private val ipHasher = IpHasher(Clock.fixed(now, ZoneOffset.UTC))
-    private val service = ConsentService(siteRepository, consentEventRepository, ipHasher, Clock.fixed(now, ZoneOffset.UTC))
+    private val service =
+        ConsentService(siteRepository, consentEventRepository, bannerConfigService, ipHasher, Clock.fixed(now, ZoneOffset.UTC))
 
     private val siteKey = "pk_live_site_key"
     private val site = SiteEntity(userId = UUID.randomUUID(), domain = "example.com", siteKey = siteKey)
@@ -44,6 +49,10 @@ class ConsentServiceTest {
 
     private fun stubActiveSite() {
         every { siteRepository.findBySiteKeyAndStatus(siteKey, SiteStatus.ACTIVE) } returns site
+        // The site's published config declares the default taxonomy (necessary/preferences/
+        // statistics/marketing) — the allow-list every test payload validates against.
+        every { bannerConfigService.currentPublished(site.id) } returns
+            BannerConfigEntity(siteId = site.id, version = DefaultBannerConfig.FIRST_VERSION, config = DefaultBannerConfig.document())
     }
 
     @Test
@@ -135,6 +144,31 @@ class ConsentServiceTest {
 
         assertThrows<InvalidConsentPayloadException> {
             service.record(request(categories = mapOf(longKey to true)), meta())
+        }
+        verify(exactly = 0) { consentEventRepository.save(any()) }
+    }
+
+    @Test
+    fun `a category the site never declared is rejected as forgery`() {
+        stubActiveSite()
+
+        assertThrows<InvalidConsentPayloadException> {
+            service.record(request(categories = mapOf("necessary" to true, "fingerprinting" to true)), meta())
+        }
+        verify(exactly = 0) { consentEventRepository.save(any()) }
+    }
+
+    @Test
+    fun `a payload that rejects or omits a required category is refused`() {
+        stubActiveSite()
+
+        // necessary is required — it can never be false...
+        assertThrows<InvalidConsentPayloadException> {
+            service.record(request(categories = mapOf("necessary" to false, "statistics" to true)), meta())
+        }
+        // ...nor absent.
+        assertThrows<InvalidConsentPayloadException> {
+            service.record(request(categories = mapOf("statistics" to true)), meta())
         }
         verify(exactly = 0) { consentEventRepository.save(any()) }
     }
