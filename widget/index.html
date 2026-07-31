@@ -8,6 +8,20 @@
   <body>
     <h1>Complyr widget dev harness</h1>
     <p>This page simulates a customer site embedding the consent banner.</p>
-    <script type="module" src="/src/main.ts" data-complyr="pk_test_local"></script>
+    <!--
+      Dev harness embed. `type="module"` means document.currentScript is null,
+      so the widget finds this tag by its data-complyr attribute. The
+      data-complyr-api / -cdn overrides point config + consent at the local
+      backend (loopback-only; ignored by production bundles). Adjust the port
+      to your backend, and add data-complyr-debug to see [Complyr] warnings.
+    -->
+    <script
+      type="module"
+      src="/src/main.ts"
+      data-complyr="pk_test_local"
+      data-complyr-api="http://localhost:8080"
+      data-complyr-cdn="http://localhost:8080"
+      data-complyr-debug
+    ></script>
   </body>
 </html>

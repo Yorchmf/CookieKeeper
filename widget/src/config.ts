@@ -5,6 +5,10 @@
  */
 
 import { CDN_BASE } from './constants';
+import { warn } from './debug';
+
+/** Abort a stalled config fetch so a hung CDN never delays the banner. */
+const CONFIG_FETCH_TIMEOUT_MS = 4000;
 
 /** Localized label + description for one consent category in the panel. */
 export interface CategoryText {
@@ -106,18 +110,33 @@ export const DEFAULT_CONFIG: WidgetConfig = {
 
 /** Fetch site config from `${CDN_BASE}/cfg/{siteKey}.json`; fall back on any failure. */
 export async function fetchConfig(siteKey: string): Promise<WidgetConfig> {
+  const controller =
+    typeof AbortController === 'function' ? new AbortController() : null;
+  const timer = controller
+    ? setTimeout(() => controller.abort(), CONFIG_FETCH_TIMEOUT_MS)
+    : null;
   try {
     const response = await fetch(
       `${CDN_BASE}/cfg/${encodeURIComponent(siteKey)}.json`,
+      controller ? { signal: controller.signal } : undefined,
     );
-    if (!response.ok) return DEFAULT_CONFIG;
+    if (!response.ok) {
+      warn(`config fetch returned ${response.status}; using defaults`);
+      return DEFAULT_CONFIG;
+    }
     const config = (await response.json()) as WidgetConfig;
-    if (!isUsableConfig(config)) return DEFAULT_CONFIG;
+    if (!isUsableConfig(config)) {
+      warn('config failed validation; using defaults');
+      return DEFAULT_CONFIG;
+    }
     // Colors are interpolated verbatim into the shadow <style>; sanitize them
     // so a hostile/malformed value can't inject arbitrary CSS rules.
     return { ...config, colors: sanitizeColors(config.colors) };
-  } catch {
+  } catch (error) {
+    warn('config fetch failed; using defaults', error);
     return DEFAULT_CONFIG;
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 
@@ -170,9 +189,27 @@ export function resolveTexts(config: WidgetConfig, lang: string): BannerTexts {
 function isUsableConfig(value: unknown): value is WidgetConfig {
   if (typeof value !== 'object' || value === null) return false;
   const candidate = value as Record<string, unknown>;
+  const categories = candidate['categories'];
   return (
     typeof candidate['colors'] === 'object' &&
+    candidate['colors'] !== null &&
     typeof candidate['texts'] === 'object' &&
-    Array.isArray(candidate['categories'])
+    candidate['texts'] !== null &&
+    // A config with no categories renders a banner whose buttons decide
+    // nothing — treat it as unusable and fall back to the built-in default
+    // rather than showing an empty, non-functional panel.
+    Array.isArray(categories) &&
+    categories.length > 0 &&
+    categories.every(isCategoryDef)
+  );
+}
+
+function isCategoryDef(value: unknown): value is CategoryDef {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate['id'] === 'string' &&
+    candidate['id'].length > 0 &&
+    typeof candidate['required'] === 'boolean'
   );
 }

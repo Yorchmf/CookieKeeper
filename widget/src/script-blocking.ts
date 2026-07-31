@@ -18,11 +18,22 @@
  * widget only ever un-neutralises markup the site owner already placed on their
  * own page — it never injects script content of its own.
  *
+ * SECURITY NOTE (accepted risk, inherent to the consent model): promoting a
+ * `text/plain` placeholder to a live <script> intentionally runs code the host
+ * page authored. If an attacker can inject a `text/plain` + data-complyr-category
+ * placeholder into the page (a host-side XSS/HTML-injection sink), consent then
+ * executes it. We narrow the surface here — control-only attribute copy, on*
+ * handler stripping — but the real defence is the host page's CSP and output
+ * encoding. A future author-configured `data-src` origin allowlist would harden
+ * this further.
+ *
  * Activation is forward-only: once a category's tags run they cannot be un-run
  * without a page reload. Withdrawing consent (preferences panel, Slice 4) must
  * therefore trigger a reload — re-blocking a loaded tracker in-place is not
  * possible.
  */
+
+import { warn } from './debug';
 
 const BLOCKED_TYPE = 'text/plain';
 const CATEGORY_ATTR = 'data-complyr-category';
@@ -64,15 +75,24 @@ export function grantedCategories(
 export function unblockScripts(granted: ReadonlySet<string>): void {
   for (const placeholder of blockedScripts()) {
     const category = placeholder.getAttribute(CATEGORY_ATTR);
-    if (category && granted.has(category)) {
+    if (!category || !granted.has(category)) continue;
+    try {
       activate(placeholder);
+    } catch (error) {
+      // Isolate per tag: a single malformed placeholder must not abort the
+      // remaining consented scripts, nor propagate up to the caller (commit)
+      // and take the audit-event send down with it.
+      warn('failed to activate a consented script', error);
     }
   }
 }
 
 /** Inline event-handler attributes (onload, onerror, …) — never promoted. */
 function isEventHandlerAttr(name: string): boolean {
-  return name.length > 2 && name.startsWith('on');
+  // Case-insensitive: HTML attribute names are lowercased on parse, but XHTML
+  // (application/xhtml+xml) preserves case, so `onLoad` would slip a raw
+  // startsWith('on') check. Normalise before comparing.
+  return name.length > 2 && name.toLowerCase().startsWith('on');
 }
 
 /** Replace a `text/plain` placeholder with a live, executing <script>. */

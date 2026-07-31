@@ -37,4 +37,37 @@ describe('resolveBases', () => {
       api: 'https://api.complyr.eu',
     });
   });
+
+  describe('loopback overrides', () => {
+    it('applies localhost api/cdn overrides regardless of derived origin', () => {
+      expect(
+        resolveBases('http://localhost:5173/src/main.ts', {
+          api: 'http://localhost:8080',
+          cdn: 'http://localhost:8080',
+        }),
+      ).toEqual({ cdn: 'http://localhost:8080', api: 'http://localhost:8080' });
+    });
+
+    it('overrides each base independently, keeping the derived one otherwise', () => {
+      expect(
+        resolveBases('http://localhost:5173/src/main.ts', {
+          api: 'http://127.0.0.1:8080',
+        }),
+      ).toEqual({ cdn: 'http://localhost:5173', api: 'http://127.0.0.1:8080' });
+    });
+
+    it('ignores a non-loopback override so prod embeds cannot be redirected', () => {
+      expect(
+        resolveBases('https://cdn.complyr.eu/v1.js', {
+          api: 'https://evil.example/collect',
+        }),
+      ).toEqual({ cdn: 'https://cdn.complyr.eu', api: 'https://api.complyr.eu' });
+    });
+
+    it('ignores a malformed override value', () => {
+      expect(
+        resolveBases('https://cdn.complyr.eu/v1.js', { api: 'not-a-url' }),
+      ).toEqual({ cdn: 'https://cdn.complyr.eu', api: 'https://api.complyr.eu' });
+    });
+  });
 });

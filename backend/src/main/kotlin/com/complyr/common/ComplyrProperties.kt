@@ -10,6 +10,7 @@ import java.time.Duration
 data class ComplyrProperties(
     val auth: Auth,
     val rateLimit: RateLimit = RateLimit(),
+    val cors: Cors = Cors(),
     val appBaseUrl: String,
     val cdnBaseUrl: String,
     val mailFrom: String,
@@ -47,6 +48,29 @@ data class ComplyrProperties(
         companion object {
             const val DEFAULT_AUTH_PER_MINUTE = 10L
             const val DEFAULT_CONSENT_PER_MINUTE = 120L
+        }
+    }
+
+    /**
+     * CORS policy for the public widget endpoints (see [com.complyr.common.CorsConfig]).
+     * All fields are optional in `complyr.cors.*`; when unset the defaults below apply —
+     * credential-less, all-origins, matching the widget's long-standing policy. Origins are
+     * applied as `allowedOriginPatterns`, so `"*"` is valid even though credentials stay off.
+     */
+    data class Cors(
+        val allowedOrigins: List<String> = DEFAULT_ALLOWED_ORIGINS,
+        val allowedMethods: List<String> = DEFAULT_ALLOWED_METHODS,
+        val allowedHeaders: List<String> = DEFAULT_ALLOWED_HEADERS,
+        val allowCredentials: Boolean = false,
+        val maxAge: Duration = Duration.ofSeconds(DEFAULT_MAX_AGE_SECONDS),
+        val paths: List<String> = DEFAULT_PATHS,
+    ) {
+        companion object {
+            val DEFAULT_ALLOWED_ORIGINS = listOf("*")
+            val DEFAULT_ALLOWED_METHODS = listOf("GET", "POST", "OPTIONS")
+            val DEFAULT_ALLOWED_HEADERS = listOf("Content-Type")
+            const val DEFAULT_MAX_AGE_SECONDS = 3600L
+            val DEFAULT_PATHS = listOf("/api/v1/consent", "/api/v1/widget-config/**")
         }
     }
 }

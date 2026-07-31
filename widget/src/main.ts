@@ -6,8 +6,13 @@
  * fetch, banner render) and therefore before vendor tags can consume consent.
  */
 
-import { sendConsentEvent, type ConsentEventPayload } from './api';
+import {
+  flushPendingEvents,
+  sendConsentEvent,
+  type ConsentEventPayload,
+} from './api';
 import { removeBanner, renderBanner, type BannerAction } from './banner';
+import { setDebug, warn } from './debug';
 import {
   setConsentDefaults,
   updateConsent,
@@ -40,35 +45,55 @@ declare global {
   }
 }
 
-// 1. Consent Mode defaults — synchronous, before anything else.
+// currentScript is only reliable during synchronous top-level execution, so
+// read our own <script> tag's attributes now, before any async work.
+const ownScript = readOwnScript();
+
+// 1. Diagnostics opt-in (silent by default) — set before anything can warn().
+setDebug(readDebugFlag(ownScript));
+
+// 2. Consent Mode defaults — synchronous, before anything else.
 setConsentDefaults();
 
-// 2. Site key from our own <script data-complyr="pk_…"> tag. currentScript is
-//    only reliable during synchronous top-level execution, so read it now.
-const siteKey = readSiteKey();
+// 3. Site key from our own <script data-complyr="pk_…"> tag.
+const siteKey = ownScript?.getAttribute('data-complyr') ?? null;
 
-// 3. Public API, available even while config is still loading.
+// 4. Public API, available even while config is still loading.
 window.Complyr = {
   show: () => {
-    void loadAndShowBanner();
+    void loadAndShowBanner().catch((error: unknown) => {
+      warn('Complyr.show() failed', error);
+    });
   },
   consent: () => readConsent(),
 };
 
-// 4. Apply a stored choice or show the banner. Errors fail silent-safe.
-void init();
+// 5. Apply a stored choice or show the banner. Errors fail silent-safe.
+void init().catch((error: unknown) => {
+  warn('init failed', error);
+});
 
-function readSiteKey(): string | null {
+function readOwnScript(): HTMLScriptElement | null {
   const own = document.currentScript;
-  const tagged =
-    own?.getAttribute('data-complyr') ??
-    document
-      .querySelector('script[data-complyr]')
-      ?.getAttribute('data-complyr');
-  return tagged ?? null;
+  if (own instanceof HTMLScriptElement && own.hasAttribute('data-complyr')) {
+    return own;
+  }
+  return document.querySelector<HTMLScriptElement>('script[data-complyr]');
+}
+
+/** Enable diagnostics via `data-complyr-debug` on the embed or `window.__complyrDebug`. */
+function readDebugFlag(script: HTMLScriptElement | null): boolean {
+  return (
+    script?.hasAttribute('data-complyr-debug') === true ||
+    (window as { __complyrDebug?: boolean }).__complyrDebug === true
+  );
 }
 
 async function init(): Promise<void> {
+  // Retry any consent events a previous visit failed to deliver — audit
+  // evidence must not be lost to a transient network blip.
+  flushPendingEvents();
+
   const stored = readConsent();
   if (stored) {
     // Returning visitor: re-signal consent and run the tags they already allowed,
@@ -81,7 +106,11 @@ async function init(): Promise<void> {
 }
 
 async function loadAndShowBanner(): Promise<void> {
-  if (!siteKey) return; // Misconfigured embed — do nothing, never break the page.
+  if (!siteKey) {
+    // Misconfigured embed — do nothing, never break the page.
+    warn('no data-complyr site key found on the embed script; banner skipped');
+    return;
+  }
   // Never re-render the banner underneath an open preferences modal — that
   // would mount an interactive surface behind the inert background barrier.
   if (isPreferencesOpen()) return;
@@ -119,8 +148,14 @@ function applyChoice(
 
 /**
  * Persist and enact a consent decision from any surface (banner or panel):
- * store it, signal Consent Mode, run the now-allowed scripts, tear down the UI,
- * and record the audit event. Shared so every path stays consistent.
+ * store it, RECORD the audit event, then signal Consent Mode, run the
+ * now-allowed scripts, and tear down the UI. Shared so every path stays
+ * consistent.
+ *
+ * Order matters: the cookie and the audit event are written first, before any
+ * enactment step that could throw (updateConsent / unblockScripts). A visitor's
+ * recorded choice must never be lost just because a downstream vendor tag or a
+ * malformed placeholder blew up while we were applying it.
  */
 function commit(
   categories: ConsentDecision,
@@ -129,12 +164,21 @@ function commit(
 ): void {
   const vid = getOrCreateVid();
   writeConsent(categories, vid);
-  updateConsent(categories);
-  unblockScripts(grantedCategories(categories));
-  removePreferences();
-  removeBanner();
 
+  // Audit evidence first — this is the compliance-critical write.
   if (siteKey) {
     sendConsentEvent({ siteKey, action, categories, lang, ts: Date.now(), vid });
+  }
+
+  // Enactment second. unblockScripts already isolates per-tag failures; guard
+  // the rest so a throw here can't strand the banner/panel on screen.
+  try {
+    updateConsent(categories);
+    unblockScripts(grantedCategories(categories));
+  } catch (error) {
+    warn('enacting consent failed after it was recorded', error);
+  } finally {
+    removePreferences();
+    removeBanner();
   }
 }

@@ -9,6 +9,7 @@
 
 import { COOKIE_MAX_AGE_SECONDS, COOKIE_SCHEMA_VERSION } from './constants';
 import type { ConsentDecision } from './consent-mode';
+import { warn } from './debug';
 
 export const COOKIE_NAME = 'cmplyr';
 
@@ -69,6 +70,12 @@ export function writeConsent(
   const secure = location.protocol === 'https:' ? '; Secure' : '';
   document.cookie =
     `${COOKIE_NAME}=${value}; Max-Age=${COOKIE_MAX_AGE_SECONDS}; Path=/; SameSite=Lax${secure}`;
+  // Read back: if cookies are disabled/blocked the write silently no-ops, and
+  // the choice would be lost on the next page load. We can't force persistence,
+  // but the consent event still records the decision — surface it for debugging.
+  if (!document.cookie.includes(`${COOKIE_NAME}=`)) {
+    warn('consent cookie was not persisted (cookies blocked?)');
+  }
   return state;
 }
 
@@ -79,7 +86,18 @@ function generateVid(): string {
     return cryptoObj.randomUUID();
   }
   const bytes = new Uint8Array(16);
-  cryptoObj?.getRandomValues(bytes);
+  if (typeof cryptoObj?.getRandomValues === 'function') {
+    cryptoObj.getRandomValues(bytes);
+  } else {
+    // No CSPRNG at all (ancient/locked-down env). Fall back to a non-crypto
+    // seed so distinct visitors don't all collapse onto one constant all-zero
+    // UUID — vid is only an audit-correlation id, never a security token.
+    warn('crypto.getRandomValues unavailable; using non-crypto vid fallback');
+    const seed = Date.now();
+    for (let i = 0; i < bytes.length; i++) {
+      bytes[i] = Math.floor(Math.random() * 256) ^ ((seed >>> (i % 32)) & 0xff);
+    }
+  }
   bytes[6] = (bytes[6]! & 0x0f) | 0x40; // version 4
   bytes[8] = (bytes[8]! & 0x3f) | 0x80; // variant 10xx
   const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0'));

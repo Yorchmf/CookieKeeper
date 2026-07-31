@@ -1,5 +1,31 @@
-import { describe, expect, test } from 'vitest';
-import { DEFAULT_CONFIG, resolveTexts, sanitizeColors } from '../src/config';
+import { afterEach, describe, expect, test, vi } from 'vitest';
+import {
+  DEFAULT_CONFIG,
+  fetchConfig,
+  resolveTexts,
+  sanitizeColors,
+  type WidgetConfig,
+} from '../src/config';
+
+const validConfig: WidgetConfig = {
+  version: 3,
+  colors: {
+    background: '#101010',
+    text: '#fafafa',
+    button: '#4c7dff',
+    buttonText: '#ffffff',
+  },
+  position: 'bottom',
+  texts: DEFAULT_CONFIG.texts,
+  defaultLanguage: 'en',
+  categories: [
+    { id: 'necessary', required: true },
+    { id: 'statistics', required: false },
+  ],
+};
+
+const okJson = (body: unknown) =>
+  Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
 
 describe('config', () => {
   describe('sanitizeColors', () => {
@@ -35,6 +61,48 @@ describe('config', () => {
       });
       expect(safe.background).toBe(DEFAULT_CONFIG.colors.background);
       expect(safe.text).toBe(DEFAULT_CONFIG.colors.text);
+    });
+  });
+
+  describe('fetchConfig validation', () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      vi.restoreAllMocks();
+    });
+
+    test('accepts a well-formed config and sanitizes its colors', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(() => okJson(validConfig)),
+      );
+      const result = await fetchConfig('pk_test');
+      expect(result.version).toBe(3);
+      expect(result.categories).toHaveLength(2);
+      expect(result.colors.background).toBe('#101010');
+    });
+
+    test('falls back to the default when categories is empty', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(() => okJson({ ...validConfig, categories: [] })),
+      );
+      expect(await fetchConfig('pk_test')).toBe(DEFAULT_CONFIG);
+    });
+
+    test('falls back when a category entry is malformed', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(() => okJson({ ...validConfig, categories: [{ id: 42 }] })),
+      );
+      expect(await fetchConfig('pk_test')).toBe(DEFAULT_CONFIG);
+    });
+
+    test('falls back when the fetch rejects', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(() => Promise.reject(new Error('network'))),
+      );
+      expect(await fetchConfig('pk_test')).toBe(DEFAULT_CONFIG);
     });
   });
 
