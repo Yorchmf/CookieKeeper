@@ -22,6 +22,10 @@ style:
   MagicNumber:
     ignoreAnnotated:
       - "Configuration"
+  ReturnCount:
+    # Early elvis guards (`x ?: return null`) are the idiomatic Kotlin style (coding-style.md);
+    # don't count them toward the return limit so guarded lookups stay flat instead of nested.
+    excludeGuardClauses: true
 
 performance:
   SpreadOperator:

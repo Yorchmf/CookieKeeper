@@ -94,6 +94,7 @@ val coverageClassPatterns =
         "com/complyr/auth/TokenService*",
         "com/complyr/site/SiteService*",
         "com/complyr/site/DomainValidator*",
+        "com/complyr/scan/ScanQueue*",
     )
 
 tasks.jacocoTestReport {

@@ -8,6 +8,7 @@ import com.complyr.common.UnauthenticatedException
 import com.complyr.common.violatedConstraint
 import com.complyr.site.dto.SiteDetailResponse
 import com.complyr.site.dto.SiteResponse
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -25,6 +26,7 @@ class SiteService(
     private val userRepository: UserRepository,
     private val bannerConfigService: BannerConfigService,
     private val properties: ComplyrProperties,
+    private val events: ApplicationEventPublisher,
     private val clock: Clock,
 ) {
     private val random = SecureRandom()
@@ -56,6 +58,9 @@ class SiteService(
         // Every site is renderable from creation: seed and publish its default v1 banner config
         // in the same transaction so the widget-config read never 404s for an active site.
         bannerConfigService.createDefaultFor(site.id)
+        // Kick off the site's first cookie scan. The listener enqueues synchronously in THIS
+        // transaction (see ScanEnqueueListener), so the scan commits or rolls back with the site.
+        events.publishEvent(SiteCreatedEvent(site.id))
         return SiteResponse.from(site)
     }
 

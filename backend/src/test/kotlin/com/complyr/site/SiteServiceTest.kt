@@ -12,6 +12,7 @@ import io.mockk.verify
 import org.hibernate.exception.ConstraintViolationException
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.dao.DataIntegrityViolationException
 import java.sql.SQLException
 import java.time.Clock
@@ -43,8 +44,16 @@ class SiteServiceTest {
     private val siteRepository = mockk<SiteRepository>()
     private val userRepository = mockk<UserRepository>()
     private val bannerConfigService = mockk<BannerConfigService>(relaxed = true)
+    private val events = mockk<ApplicationEventPublisher>(relaxed = true)
     private val service =
-        SiteService(siteRepository, userRepository, bannerConfigService, properties, Clock.fixed(now, ZoneOffset.UTC))
+        SiteService(
+            siteRepository,
+            userRepository,
+            bannerConfigService,
+            properties,
+            events,
+            Clock.fixed(now, ZoneOffset.UTC),
+        )
 
     private val userId: UUID = UUID.randomUUID()
 
@@ -91,6 +100,18 @@ class SiteServiceTest {
         service.create(userId, "example.com")
 
         verify(exactly = 1) { bannerConfigService.createDefaultFor(saved.captured.id) }
+    }
+
+    @Test
+    fun `create publishes a SiteCreatedEvent to trigger the first scan`() {
+        stubUser()
+        every { siteRepository.existsByUserIdAndDomainAndStatus(any(), any(), any()) } returns false
+        val saved = slot<SiteEntity>()
+        every { siteRepository.saveAndFlush(capture(saved)) } answers { firstArg() }
+
+        service.create(userId, "example.com")
+
+        verify(exactly = 1) { events.publishEvent(SiteCreatedEvent(saved.captured.id)) }
     }
 
     @Test

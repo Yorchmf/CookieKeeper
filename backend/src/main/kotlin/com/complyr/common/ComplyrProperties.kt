@@ -12,6 +12,7 @@ data class ComplyrProperties(
     val rateLimit: RateLimit = RateLimit(),
     val cors: Cors = Cors(),
     val consent: Consent = Consent(),
+    val scan: Scan = Scan(),
     val appBaseUrl: String,
     val cdnBaseUrl: String,
     val mailFrom: String,
@@ -112,6 +113,48 @@ data class ComplyrProperties(
             // Rows per prune transaction. Large enough that steady-state churn drains in one batch,
             // small enough that a backlog stays chunked into short, vacuum-friendly transactions.
             const val DEFAULT_IDEMPOTENCY_PRUNE_BATCH_SIZE = 10_000
+        }
+    }
+
+    /**
+     * Scan queue tuning (see [com.complyr.scan.ScanQueue] / [com.complyr.scan.ScanWorker]).
+     *
+     * [visibilityTimeout] is how long a claimed job is hidden from other workers before it is treated
+     * as crashed and redelivered — it MUST exceed the worst-case crawl time (§4.4 caps a job at 10min)
+     * or a slow-but-healthy crawl would be double-claimed. [maxAttempts] bounds retries before a job
+     * is dead-lettered; [retryBackoff] is multiplied by the attempt number for a linear backoff on
+     * requeue. [maxJobsPerPoll] caps how many jobs one worker tick drains so a backlog can't make a
+     * single tick run unbounded. [maxPages] is the per-scan page cap the crawler will honor (slice 2).
+     *
+     * The poll interval itself is read directly by `@Scheduled` from `complyr.scan.poll-interval-millis`
+     * (a `fixedDelayString` needs a literal/placeholder, not a typed field), mirroring how the consent
+     * reaper's cron is read directly rather than typed here.
+     */
+    data class Scan(
+        val visibilityTimeout: Duration = Duration.ofMinutes(DEFAULT_VISIBILITY_TIMEOUT_MINUTES),
+        val maxAttempts: Int = DEFAULT_MAX_ATTEMPTS,
+        val retryBackoff: Duration = Duration.ofMinutes(DEFAULT_RETRY_BACKOFF_MINUTES),
+        val maxJobsPerPoll: Int = DEFAULT_MAX_JOBS_PER_POLL,
+        val maxPages: Int = DEFAULT_MAX_PAGES,
+    ) {
+        init {
+            require(!visibilityTimeout.isZero && !visibilityTimeout.isNegative) {
+                "complyr.scan.visibility-timeout must be a positive duration (was $visibilityTimeout)"
+            }
+            require(!retryBackoff.isNegative) {
+                "complyr.scan.retry-backoff must not be negative (was $retryBackoff)"
+            }
+            require(maxAttempts > 0) { "complyr.scan.max-attempts must be positive (was $maxAttempts)" }
+            require(maxJobsPerPoll > 0) { "complyr.scan.max-jobs-per-poll must be positive (was $maxJobsPerPoll)" }
+            require(maxPages > 0) { "complyr.scan.max-pages must be positive (was $maxPages)" }
+        }
+
+        companion object {
+            const val DEFAULT_VISIBILITY_TIMEOUT_MINUTES = 15L
+            const val DEFAULT_MAX_ATTEMPTS = 3
+            const val DEFAULT_RETRY_BACKOFF_MINUTES = 1L
+            const val DEFAULT_MAX_JOBS_PER_POLL = 50
+            const val DEFAULT_MAX_PAGES = 10
         }
     }
 }

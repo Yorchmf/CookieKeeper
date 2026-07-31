@@ -54,6 +54,14 @@ complyr:
     idempotency-retention: ${CONSENT_IDEMPOTENCY_RETENTION:14d}
     # Reaper schedule (Spring cron, server zone). Default 03:30 daily is also baked into the job.
     idempotency-prune-cron: ${CONSENT_IDEMPOTENCY_PRUNE_CRON:0 30 3 * * *}
+  scan:
+    # How often a scanner worker polls the queue (only the `scanner` profile runs the poller).
+    poll-interval-millis: ${SCAN_POLL_INTERVAL_MS:5000}
+    # A claimed job is hidden this long before being treated as crashed and redelivered — must
+    # exceed the worst-case crawl time (§4.4 caps a job at 10min).
+    visibility-timeout: ${SCAN_VISIBILITY_TIMEOUT:15m}
+    max-attempts: ${SCAN_MAX_ATTEMPTS:3}
+    retry-backoff: ${SCAN_RETRY_BACKOFF:1m}
   app-base-url: ${APP_BASE_URL:http://localhost:3000}
   cdn-base-url: ${CDN_BASE_URL:http://localhost:8081}
   mail-from: ${MAIL_FROM:no-reply@complyr.eu}
