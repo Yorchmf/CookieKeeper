@@ -83,9 +83,15 @@ data class ComplyrProperties(
      * retention. A short window keeps this non-partitioned, DELETE-pruned table small and bounds
      * its bloat (see V5 migration). The prune schedule itself is the raw `complyr.consent.
      * idempotency-prune-cron` property read by `@Scheduled`, not a typed field here.
+     *
+     * [idempotencyPruneBatchSize] caps how many rows the reaper deletes per transaction so a large
+     * backlog (e.g. the reaper disabled for a stretch, or a widened retention window) drains in
+     * bounded chunks instead of one long-running DELETE that pins the vacuum horizon and bursts
+     * dead tuples — see [com.complyr.consent.ConsentIdempotencyReaper].
      */
     data class Consent(
         val idempotencyRetention: Duration = Duration.ofDays(DEFAULT_IDEMPOTENCY_RETENTION_DAYS),
+        val idempotencyPruneBatchSize: Int = DEFAULT_IDEMPOTENCY_PRUNE_BATCH_SIZE,
     ) {
         init {
             // A zero/negative window makes cutoff >= now, so the reaper would delete still-active,
@@ -93,10 +99,19 @@ data class ComplyrProperties(
             require(!idempotencyRetention.isZero && !idempotencyRetention.isNegative) {
                 "complyr.consent.idempotency-retention must be a positive duration (was $idempotencyRetention)"
             }
+            // A non-positive batch size would make the reaper delete nothing and loop forever;
+            // refuse it at startup rather than silently disabling the prune.
+            require(idempotencyPruneBatchSize > 0) {
+                "complyr.consent.idempotency-prune-batch-size must be positive (was $idempotencyPruneBatchSize)"
+            }
         }
 
         companion object {
             const val DEFAULT_IDEMPOTENCY_RETENTION_DAYS = 14L
+
+            // Rows per prune transaction. Large enough that steady-state churn drains in one batch,
+            // small enough that a backlog stays chunked into short, vacuum-friendly transactions.
+            const val DEFAULT_IDEMPOTENCY_PRUNE_BATCH_SIZE = 10_000
         }
     }
 }

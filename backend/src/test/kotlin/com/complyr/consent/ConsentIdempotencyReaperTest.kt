@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.test.context.TestPropertySource
 import java.sql.Connection
 import java.time.Duration
 import java.time.Instant
@@ -22,6 +23,8 @@ import kotlin.test.assertEquals
  */
 @SpringBootTest
 @Import(TestcontainersConfiguration::class)
+// Pin a tiny batch size so a handful of rows forces the multi-batch prune loop (prod default 10k).
+@TestPropertySource(properties = ["complyr.consent.idempotency-prune-batch-size=2"])
 class ConsentIdempotencyReaperTest {
     @Autowired
     private lateinit var reaper: ConsentIdempotencyReaper
@@ -44,6 +47,23 @@ class ConsentIdempotencyReaperTest {
 
         assertEquals(0, countKey(expired), "a key older than the retention window is pruned")
         assertEquals(1, countKey(fresh), "a recently-claimed key survives so its in-flight retry still de-dupes")
+    }
+
+    @Test
+    fun `prune drains a backlog spanning multiple batches`() {
+        // Batch size is pinned to 2 for this class, so 5 expired keys force three batches (2+2+1);
+        // a single-shot LIMIT delete would leave three rows behind.
+        val expired = (1..5).map { UUID.randomUUID() }
+        expired.forEach { insertKey(it, Instant.now().minus(Duration.ofDays(90))) }
+        val fresh = UUID.randomUUID()
+        insertKey(fresh, Instant.now().minus(Duration.ofHours(1)))
+
+        reaper.prune()
+
+        expired.forEach {
+            assertEquals(0, countKey(it), "every expired key is removed even when it takes several batches")
+        }
+        assertEquals(1, countKey(fresh), "a fresh key is never selected by the batched delete")
     }
 
     @Test

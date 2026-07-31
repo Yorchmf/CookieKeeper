@@ -33,8 +33,8 @@ interface ConsentIdempotencyRepository : Repository<ConsentIdempotencyEntity, UU
      * Try to take the transaction-scoped advisory lock [key], returning true only to the caller
      * that acquired it. Used to leader-guard the scheduled prune across backend replicas: a losing
      * caller skips its run. The lock is held for the rest of the current transaction and released
-     * automatically at commit or rollback — so it must be called from within the prune's
-     * `@Transactional` boundary, never on its own.
+     * automatically at commit or rollback — so it must be called from within a transaction (the
+     * reaper runs each prune batch inside its own `TransactionTemplate`), never on its own.
      */
     @Query(value = "SELECT pg_try_advisory_xact_lock(:key)", nativeQuery = true)
     fun tryAcquireAdvisoryXactLock(
@@ -59,18 +59,27 @@ interface ConsentIdempotencyRepository : Repository<ConsentIdempotencyEntity, UU
     ): Int
 
     /**
-     * Prune dedupe keys claimed before [cutoff], returning the number of rows removed. Native
-     * because `created_at` is intentionally not mapped on the entity (it exists only for this
-     * scan). This is disposable bookkeeping, not audit evidence, so DELETE is allowed here —
-     * unlike the append-only sibling `consent_events`. Called only by the scheduled
-     * [ConsentIdempotencyReaper]; keys must outlive a pending widget retry, nothing longer.
+     * Delete up to [batchSize] dedupe keys claimed before [cutoff], returning the number removed.
+     * The reaper calls this in a loop (one transaction per batch) so a large backlog drains in
+     * bounded chunks instead of one long DELETE — see [ConsentIdempotencyReaper].
+     *
+     * The inner `SELECT ctid ... ORDER BY created_at LIMIT` walks the `created_at` index to pick
+     * the oldest [batchSize] rows and deletes them by physical row id, which is why this must be
+     * native (`ctid` and `created_at` are not JPA-mapped). No `SKIP LOCKED` is needed: the reaper
+     * holds a per-batch advisory lock, so no two batches ever target overlapping rows concurrently.
+     * Disposable bookkeeping, not audit evidence, so DELETE is allowed here — unlike the
+     * append-only sibling `consent_events`.
      */
     @Modifying
     @Query(
-        value = "DELETE FROM consent_idempotency WHERE created_at < :cutoff",
+        value =
+            "DELETE FROM consent_idempotency WHERE ctid IN " +
+                "(SELECT ctid FROM consent_idempotency WHERE created_at < :cutoff " +
+                "ORDER BY created_at LIMIT :batchSize)",
         nativeQuery = true,
     )
-    fun deleteClaimedBefore(
+    fun deleteBatchClaimedBefore(
         @Param("cutoff") cutoff: Instant,
+        @Param("batchSize") batchSize: Int,
     ): Int
 }
