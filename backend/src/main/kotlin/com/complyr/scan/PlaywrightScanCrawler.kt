@@ -48,6 +48,7 @@ import java.util.UUID
 class PlaywrightScanCrawler(
     private val siteRepository: SiteRepository,
     private val cookieWriter: ScanCookieWriter,
+    private val classifier: CookieClassifier,
     private val validator: ScanTargetValidator,
     private val properties: ComplyrProperties,
     private val clock: Clock,
@@ -84,9 +85,11 @@ class PlaywrightScanCrawler(
         scanId: UUID,
         cookies: List<Cookie>,
     ) {
-        // A retry reuses the same scan id, so the writer clears the prior attempt's findings before
-        // re-recording — atomically, in one transaction (findings are replaceable, not audit evidence).
-        cookieWriter.replace(scanId, ScanCookieMapper.toEntities(scanId, cookies))
+        // Map -> classify against the signature DB -> persist. A retry reuses the same scan id, so the
+        // writer clears the prior attempt's findings before re-recording — atomically, in one
+        // transaction (findings are replaceable, not audit evidence).
+        val classified = classifier.classify(ScanCookieMapper.toEntities(scanId, cookies))
+        cookieWriter.replace(scanId, classified)
     }
 
     private fun crawlSite(domain: String): CrawlOutcome {

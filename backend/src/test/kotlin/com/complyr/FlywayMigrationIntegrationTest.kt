@@ -30,6 +30,7 @@ class FlywayMigrationIntegrationTest {
             )
         assertTrue("1" in appliedVersions, "V1__baseline should be applied")
         assertTrue("2" in appliedVersions, "V2__auth_tokens_and_site_lifecycle should be applied")
+        assertTrue("8" in appliedVersions, "V8__cookie_signatures should be applied")
     }
 
     @Test
@@ -48,6 +49,7 @@ class FlywayMigrationIntegrationTest {
                 "consent_events",
                 "jobs",
                 "auth_tokens",
+                "cookie_signatures",
             )
 
         val actualTables =

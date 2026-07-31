@@ -102,6 +102,9 @@ val coverageClassPatterns =
         // Security-critical SSRF range logic — must stay well covered. The Playwright crawler itself
         // needs a real browser, so it is exercised via integration/manual runs, not this unit gate.
         "com/complyr/scan/ScanTargetValidator*",
+        // Cookie classification (W4 slice 3): pure matcher + the classifier that drives it.
+        "com/complyr/scan/CookieSignatureMatcher*",
+        "com/complyr/scan/CookieClassifier*",
     )
 
 tasks.jacocoTestReport {
