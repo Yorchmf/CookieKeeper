@@ -15,6 +15,8 @@ import java.time.ZoneOffset
 import java.util.UUID
 import javax.sql.DataSource
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 /**
  * The reaper against real Postgres: it must delete keys past the retention window and leave
@@ -47,6 +49,31 @@ class ConsentIdempotencyReaperTest {
 
         assertEquals(0, countKey(expired), "a key older than the retention window is pruned")
         assertEquals(1, countKey(fresh), "a recently-claimed key survives so its in-flight retry still de-dupes")
+    }
+
+    @Test
+    fun `migration applies churn-tuned autovacuum storage params`() {
+        // V6 tightens autovacuum for this table's insert-right / delete-left churn (see the reaper).
+        // Guards against the migration being dropped or its param names drifting.
+        val reloptions =
+            jdbcTemplate.queryForObject(
+                "SELECT array_to_string(reloptions, ',') FROM pg_class " +
+                    "WHERE relname = 'consent_idempotency' AND relkind = 'r'",
+                String::class.java,
+            )
+
+        assertNotNull(reloptions, "consent_idempotency must carry table-level autovacuum params")
+        val expected =
+            listOf(
+                "autovacuum_vacuum_scale_factor=0.02",
+                "autovacuum_vacuum_threshold=500",
+                "autovacuum_vacuum_insert_scale_factor=0.05",
+                "autovacuum_vacuum_insert_threshold=500",
+                "autovacuum_analyze_scale_factor=0.02",
+            )
+        expected.forEach { param ->
+            assertTrue(reloptions.contains(param), "V6 must set $param — got: $reloptions")
+        }
     }
 
     @Test
