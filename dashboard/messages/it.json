@@ -143,7 +143,7 @@
       "siteKey": "Chiave del sito",
       "siteKeyHint": "Identificatore univoco di questo sito per il widget.",
       "embedTitle": "Codice di incorporamento",
-      "embedDescription": "Incolla questo snippet prima del tag di chiusura </head> in ogni pagina del tuo sito.",
+      "embedDescription": "Incolla questo snippet prima del tag di chiusura '</head>' in ogni pagina del tuo sito.",
       "copy": "Copia",
       "copied": "Copiato!",
       "dangerZone": "Zona di pericolo",

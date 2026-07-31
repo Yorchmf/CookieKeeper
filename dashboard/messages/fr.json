@@ -143,7 +143,7 @@
       "siteKey": "Clé du site",
       "siteKeyHint": "Identifiant unique de ce site pour le widget.",
       "embedTitle": "Code d'intégration",
-      "embedDescription": "Collez cet extrait avant la balise fermante </head> sur chaque page de votre site.",
+      "embedDescription": "Collez cet extrait avant la balise fermante '</head>' sur chaque page de votre site.",
       "copy": "Copier",
       "copied": "Copié !",
       "dangerZone": "Zone de danger",

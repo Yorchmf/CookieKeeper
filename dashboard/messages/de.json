@@ -143,7 +143,7 @@
       "siteKey": "Site-Schlüssel",
       "siteKeyHint": "Eindeutige Kennung dieser Website für das Widget.",
       "embedTitle": "Einbettungscode",
-      "embedDescription": "Fügen Sie dieses Snippet vor dem schließenden </head>-Tag auf jeder Seite Ihrer Website ein.",
+      "embedDescription": "Fügen Sie dieses Snippet vor dem schließenden '</head>'-Tag auf jeder Seite Ihrer Website ein.",
       "copy": "Kopieren",
       "copied": "Kopiert!",
       "dangerZone": "Gefahrenbereich",
