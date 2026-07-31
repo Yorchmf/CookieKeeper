@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
+import { ScanHistory } from "@/components/scans/scan-history";
 import { EmbedSnippet } from "@/components/sites/embed-snippet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -112,6 +113,8 @@ export function SiteDetail({ siteId }: { siteId: string }) {
             <EmbedSnippet snippet={data.embedSnippet} />
           </CardContent>
         </Card>
+
+        <ScanHistory siteId={siteId} />
 
         <Card>
           <CardHeader>

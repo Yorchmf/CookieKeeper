@@ -168,5 +168,52 @@
       "scans": "Scans",
       "scansHint": "Latest cookie scan results"
     }
+  },
+  "scans": {
+    "status": {
+      "queued": "Queued",
+      "running": "Running",
+      "done": "Completed",
+      "failed": "Failed"
+    },
+    "categories": {
+      "necessary": "Necessary",
+      "preferences": "Preferences",
+      "statistics": "Statistics",
+      "marketing": "Marketing"
+    },
+    "categoryHints": {
+      "necessary": "Required for the site to function. These do not need consent.",
+      "preferences": "Remember choices like language or region.",
+      "statistics": "Measure how visitors use the site.",
+      "marketing": "Track visitors to show relevant advertising."
+    },
+    "history": {
+      "title": "Scan history",
+      "subtitle": "Cookie scans for this site, newest first",
+      "empty": "No scans yet. The first scan runs shortly after a site is added.",
+      "loadError": "Scan history could not be loaded. Please try again.",
+      "pagesCrawled": "{count, plural, one {# page} other {# pages}}"
+    },
+    "results": {
+      "title": "Scan results",
+      "loadError": "These scan results could not be loaded. The scan may have been removed.",
+      "backToSite": "← Back to site",
+      "unknownValue": "Unknown",
+      "columns": {
+        "name": "Cookie",
+        "provider": "Provider",
+        "domain": "Domain",
+        "expiry": "Expiry"
+      },
+      "needsReview": {
+        "title": "Needs review",
+        "description": "We could not classify these cookies automatically. Assign a category so your banner blocks them correctly."
+      },
+      "empty": {
+        "title": "No cookies found",
+        "description": "This scan did not detect any cookies on the site."
+      }
+    }
   }
 }

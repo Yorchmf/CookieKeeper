@@ -168,5 +168,52 @@
       "scans": "Escaneos",
       "scansHint": "Últimos resultados del escaneo de cookies"
     }
+  },
+  "scans": {
+    "status": {
+      "queued": "En cola",
+      "running": "En curso",
+      "done": "Completado",
+      "failed": "Fallido"
+    },
+    "categories": {
+      "necessary": "Necesarias",
+      "preferences": "Preferencias",
+      "statistics": "Estadísticas",
+      "marketing": "Marketing"
+    },
+    "categoryHints": {
+      "necessary": "Imprescindibles para el funcionamiento del sitio. No requieren consentimiento.",
+      "preferences": "Recuerdan opciones como el idioma o la región.",
+      "statistics": "Miden cómo usan el sitio los visitantes.",
+      "marketing": "Rastrean a los visitantes para mostrar anuncios relevantes."
+    },
+    "history": {
+      "title": "Historial de escaneos",
+      "subtitle": "Escaneos de cookies de este sitio, del más reciente al más antiguo",
+      "empty": "Aún no hay escaneos. El primer escaneo se ejecuta poco después de añadir un sitio.",
+      "loadError": "No se pudo cargar el historial de escaneos. Inténtalo de nuevo.",
+      "pagesCrawled": "{count, plural, one {# página} other {# páginas}}"
+    },
+    "results": {
+      "title": "Resultados del escaneo",
+      "loadError": "No se pudieron cargar estos resultados de escaneo. Es posible que el escaneo se haya eliminado.",
+      "backToSite": "← Volver al sitio",
+      "unknownValue": "Desconocido",
+      "columns": {
+        "name": "Cookie",
+        "provider": "Proveedor",
+        "domain": "Dominio",
+        "expiry": "Caducidad"
+      },
+      "needsReview": {
+        "title": "Requiere revisión",
+        "description": "No pudimos clasificar estas cookies automáticamente. Asigna una categoría para que tu banner las bloquee correctamente."
+      },
+      "empty": {
+        "title": "No se encontraron cookies",
+        "description": "Este escaneo no detectó ninguna cookie en el sitio."
+      }
+    }
   }
 }

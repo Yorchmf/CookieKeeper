@@ -168,5 +168,52 @@
       "scans": "Scans",
       "scansHint": "Neueste Cookie-Scan-Ergebnisse"
     }
+  },
+  "scans": {
+    "status": {
+      "queued": "In Warteschlange",
+      "running": "Läuft",
+      "done": "Abgeschlossen",
+      "failed": "Fehlgeschlagen"
+    },
+    "categories": {
+      "necessary": "Notwendig",
+      "preferences": "Präferenzen",
+      "statistics": "Statistik",
+      "marketing": "Marketing"
+    },
+    "categoryHints": {
+      "necessary": "Für den Betrieb der Website erforderlich. Diese benötigen keine Einwilligung.",
+      "preferences": "Speichern Einstellungen wie Sprache oder Region.",
+      "statistics": "Messen, wie Besucher die Website nutzen.",
+      "marketing": "Verfolgen Besucher, um relevante Werbung anzuzeigen."
+    },
+    "history": {
+      "title": "Scan-Verlauf",
+      "subtitle": "Cookie-Scans für diese Website, neueste zuerst",
+      "empty": "Noch keine Scans. Der erste Scan startet kurz nach dem Hinzufügen einer Website.",
+      "loadError": "Der Scan-Verlauf konnte nicht geladen werden. Bitte versuchen Sie es erneut.",
+      "pagesCrawled": "{count, plural, one {# Seite} other {# Seiten}}"
+    },
+    "results": {
+      "title": "Scan-Ergebnisse",
+      "loadError": "Diese Scan-Ergebnisse konnten nicht geladen werden. Der Scan wurde möglicherweise entfernt.",
+      "backToSite": "← Zurück zur Website",
+      "unknownValue": "Unbekannt",
+      "columns": {
+        "name": "Cookie",
+        "provider": "Anbieter",
+        "domain": "Domain",
+        "expiry": "Ablauf"
+      },
+      "needsReview": {
+        "title": "Überprüfung erforderlich",
+        "description": "Wir konnten diese Cookies nicht automatisch klassifizieren. Weisen Sie eine Kategorie zu, damit Ihr Banner sie korrekt blockiert."
+      },
+      "empty": {
+        "title": "Keine Cookies gefunden",
+        "description": "Bei diesem Scan wurden keine Cookies auf der Website erkannt."
+      }
+    }
   }
 }

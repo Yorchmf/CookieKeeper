@@ -168,5 +168,52 @@
       "scans": "Analyses",
       "scansHint": "Derniers résultats d'analyse des cookies"
     }
+  },
+  "scans": {
+    "status": {
+      "queued": "En attente",
+      "running": "En cours",
+      "done": "Terminé",
+      "failed": "Échec"
+    },
+    "categories": {
+      "necessary": "Nécessaires",
+      "preferences": "Préférences",
+      "statistics": "Statistiques",
+      "marketing": "Marketing"
+    },
+    "categoryHints": {
+      "necessary": "Indispensables au fonctionnement du site. Ils ne nécessitent pas de consentement.",
+      "preferences": "Mémorisent des choix comme la langue ou la région.",
+      "statistics": "Mesurent la façon dont les visiteurs utilisent le site.",
+      "marketing": "Suivent les visiteurs pour afficher des publicités pertinentes."
+    },
+    "history": {
+      "title": "Historique des scans",
+      "subtitle": "Scans de cookies pour ce site, du plus récent au plus ancien",
+      "empty": "Aucun scan pour le moment. Le premier scan démarre peu après l'ajout d'un site.",
+      "loadError": "L'historique des scans n'a pas pu être chargé. Veuillez réessayer.",
+      "pagesCrawled": "{count, plural, one {# page} other {# pages}}"
+    },
+    "results": {
+      "title": "Résultats du scan",
+      "loadError": "Ces résultats de scan n'ont pas pu être chargés. Le scan a peut-être été supprimé.",
+      "backToSite": "← Retour au site",
+      "unknownValue": "Inconnu",
+      "columns": {
+        "name": "Cookie",
+        "provider": "Fournisseur",
+        "domain": "Domaine",
+        "expiry": "Expiration"
+      },
+      "needsReview": {
+        "title": "À vérifier",
+        "description": "Nous n'avons pas pu classer ces cookies automatiquement. Attribuez une catégorie pour que votre bannière les bloque correctement."
+      },
+      "empty": {
+        "title": "Aucun cookie trouvé",
+        "description": "Ce scan n'a détecté aucun cookie sur le site."
+      }
+    }
   }
 }
