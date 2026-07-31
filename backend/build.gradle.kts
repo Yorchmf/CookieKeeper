@@ -32,6 +32,10 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("com.bucket4j:bucket4j_jdk17-core:8.19.0")
+    // Scanner crawler (scanner profile only). Pinned to match the browser binaries baked into
+    // Dockerfile.scanner's mcr.microsoft.com/playwright/java:v1.61.0-noble base image — the library
+    // and the bundled Chromium must be the same Playwright version.
+    implementation("com.microsoft.playwright:playwright:1.61.0")
     implementation("org.flywaydb:flyway-database-postgresql")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("tools.jackson.module:jackson-module-kotlin")
@@ -95,6 +99,9 @@ val coverageClassPatterns =
         "com/complyr/site/SiteService*",
         "com/complyr/site/DomainValidator*",
         "com/complyr/scan/ScanQueue*",
+        // Security-critical SSRF range logic — must stay well covered. The Playwright crawler itself
+        // needs a real browser, so it is exercised via integration/manual runs, not this unit gate.
+        "com/complyr/scan/ScanTargetValidator*",
     )
 
 tasks.jacocoTestReport {

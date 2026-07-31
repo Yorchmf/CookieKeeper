@@ -47,18 +47,27 @@ class ScanWorker(
             val result = crawler.crawl(claim)
             scanQueue.markSucceeded(claim, result.pagesCrawled)
             log.info("Scan {} done: {} page(s)", claim.scanId, result.pagesCrawled)
+        } catch (ex: ScanTargetException) {
+            // The crawler classified this failure into a customer-safe reason code (unverified domain,
+            // blocked/unresolvable target, timeout, unreachable). Only the code reaches the scan row;
+            // the exception message (which may name the host/IP) stays in this server-side log.
+            recordFailure(claim, ex.reason, ex)
         } catch (
             @Suppress("TooGenericExceptionCaught") ex: Exception,
         ) {
             // A worker must survive any single job's failure and record it as scan state; a thrown
-            // crawl error becomes a retry (or dead-letter past max attempts), never a dead worker.
-            // Only a safe reason CODE reaches the (customer-visible) scan row — the raw exception, which
-            // may carry internal host/IP/stack detail, is confined to this server-side log line.
-            // Slice 1's crawler is a no-op, so any failure here is an internal error; Slice 2 maps
-            // concrete crawl error types to their own safe reasons.
-            val reason = ScanFailureReason.INTERNAL
-            log.warn("Scan {} attempt {}/{} failed ({})", claim.scanId, claim.attempt, claim.maxAttempts, reason.code, ex)
-            scanQueue.markFailed(claim, reason.code)
+            // crawl error becomes a retry (or dead-letter past max attempts), never a dead worker. An
+            // unclassified error is reported generically so no internal detail leaks to the dashboard.
+            recordFailure(claim, ScanFailureReason.INTERNAL, ex)
         }
+    }
+
+    private fun recordFailure(
+        claim: ClaimedScan,
+        reason: ScanFailureReason,
+        ex: Exception,
+    ) {
+        log.warn("Scan {} attempt {}/{} failed ({})", claim.scanId, claim.attempt, claim.maxAttempts, reason.code, ex)
+        scanQueue.markFailed(claim, reason.code)
     }
 }

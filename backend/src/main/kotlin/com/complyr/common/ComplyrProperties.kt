@@ -136,6 +136,10 @@ data class ComplyrProperties(
         val retryBackoff: Duration = Duration.ofMinutes(DEFAULT_RETRY_BACKOFF_MINUTES),
         val maxJobsPerPoll: Int = DEFAULT_MAX_JOBS_PER_POLL,
         val maxPages: Int = DEFAULT_MAX_PAGES,
+        // Per-page navigation cap (§4.4) — one slow page can't stall a crawl.
+        val pageTimeout: Duration = Duration.ofSeconds(DEFAULT_PAGE_TIMEOUT_SECONDS),
+        // Whole-job wall-clock cap (§4.4) — the crawler stops opening pages past this budget.
+        val jobTimeout: Duration = Duration.ofMinutes(DEFAULT_JOB_TIMEOUT_MINUTES),
     ) {
         init {
             require(!visibilityTimeout.isZero && !visibilityTimeout.isNegative) {
@@ -147,6 +151,20 @@ data class ComplyrProperties(
             require(maxAttempts > 0) { "complyr.scan.max-attempts must be positive (was $maxAttempts)" }
             require(maxJobsPerPoll > 0) { "complyr.scan.max-jobs-per-poll must be positive (was $maxJobsPerPoll)" }
             require(maxPages > 0) { "complyr.scan.max-pages must be positive (was $maxPages)" }
+            require(!pageTimeout.isZero && !pageTimeout.isNegative) {
+                "complyr.scan.page-timeout must be a positive duration (was $pageTimeout)"
+            }
+            require(!jobTimeout.isZero && !jobTimeout.isNegative) {
+                "complyr.scan.job-timeout must be a positive duration (was $jobTimeout)"
+            }
+            // The queue redelivers a job once its visibility lease lapses; if a healthy crawl could run
+            // longer than that lease it would be double-claimed (ADR-4 invariant). The job budget is
+            // only checked *between* pages, so the last page can start at ~jobTimeout and run a further
+            // pageTimeout — include that tail so a slow-but-live crawl always finishes before redelivery.
+            require(jobTimeout + pageTimeout <= visibilityTimeout) {
+                "complyr.scan.job-timeout ($jobTimeout) + page-timeout ($pageTimeout) must not exceed " +
+                    "visibility-timeout ($visibilityTimeout)"
+            }
         }
 
         companion object {
@@ -155,6 +173,8 @@ data class ComplyrProperties(
             const val DEFAULT_RETRY_BACKOFF_MINUTES = 1L
             const val DEFAULT_MAX_JOBS_PER_POLL = 50
             const val DEFAULT_MAX_PAGES = 10
+            const val DEFAULT_PAGE_TIMEOUT_SECONDS = 60L
+            const val DEFAULT_JOB_TIMEOUT_MINUTES = 10L
         }
     }
 }
