@@ -31,6 +31,7 @@ import {
   writeConsent,
   type ConsentState,
 } from './storage';
+import { uuidv7 } from './uuid';
 
 interface ComplyrApi {
   /** Reopen the banner ("withdraw consent as easily as given"). */
@@ -165,9 +166,12 @@ function commit(
   const vid = getOrCreateVid();
   writeConsent(categories, vid);
 
-  // Audit evidence first — this is the compliance-critical write.
+  // Audit evidence first — this is the compliance-critical write. eventKey is
+  // minted here, once per decision, and rides inside the payload — so every
+  // localStorage-queued retry replays the SAME key and the backend records the
+  // event exactly once.
   if (siteKey) {
-    sendConsentEvent({ siteKey, action, categories, lang, ts: Date.now(), vid });
+    sendConsentEvent({ siteKey, action, categories, lang, eventKey: uuidv7(), vid });
   }
 
   // Enactment second. unblockScripts already isolates per-tag failures; guard

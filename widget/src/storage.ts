@@ -10,6 +10,7 @@
 import { COOKIE_MAX_AGE_SECONDS, COOKIE_SCHEMA_VERSION } from './constants';
 import type { ConsentDecision } from './consent-mode';
 import { warn } from './debug';
+import { randomBytes16, toUuidString } from './uuid';
 
 export const COOKIE_NAME = 'cmplyr';
 
@@ -79,33 +80,21 @@ export function writeConsent(
   return state;
 }
 
-/** RFC 4122 v4 UUID — native when available, else derived from CSPRNG bytes. */
+/**
+ * RFC 4122 v4 UUID — native `crypto.randomUUID()` when available, else derived
+ * from shared CSPRNG bytes. vid is a stable correlation id, so v4 (fully random)
+ * is the right shape here; the time-ordered v7 in [uuid.ts] is only for the
+ * index-hot server-side keys.
+ */
 function generateVid(): string {
   const cryptoObj = globalThis.crypto;
   if (cryptoObj && typeof cryptoObj.randomUUID === 'function') {
     return cryptoObj.randomUUID();
   }
-  const bytes = new Uint8Array(16);
-  if (typeof cryptoObj?.getRandomValues === 'function') {
-    cryptoObj.getRandomValues(bytes);
-  } else {
-    // No CSPRNG at all (ancient/locked-down env). Fall back to a non-crypto
-    // seed so distinct visitors don't all collapse onto one constant all-zero
-    // UUID — vid is only an audit-correlation id, never a security token.
-    warn('crypto.getRandomValues unavailable; using non-crypto vid fallback');
-    const seed = Date.now();
-    for (let i = 0; i < bytes.length; i++) {
-      bytes[i] = Math.floor(Math.random() * 256) ^ ((seed >>> (i % 32)) & 0xff);
-    }
-  }
+  const bytes = randomBytes16();
   bytes[6] = (bytes[6]! & 0x0f) | 0x40; // version 4
   bytes[8] = (bytes[8]! & 0x3f) | 0x80; // variant 10xx
-  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0'));
-  return (
-    `${hex.slice(0, 4).join('')}-${hex.slice(4, 6).join('')}-` +
-    `${hex.slice(6, 8).join('')}-${hex.slice(8, 10).join('')}-` +
-    `${hex.slice(10, 16).join('')}`
-  );
+  return toUuidString(bytes);
 }
 
 function isConsentState(value: unknown): value is ConsentState {

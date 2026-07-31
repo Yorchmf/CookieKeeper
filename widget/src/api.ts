@@ -19,7 +19,14 @@ export interface ConsentEventPayload {
   action: 'accept_all' | 'reject_all' | 'custom';
   categories: ConsentDecision;
   lang: string;
-  ts: number;
+  /**
+   * Idempotency key (UUIDv7), minted once per consent decision and replayed
+   * verbatim on every retry. The backend claims it in `consent_idempotency`, so
+   * a retry of an already-recorded event is de-duplicated instead of writing a
+   * second append-only audit row. The audit timestamp is server-stamped, never
+   * sent by the client.
+   */
+  eventKey: string;
   /** Stable per-browser id (UUID) for audit correlation. */
   vid: string;
 }
@@ -53,10 +60,10 @@ export function sendConsentEvent(payload: ConsentEventPayload): void {
  */
 export function flushPendingEvents(): void {
   const pending = readPending();
-  if (pending.length === 0) return;
 
-  // Clear the store up front, then re-queue whatever fails, so a flush that
-  // races another send can't duplicate-then-drop entries.
+  // Clear the store up front — this also discards any un-replayable legacy
+  // entries readPending filtered out — then re-queue whatever fails, so a flush
+  // that races another send can't duplicate-then-drop entries.
   writePending([]);
   for (const payload of pending) {
     postWithRetry(endpoint(), JSON.stringify(payload), payload);
@@ -90,7 +97,8 @@ function postWithRetry(
 function enqueuePending(payload: ConsentEventPayload): void {
   const pending = readPending();
   // Keep the most recent events; a very stale queue is less valuable than a
-  // bounded one, and the backend de-duplicates on (vid, ts).
+  // bounded one. Each payload carries a stable eventKey, so a redelivered entry
+  // is de-duplicated by the backend rather than double-recorded.
   const next = [...pending, payload].slice(-MAX_PENDING);
   writePending(next);
 }
@@ -100,11 +108,33 @@ function readPending(): ConsentEventPayload[] {
     const raw = localStorage.getItem(PENDING_KEY);
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as ConsentEventPayload[]) : [];
+    if (!Array.isArray(parsed)) return [];
+    // Keep only replayable entries. A payload from a pre-eventKey widget version
+    // (or any malformed entry) has no idempotency key, so redelivering it would
+    // bypass backend dedupe and risk a duplicate audit row — the exact failure
+    // eventKey exists to prevent. Drop it rather than replay it blind.
+    return parsed.filter(isReplayablePayload);
   } catch {
     // localStorage unavailable (privacy mode) or corrupt — nothing to retry.
     return [];
   }
+}
+
+/** A queued entry is only worth replaying if it still carries the fields the backend needs to dedupe and record it. */
+function isReplayablePayload(value: unknown): value is ConsentEventPayload {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  const categories = candidate['categories'];
+  return (
+    typeof candidate['eventKey'] === 'string' &&
+    typeof candidate['siteKey'] === 'string' &&
+    typeof candidate['action'] === 'string' &&
+    typeof candidate['lang'] === 'string' &&
+    typeof candidate['vid'] === 'string' &&
+    typeof categories === 'object' &&
+    categories !== null &&
+    !Array.isArray(categories)
+  );
 }
 
 function writePending(events: ConsentEventPayload[]): void {
