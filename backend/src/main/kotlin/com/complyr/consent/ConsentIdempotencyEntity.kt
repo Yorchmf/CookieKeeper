@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.Repository
 import org.springframework.data.repository.query.Param
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -43,5 +44,21 @@ interface ConsentIdempotencyRepository : Repository<ConsentIdempotencyEntity, UU
     )
     fun claim(
         @Param("eventKey") eventKey: UUID,
+    ): Int
+
+    /**
+     * Prune dedupe keys claimed before [cutoff], returning the number of rows removed. Native
+     * because `created_at` is intentionally not mapped on the entity (it exists only for this
+     * scan). This is disposable bookkeeping, not audit evidence, so DELETE is allowed here —
+     * unlike the append-only sibling `consent_events`. Called only by the scheduled
+     * [ConsentIdempotencyReaper]; keys must outlive a pending widget retry, nothing longer.
+     */
+    @Modifying
+    @Query(
+        value = "DELETE FROM consent_idempotency WHERE created_at < :cutoff",
+        nativeQuery = true,
+    )
+    fun deleteClaimedBefore(
+        @Param("cutoff") cutoff: Instant,
     ): Int
 }

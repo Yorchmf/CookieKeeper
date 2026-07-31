@@ -11,6 +11,7 @@ data class ComplyrProperties(
     val auth: Auth,
     val rateLimit: RateLimit = RateLimit(),
     val cors: Cors = Cors(),
+    val consent: Consent = Consent(),
     val appBaseUrl: String,
     val cdnBaseUrl: String,
     val mailFrom: String,
@@ -71,6 +72,31 @@ data class ComplyrProperties(
             val DEFAULT_ALLOWED_HEADERS = listOf("Content-Type")
             const val DEFAULT_MAX_AGE_SECONDS = 3600L
             val DEFAULT_PATHS = listOf("/api/v1/consent", "/api/v1/widget-config/**")
+        }
+    }
+
+    /**
+     * Consent-ingestion tuning. [idempotencyRetention] is how long a claimed dedupe key lives in
+     * `consent_idempotency` before the scheduled reaper prunes it (see
+     * [com.complyr.consent.ConsentIdempotencyReaper]). It only has to outlive a pending widget
+     * retry — the localStorage replay queue drains within days — not the multi-year consent
+     * retention. A short window keeps this non-partitioned, DELETE-pruned table small and bounds
+     * its bloat (see V5 migration). The prune schedule itself is the raw `complyr.consent.
+     * idempotency-prune-cron` property read by `@Scheduled`, not a typed field here.
+     */
+    data class Consent(
+        val idempotencyRetention: Duration = Duration.ofDays(DEFAULT_IDEMPOTENCY_RETENTION_DAYS),
+    ) {
+        init {
+            // A zero/negative window makes cutoff >= now, so the reaper would delete still-active,
+            // in-flight keys and silently disable dedupe (fails open). Refuse the misconfig at startup.
+            require(!idempotencyRetention.isZero && !idempotencyRetention.isNegative) {
+                "complyr.consent.idempotency-retention must be a positive duration (was $idempotencyRetention)"
+            }
+        }
+
+        companion object {
+            const val DEFAULT_IDEMPOTENCY_RETENTION_DAYS = 14L
         }
     }
 }

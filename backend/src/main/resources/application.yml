@@ -48,6 +48,12 @@ complyr:
     refresh-token-ttl: 30d
     verification-token-ttl: 24h
     reset-token-ttl: 1h
+  consent:
+    # How long a claimed dedupe key lives before the reaper prunes it. Only has to outlive a
+    # pending widget retry (localStorage replays drain within days); short keeps the table small.
+    idempotency-retention: ${CONSENT_IDEMPOTENCY_RETENTION:14d}
+    # Reaper schedule (Spring cron, server zone). Default 03:30 daily is also baked into the job.
+    idempotency-prune-cron: ${CONSENT_IDEMPOTENCY_PRUNE_CRON:0 30 3 * * *}
   app-base-url: ${APP_BASE_URL:http://localhost:3000}
   cdn-base-url: ${CDN_BASE_URL:http://localhost:8081}
   mail-from: ${MAIL_FROM:no-reply@complyr.eu}
