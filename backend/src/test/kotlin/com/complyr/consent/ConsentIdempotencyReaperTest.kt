@@ -6,11 +6,13 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.jdbc.core.JdbcTemplate
+import java.sql.Connection
 import java.time.Duration
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
+import javax.sql.DataSource
 import kotlin.test.assertEquals
 
 /**
@@ -27,6 +29,9 @@ class ConsentIdempotencyReaperTest {
     @Autowired
     private lateinit var jdbcTemplate: JdbcTemplate
 
+    @Autowired
+    private lateinit var dataSource: DataSource
+
     @Test
     fun `prune deletes keys past the retention window and keeps recent ones`() {
         val expired = UUID.randomUUID()
@@ -39,6 +44,44 @@ class ConsentIdempotencyReaperTest {
 
         assertEquals(0, countKey(expired), "a key older than the retention window is pruned")
         assertEquals(1, countKey(fresh), "a recently-claimed key survives so its in-flight retry still de-dupes")
+    }
+
+    @Test
+    fun `prune is skipped while another instance holds the advisory lock`() {
+        val expired = UUID.randomUUID()
+        insertKey(expired, Instant.now().minus(Duration.ofDays(90)))
+
+        // Simulate a second replica already pruning: hold the same advisory lock on a separate
+        // session, then the reaper must no-op instead of deleting under it.
+        dataSource.connection.use { holder ->
+            holder.autoCommit = true
+            advisoryLock(holder, "pg_advisory_lock")
+            try {
+                reaper.prune()
+                assertEquals(
+                    1,
+                    countKey(expired),
+                    "prune must skip while another instance holds the lock, leaving the expired key untouched",
+                )
+            } finally {
+                advisoryLock(holder, "pg_advisory_unlock")
+            }
+        }
+
+        // With the lock released, the next run prunes the same key as normal.
+        reaper.prune()
+        assertEquals(0, countKey(expired), "once the advisory lock is free the expired key is pruned")
+    }
+
+    /** Session-level lock/unlock on a dedicated connection, keyed the same as the reaper's guard. */
+    private fun advisoryLock(
+        connection: Connection,
+        function: String,
+    ) {
+        connection.prepareStatement("SELECT $function(?)").use { statement ->
+            statement.setLong(1, ConsentIdempotencyReaper.ADVISORY_LOCK_KEY)
+            statement.executeQuery().use { rows -> rows.next() }
+        }
     }
 
     private fun insertKey(

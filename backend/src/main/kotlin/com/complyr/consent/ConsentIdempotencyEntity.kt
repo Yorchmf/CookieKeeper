@@ -30,6 +30,18 @@ class ConsentIdempotencyEntity(
 
 interface ConsentIdempotencyRepository : Repository<ConsentIdempotencyEntity, UUID> {
     /**
+     * Try to take the transaction-scoped advisory lock [key], returning true only to the caller
+     * that acquired it. Used to leader-guard the scheduled prune across backend replicas: a losing
+     * caller skips its run. The lock is held for the rest of the current transaction and released
+     * automatically at commit or rollback — so it must be called from within the prune's
+     * `@Transactional` boundary, never on its own.
+     */
+    @Query(value = "SELECT pg_try_advisory_xact_lock(:key)", nativeQuery = true)
+    fun tryAcquireAdvisoryXactLock(
+        @Param("key") key: Long,
+    ): Boolean
+
+    /**
      * Atomically reserve [eventKey], returning 1 when this call inserted it and 0 when it was
      * already present (a replayed retry). `ON CONFLICT DO NOTHING` is the only viable conflict
      * action: the append-only trigger on the sibling table forbids UPDATE, and DO NOTHING gives

@@ -17,6 +17,11 @@ import java.time.Clock
  * DELETE-pruned rather than DROP PARTITION (the table can't be partitioned on `created_at`
  * without forcing it into the dedupe key), so the window is kept short to bound table bloat —
  * see the V5 migration's bloat note.
+ *
+ * Multi-instance safe: `@Scheduled` fires on every replica, so the prune first claims a
+ * transaction-scoped Postgres advisory lock and no-ops if another instance already holds it.
+ * That turns a daily N-way lock convoy on the same rows into a single winner per run. The lock
+ * auto-releases when the transaction ends, so a crashed run never strands it.
  */
 @Component
 class ConsentIdempotencyReaper(
@@ -29,12 +34,19 @@ class ConsentIdempotencyReaper(
     /**
      * Deletes keys claimed before `now - retention`. Cron-scheduled off-peak; overridable via
      * `complyr.consent.idempotency-prune-cron` (defaulted here so no yml entry is required).
-     * `@Transactional` scopes the bulk delete to one transaction; a failure rolls back cleanly
-     * and the next run simply retries the same window.
+     * `@Transactional` scopes both the leader-guard lock and the bulk delete to one transaction;
+     * a failure rolls back cleanly (releasing the lock) and the next run retries the same window.
+     *
+     * The advisory lock must be acquired inside this transaction — hence the guard is the first
+     * statement — so it stays held through the delete and is released only at commit/rollback.
      */
     @Scheduled(cron = "\${complyr.consent.idempotency-prune-cron:$DEFAULT_PRUNE_CRON}")
     @Transactional
     fun prune() {
+        if (!consentIdempotencyRepository.tryAcquireAdvisoryXactLock(ADVISORY_LOCK_KEY)) {
+            log.debug("Skipping consent idempotency prune; another instance holds the lock")
+            return
+        }
         val cutoff = clock.instant().minus(properties.consent.idempotencyRetention)
         val deleted = consentIdempotencyRepository.deleteClaimedBefore(cutoff)
         if (deleted > 0) {
@@ -42,8 +54,14 @@ class ConsentIdempotencyReaper(
         }
     }
 
-    private companion object {
+    companion object {
+        /**
+         * Application-wide-unique advisory-lock key (arbitrary fixed constant) that serializes the
+         * prune across instances. Keep distinct from any other `pg_advisory*` key the app takes.
+         */
+        internal const val ADVISORY_LOCK_KEY: Long = 4_827_913_006L
+
         // 03:30 daily (server zone) — off the traffic peak; the window is far wider than the churn.
-        const val DEFAULT_PRUNE_CRON = "0 30 3 * * *"
+        private const val DEFAULT_PRUNE_CRON = "0 30 3 * * *"
     }
 }
