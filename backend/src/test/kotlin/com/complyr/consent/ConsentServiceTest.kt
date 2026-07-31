@@ -27,10 +27,18 @@ class ConsentServiceTest {
     private val now: Instant = Instant.parse("2026-07-30T12:00:00Z")
     private val siteRepository = mockk<SiteRepository>()
     private val consentEventRepository = mockk<ConsentEventRepository>(relaxed = true)
+    private val consentIdempotencyRepository = mockk<ConsentIdempotencyRepository>(relaxed = true)
     private val bannerConfigService = mockk<BannerConfigService>()
     private val ipHasher = IpHasher(Clock.fixed(now, ZoneOffset.UTC))
     private val service =
-        ConsentService(siteRepository, consentEventRepository, bannerConfigService, ipHasher, Clock.fixed(now, ZoneOffset.UTC))
+        ConsentService(
+            siteRepository,
+            consentEventRepository,
+            consentIdempotencyRepository,
+            bannerConfigService,
+            ipHasher,
+            Clock.fixed(now, ZoneOffset.UTC),
+        )
 
     private val siteKey = "pk_live_site_key"
     private val site = SiteEntity(userId = UUID.randomUUID(), domain = "example.com", siteKey = siteKey)
@@ -40,7 +48,9 @@ class ConsentServiceTest {
         categories: Map<String, Boolean> = mapOf("necessary" to true, "statistics" to true),
         vid: String? = UUID.randomUUID().toString(),
         lang: String? = "de",
-    ): ConsentEventRequest = ConsentEventRequest(siteKey = siteKey, action = action, categories = categories, lang = lang, vid = vid)
+        eventKey: String? = null,
+    ): ConsentEventRequest =
+        ConsentEventRequest(siteKey = siteKey, action = action, categories = categories, lang = lang, vid = vid, eventKey = eventKey)
 
     private fun meta(
         ip: String? = "203.0.113.7",
@@ -171,6 +181,32 @@ class ConsentServiceTest {
             service.record(request(categories = mapOf("statistics" to true)), meta())
         }
         verify(exactly = 0) { consentEventRepository.save(any()) }
+    }
+
+    @Test
+    fun `a replayed event key records the consent once and skips the duplicate`() {
+        stubActiveSite()
+        val key = UUID.randomUUID()
+        // First claim wins (1 row inserted); the replayed retry conflicts (0 rows).
+        every { consentIdempotencyRepository.claim(key) } returns 1 andThen 0
+
+        service.record(request(eventKey = key.toString()), meta())
+        service.record(request(eventKey = key.toString()), meta())
+
+        verify(exactly = 2) { consentIdempotencyRepository.claim(key) }
+        verify(exactly = 1) { consentEventRepository.save(any()) }
+    }
+
+    @Test
+    fun `an absent or malformed event key skips the idempotency claim and still records`() {
+        stubActiveSite()
+
+        service.record(request(eventKey = null), meta())
+        service.record(request(eventKey = "not-a-uuid"), meta())
+
+        // No dedupe attempt for a missing/garbled key, but the event is never dropped.
+        verify(exactly = 0) { consentIdempotencyRepository.claim(any()) }
+        verify(exactly = 2) { consentEventRepository.save(any()) }
     }
 
     @Test

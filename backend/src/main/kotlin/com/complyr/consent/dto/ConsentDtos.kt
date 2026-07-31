@@ -8,7 +8,8 @@ import jakarta.validation.constraints.Size
  * Public consent-ingestion payload (POST /api/v1/consent). Unauthenticated and
  * cross-origin, so every field is treated as untrusted: sizes are bounded here and
  * values are re-validated in the service. The client-sent timestamp is intentionally
- * absent — the server stamps `created_at` so audit time can't be forged.
+ * absent — the server stamps `created_at` so audit time can't be forged. [eventKey] is
+ * a dedupe key only, never used as audit time.
  */
 data class ConsentEventRequest(
     @field:NotBlank
@@ -27,6 +28,13 @@ data class ConsentEventRequest(
     val vid: String? = null,
     val bannerVersion: Int? = null,
     val policyVersion: Int? = null,
+    /**
+     * Client-generated idempotency key (UUID), stable across the widget's retry replays, so a
+     * double-delivered event is recorded once. Absent or malformed → no de-dupe, and the event
+     * is still recorded (losing audit evidence is worse than a rare duplicate).
+     */
+    @field:Size(max = MAX_EVENT_KEY_LENGTH)
+    val eventKey: String? = null,
 ) {
     companion object {
         const val MAX_SITE_KEY_LENGTH = 64
@@ -35,6 +43,7 @@ data class ConsentEventRequest(
         const val MAX_CATEGORY_KEY_LENGTH = 64
         const val MAX_LANG_LENGTH = 12
         const val MAX_VID_LENGTH = 36
+        const val MAX_EVENT_KEY_LENGTH = 36
     }
 }
 

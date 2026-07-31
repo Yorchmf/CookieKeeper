@@ -19,8 +19,14 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.support.TransactionTemplate
 import tools.jackson.databind.ObjectMapper
 import java.util.UUID
+import java.util.concurrent.Callable
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
@@ -48,7 +54,13 @@ class ConsentApiIntegrationTest {
     private lateinit var consentEventRepository: ConsentEventRepository
 
     @Autowired
+    private lateinit var consentIdempotencyRepository: ConsentIdempotencyRepository
+
+    @Autowired
     private lateinit var jdbcTemplate: JdbcTemplate
+
+    @Autowired
+    private lateinit var transactionManager: PlatformTransactionManager
 
     private fun registeredUserCookie(): Cookie {
         val email = "user-${UUID.randomUUID()}@example.com"
@@ -192,6 +204,111 @@ class ConsentApiIntegrationTest {
                 jdbcTemplate.execute("TRUNCATE TABLE consent_events")
             }
         assertTrue(failure.message?.contains("append-only") == true, failure.message)
+    }
+
+    @Test
+    fun `a replayed event key records the consent only once`() {
+        val siteKey = createSiteKey(registeredUserCookie())
+        val vid = UUID.randomUUID()
+        val body =
+            objectMapper.writeValueAsString(
+                mapOf(
+                    "siteKey" to siteKey,
+                    "action" to "accept_all",
+                    "categories" to mapOf("necessary" to true),
+                    "vid" to vid.toString(),
+                    "eventKey" to UUID.randomUUID().toString(),
+                ),
+            )
+
+        // The widget replays the identical queued payload (same eventKey) after a failed send.
+        repeat(2) {
+            mockMvc
+                .perform(post("/api/v1/consent").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.data.recorded").value(true))
+        }
+
+        assertEquals(1, consentEventRepository.findByVisitorId(vid).size, "a replayed eventKey must not duplicate the audit row")
+    }
+
+    @Test
+    fun `concurrent posts with the same event key record the consent exactly once`() {
+        val siteKey = createSiteKey(registeredUserCookie())
+        val vid = UUID.randomUUID()
+        val body =
+            objectMapper.writeValueAsString(
+                mapOf(
+                    "siteKey" to siteKey,
+                    "action" to "accept_all",
+                    "categories" to mapOf("necessary" to true),
+                    "vid" to vid.toString(),
+                    "eventKey" to UUID.randomUUID().toString(),
+                ),
+            )
+
+        // Two threads race the same key (double-click / retry-races-fresh-send). ON CONFLICT
+        // + the PK row lock must yield exactly one winner regardless of interleaving.
+        val pool = Executors.newFixedThreadPool(2)
+        val startLine = CountDownLatch(1)
+        val posts =
+            (1..2).map {
+                Callable {
+                    startLine.await()
+                    mockMvc
+                        .perform(post("/api/v1/consent").contentType(MediaType.APPLICATION_JSON).content(body))
+                        .andReturn()
+                        .response.status
+                }
+            }
+        val running = posts.map { pool.submit(it) }
+        startLine.countDown()
+        val statuses = running.map { it.get(10, TimeUnit.SECONDS) }
+        pool.shutdown()
+
+        assertTrue(statuses.all { it == 200 }, "both racing posts succeed idempotently: $statuses")
+        assertEquals(1, consentEventRepository.findByVisitorId(vid).size, "a same-key race must not duplicate the audit row")
+    }
+
+    @Test
+    fun `a rolled-back claim releases the key so a legitimate retry can still record`() {
+        val key = UUID.randomUUID()
+        val txTemplate = TransactionTemplate(transactionManager)
+
+        // Simulate the consent insert failing after a winning claim: claim, then roll the
+        // whole transaction back. The key must NOT stay consumed, or a genuine retry is
+        // permanently blocked and the consent event is lost.
+        txTemplate.execute { status ->
+            assertEquals(1, consentIdempotencyRepository.claim(key), "first claim wins")
+            status.setRollbackOnly()
+        }
+
+        val reclaimed = txTemplate.execute { consentIdempotencyRepository.claim(key) }
+        assertEquals(1, reclaimed, "rollback released the key; the retry re-claims it")
+    }
+
+    @Test
+    fun `two events without an event key are each recorded`() {
+        val siteKey = createSiteKey(registeredUserCookie())
+        val vid = UUID.randomUUID()
+        val body =
+            objectMapper.writeValueAsString(
+                mapOf(
+                    "siteKey" to siteKey,
+                    "action" to "accept_all",
+                    "categories" to mapOf("necessary" to true),
+                    "vid" to vid.toString(),
+                ),
+            )
+
+        // No eventKey → no dedupe gate; each delivery is a distinct, legitimate audit row.
+        repeat(2) {
+            mockMvc
+                .perform(post("/api/v1/consent").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk)
+        }
+
+        assertEquals(2, consentEventRepository.findByVisitorId(vid).size, "without an eventKey each post is its own row")
     }
 
     @Test

@@ -53,6 +53,7 @@ data class ConsentRequestMeta(
 class ConsentService(
     private val siteRepository: SiteRepository,
     private val consentEventRepository: ConsentEventRepository,
+    private val consentIdempotencyRepository: ConsentIdempotencyRepository,
     private val bannerConfigService: BannerConfigService,
     private val ipHasher: IpHasher,
     private val clock: Clock,
@@ -68,13 +69,20 @@ class ConsentService(
         val action =
             ConsentAction.fromClient(request.action)
                 ?: throw InvalidConsentPayloadException("Unsupported action")
+        val categories = validateCategories(request.categories, categoryRules(site.id))
+
+        // De-dupe replayed widget retries: claim the client idempotency key before writing.
+        // A losing claim means this exact event is already on file — skip the second append.
+        // Runs after validation so only legitimate payloads ever consume a key; the shared
+        // transaction rolls the claim back if the consent insert below fails.
+        if (!claimIdempotencyKey(request.eventKey)) return
 
         consentEventRepository.save(
             ConsentEventEntity(
                 siteId = site.id,
                 visitorId = resolveVisitorId(request.vid),
                 action = action.clientValue,
-                categories = validateCategories(request.categories, categoryRules(site.id)),
+                categories = categories,
                 // Recorded verbatim by design (D3): the version reflects the banner/policy the visitor
                 // actually saw — possibly a cached one lagging a fresh republish — so it is honest audit
                 // metadata, not something to overwrite with the server's current version. Only the
@@ -87,6 +95,16 @@ class ConsentService(
                 createdAt = clock.instant(),
             ),
         )
+    }
+
+    /**
+     * Reserve the client idempotency key; false only when it was already used (a replayed retry
+     * to skip). Absent or malformed keys are not de-duped — the event is still recorded, since a
+     * rare duplicate is a lesser evil than dropping audit evidence over a missing/garbled key.
+     */
+    private fun claimIdempotencyKey(eventKey: String?): Boolean {
+        val key = eventKey?.let { runCatching { UUID.fromString(it) }.getOrNull() } ?: return true
+        return consentIdempotencyRepository.claim(key) == 1
     }
 
     /** Reuse the visitor's cookie id when it is a valid UUID; otherwise mint a fresh one. */
