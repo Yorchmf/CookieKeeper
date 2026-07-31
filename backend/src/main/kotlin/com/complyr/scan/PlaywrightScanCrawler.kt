@@ -76,20 +76,29 @@ class PlaywrightScanCrawler(
         validator.validate(site.domain)
 
         val outcome = crawlSite(site.domain)
-        persistCookies(claim.scanId, outcome.cookies)
-        log.info("Scan {} crawled {} page(s), recorded {} cookie(s)", claim.scanId, outcome.pagesCrawled, outcome.cookies.size)
+        val recorded = persistCookies(claim.scanId, outcome.cookies)
+        // Log the count actually persisted after de-dup/cap, not the raw observed count.
+        log.info("Scan {} crawled {} page(s), recorded {} cookie(s)", claim.scanId, outcome.pagesCrawled, recorded)
         return ScanCrawlResult(pagesCrawled = outcome.pagesCrawled)
     }
 
+    /** Persists the classified cookie rows and returns how many were recorded (post de-dup/cap). */
     private fun persistCookies(
         scanId: UUID,
         cookies: List<Cookie>,
-    ) {
+    ): Int {
         // Map -> classify against the signature DB -> persist. A retry reuses the same scan id, so the
         // writer clears the prior attempt's findings before re-recording — atomically, in one
         // transaction (findings are replaceable, not audit evidence).
-        val classified = classifier.classify(ScanCookieMapper.toEntities(scanId, cookies))
+        val caps = ScanCookieMapper.Caps(properties.scan.maxCookies, properties.scan.maxCookieNameLength)
+        val mapped = ScanCookieMapper.toEntities(scanId, cookies, caps)
+        if (mapped.wasCapped) {
+            // Count only — never log attacker-controlled cookie names (§4 no-PII/no-injection in logs).
+            log.warn("Scan {} hit the cookie cap ({}); excess observed cookies were not recorded", scanId, caps.maxCookies)
+        }
+        val classified = classifier.classify(mapped.rows)
         cookieWriter.replace(scanId, classified)
+        return mapped.rows.size
     }
 
     private fun crawlSite(domain: String): CrawlOutcome {

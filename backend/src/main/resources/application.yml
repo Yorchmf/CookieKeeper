@@ -68,6 +68,11 @@ complyr:
     max-pages: ${SCAN_MAX_PAGES:10}
     page-timeout: ${SCAN_PAGE_TIMEOUT:60s}
     job-timeout: ${SCAN_JOB_TIMEOUT:10m}
+    # Abuse bounds on the attacker-influenced cookie set (§4.4). A verified but hostile site can drop
+    # many cookies with long, arbitrary names into an unbounded text column; cap the row count and
+    # truncate over-long names before persistence so one scan can't bloat scan_cookies.
+    max-cookies: ${SCAN_MAX_COOKIES:500}
+    max-cookie-name-length: ${SCAN_MAX_COOKIE_NAME_LENGTH:256}
   app-base-url: ${APP_BASE_URL:http://localhost:3000}
   cdn-base-url: ${CDN_BASE_URL:http://localhost:8081}
   mail-from: ${MAIL_FROM:no-reply@complyr.eu}

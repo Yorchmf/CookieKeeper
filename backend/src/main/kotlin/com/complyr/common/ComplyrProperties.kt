@@ -140,6 +140,11 @@ data class ComplyrProperties(
         val pageTimeout: Duration = Duration.ofSeconds(DEFAULT_PAGE_TIMEOUT_SECONDS),
         // Whole-job wall-clock cap (§4.4) — the crawler stops opening pages past this budget.
         val jobTimeout: Duration = Duration.ofMinutes(DEFAULT_JOB_TIMEOUT_MINUTES),
+        // Abuse bounds on the attacker-influenced cookie set persisted per scan (§4.4): a hostile but
+        // verified site can drop many cookies with long, arbitrary names into an unbounded `text`
+        // column. [maxCookies] caps the rows one scan records; [maxCookieNameLength] truncates names.
+        val maxCookies: Int = DEFAULT_MAX_COOKIES,
+        val maxCookieNameLength: Int = DEFAULT_MAX_COOKIE_NAME_LENGTH,
     ) {
         init {
             require(!visibilityTimeout.isZero && !visibilityTimeout.isNegative) {
@@ -156,6 +161,10 @@ data class ComplyrProperties(
             }
             require(!jobTimeout.isZero && !jobTimeout.isNegative) {
                 "complyr.scan.job-timeout must be a positive duration (was $jobTimeout)"
+            }
+            require(maxCookies > 0) { "complyr.scan.max-cookies must be positive (was $maxCookies)" }
+            require(maxCookieNameLength > 0) {
+                "complyr.scan.max-cookie-name-length must be positive (was $maxCookieNameLength)"
             }
             // The queue redelivers a job once its visibility lease lapses; if a healthy crawl could run
             // longer than that lease it would be double-claimed (ADR-4 invariant). The job budget is
@@ -175,6 +184,11 @@ data class ComplyrProperties(
             const val DEFAULT_MAX_PAGES = 10
             const val DEFAULT_PAGE_TIMEOUT_SECONDS = 60L
             const val DEFAULT_JOB_TIMEOUT_MINUTES = 10L
+
+            // Generous enough for ad-heavy but legitimate sites; still bounds a hostile flood. A
+            // realistic pre-consent cookie name is short, so 256 chars only ever clips junk.
+            const val DEFAULT_MAX_COOKIES = 500
+            const val DEFAULT_MAX_COOKIE_NAME_LENGTH = 256
         }
     }
 }
