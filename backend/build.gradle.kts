@@ -99,6 +99,7 @@ val coverageClassPatterns =
         "com/complyr/site/SiteService*",
         "com/complyr/site/DomainValidator*",
         "com/complyr/scan/ScanQueue*",
+        "com/complyr/scan/ScanQueryService*",
         // Security-critical SSRF range logic — must stay well covered. The Playwright crawler itself
         // needs a real browser, so it is exercised via integration/manual runs, not this unit gate.
         "com/complyr/scan/ScanTargetValidator*",

@@ -100,4 +100,10 @@ interface ScanRepository : JpaRepository<ScanEntity, UUID> {
         siteId: UUID,
         pageable: Pageable,
     ): List<ScanEntity>
+
+    /** One scan scoped to its site — the read path pairs this with a site-ownership check. */
+    fun findByIdAndSiteId(
+        id: UUID,
+        siteId: UUID,
+    ): ScanEntity?
 }
