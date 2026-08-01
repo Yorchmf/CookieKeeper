@@ -3,6 +3,7 @@ package com.complyr.site
 import com.complyr.auth.EmailNotVerifiedException
 import com.complyr.auth.UserRepository
 import com.complyr.banner.BannerConfigService
+import com.complyr.billing.EntitlementService
 import com.complyr.common.ComplyrProperties
 import com.complyr.common.UnauthenticatedException
 import com.complyr.common.violatedConstraint
@@ -24,6 +25,7 @@ import java.util.UUID
 class SiteService(
     private val siteRepository: SiteRepository,
     private val userRepository: UserRepository,
+    private val entitlementService: EntitlementService,
     private val bannerConfigService: BannerConfigService,
     private val properties: ComplyrProperties,
     private val events: ApplicationEventPublisher,
@@ -45,6 +47,10 @@ class SiteService(
         if (user.verifiedAt == null) throw EmailNotVerifiedException()
         val domain = DomainValidator.normalize(rawDomain)
         ensureDomainAvailable(userId, domain)
+        // Plan site-cap guard, after input + duplicate checks: a re-submitted existing domain still
+        // gets the specific 409, while a genuinely new site is rejected (403) once the account is at
+        // its plan's maxSites — which also freezes new sites for an Expired account (cap 0).
+        entitlementService.requireCanAddSite(userId)
         val site =
             saveEnsuringDomainUniqueness(
                 SiteEntity(

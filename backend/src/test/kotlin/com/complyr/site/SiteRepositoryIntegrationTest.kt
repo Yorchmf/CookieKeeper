@@ -84,4 +84,25 @@ class SiteRepositoryIntegrationTest {
         assertTrue(siteRepository.existsByUserIdAndDomainAndStatus(alice.id, "alice.com", SiteStatus.ACTIVE))
         assertFalse(siteRepository.existsByUserIdAndDomainAndStatus(alice.id, "old.alice.com", SiteStatus.ACTIVE))
     }
+
+    @Test
+    fun `countByUserIdAndStatus counts only the user's sites in that status`() {
+        val alice = newUser()
+        val bob = newUser()
+        newSite(alice.id, "one.alice.com")
+        newSite(alice.id, "two.alice.com")
+        newSite(alice.id, "old.alice.com", status = SiteStatus.ARCHIVED)
+        newSite(bob.id, "bob.com")
+
+        // Scoped by user and status: archived rows and other users' sites are excluded.
+        assertEquals(2, siteRepository.countByUserIdAndStatus(alice.id, SiteStatus.ACTIVE))
+        assertEquals(1, siteRepository.countByUserIdAndStatus(alice.id, SiteStatus.ARCHIVED))
+        assertEquals(0, siteRepository.countByUserIdAndStatus(UUID.randomUUID(), SiteStatus.ACTIVE))
+    }
+
+    @Test
+    fun `acquireUserSiteLock executes against Postgres and returns a mappable result`() {
+        // The native pg_advisory_xact_lock query must run without error; the wrapping count(*) yields 1.
+        assertEquals(1L, siteRepository.acquireUserSiteLock(UUID.randomUUID().let { it.mostSignificantBits xor it.leastSignificantBits }))
+    }
 }

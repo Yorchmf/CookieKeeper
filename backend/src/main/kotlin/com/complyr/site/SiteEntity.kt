@@ -8,6 +8,8 @@ import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 import java.time.Instant
 import java.util.UUID
 
@@ -75,4 +77,26 @@ interface SiteRepository : JpaRepository<SiteEntity, UUID> {
         domain: String,
         status: SiteStatus,
     ): Boolean
+
+    /** Active-site count for the plan site-cap guard (see [com.complyr.billing.EntitlementService]). */
+    fun countByUserIdAndStatus(
+        userId: UUID,
+        status: SiteStatus,
+    ): Long
+
+    /**
+     * Transaction-scoped Postgres advisory lock keyed on a user, taken at the top of the site-cap guard
+     * so concurrent site creations for one account serialize instead of both reading `count < cap` and
+     * each inserting (a check-then-act race that could let a plan exceed its `maxSites`). Released at
+     * commit/rollback; the wrapping `SELECT count(*)` just gives the native query a mappable result.
+     * Mirrors [com.complyr.policy.PolicyEntity]'s per-site lock. See
+     * [com.complyr.billing.EntitlementService.requireCanAddSite].
+     */
+    @Query(
+        value = "SELECT count(*) FROM (SELECT pg_advisory_xact_lock(:key)) AS _lock",
+        nativeQuery = true,
+    )
+    fun acquireUserSiteLock(
+        @Param("key") key: Long,
+    ): Long
 }

@@ -3,6 +3,10 @@ package com.complyr.scan
 import com.complyr.TestcontainersConfiguration
 import com.complyr.auth.RecordingEmailConfig
 import com.complyr.auth.RecordingEmailSender
+import com.complyr.auth.UserRepository
+import com.complyr.billing.Plan
+import com.complyr.billing.SubscriptionEntity
+import com.complyr.billing.SubscriptionRepository
 import jakarta.servlet.http.Cookie
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -45,7 +49,18 @@ class ScanApiIntegrationTest {
     @Autowired
     private lateinit var scanCookieRepository: ScanCookieRepository
 
-    private fun registeredUser(): Cookie {
+    @Autowired
+    private lateinit var userRepository: UserRepository
+
+    @Autowired
+    private lateinit var subscriptionRepository: SubscriptionRepository
+
+    /**
+     * Register + verify + log in a fresh user. [plan], when set, provisions an active subscription so
+     * the account clears the plan site-cap (a fresh trial account only allows one site) — needed by the
+     * multi-site scoping test.
+     */
+    private fun registeredUser(plan: Plan? = null): Cookie {
         val email = "user-${UUID.randomUUID()}@example.com"
         mockMvc
             .perform(
@@ -69,7 +84,29 @@ class ScanApiIntegrationTest {
                 .andReturn()
         val accessHeader =
             assertNotNull(login.response.getHeaders("Set-Cookie").firstOrNull { it.startsWith("cmplyr_at=") })
+        if (plan != null) grantSubscription(email, plan)
         return Cookie("cmplyr_at", accessHeader.substringAfter("=").substringBefore(";"))
+    }
+
+    /** Give the just-registered user an active paid subscription so its plan site-cap allows multiple sites. */
+    private fun grantSubscription(
+        email: String,
+        plan: Plan,
+    ) {
+        val userId = requireNotNull(userRepository.findByEmail(email)).id
+        val now = Instant.now()
+        subscriptionRepository.saveAndFlush(
+            SubscriptionEntity(
+                userId = userId,
+                stripeCustomerId = null,
+                stripeSubId = null,
+                plan = plan,
+                status = "active",
+                periodEnd = null,
+                createdAt = now,
+                updatedAt = now,
+            ),
+        )
     }
 
     private fun createSite(
@@ -221,7 +258,8 @@ class ScanApiIntegrationTest {
 
     @Test
     fun `a scan is not reachable through a sibling site the caller also owns`() {
-        val alice = registeredUser()
+        // BUSINESS plan: the scoping test needs two owned sites, which a trial account's cap forbids.
+        val alice = registeredUser(Plan.BUSINESS)
         val siteA = createSite(alice, "site-a-${UUID.randomUUID().toString().take(8)}.example.com")
         val siteB = createSite(alice, "site-b-${UUID.randomUUID().toString().take(8)}.example.com")
         val scanUnderB = seedCompletedScan(siteB)

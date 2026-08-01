@@ -4,6 +4,8 @@ import com.complyr.auth.EmailNotVerifiedException
 import com.complyr.auth.UserEntity
 import com.complyr.auth.UserRepository
 import com.complyr.banner.BannerConfigService
+import com.complyr.billing.EntitlementService
+import com.complyr.billing.SiteLimitReachedException
 import com.complyr.common.ComplyrProperties
 import io.mockk.every
 import io.mockk.mockk
@@ -45,10 +47,15 @@ class SiteServiceTest {
     private val userRepository = mockk<UserRepository>()
     private val bannerConfigService = mockk<BannerConfigService>(relaxed = true)
     private val events = mockk<ApplicationEventPublisher>(relaxed = true)
+
+    // Relaxed: requireCanAddSite is a no-op by default, so every existing happy-path create stays
+    // green; the cap-reached test below overrides it to throw.
+    private val entitlementService = mockk<EntitlementService>(relaxed = true)
     private val service =
         SiteService(
             siteRepository,
             userRepository,
+            entitlementService,
             bannerConfigService,
             properties,
             events,
@@ -112,6 +119,18 @@ class SiteServiceTest {
         service.create(userId, "example.com")
 
         verify(exactly = 1) { events.publishEvent(SiteCreatedEvent(saved.captured.id)) }
+    }
+
+    @Test
+    fun `create is rejected when the plan site cap is reached`() {
+        stubUser()
+        every { siteRepository.existsByUserIdAndDomainAndStatus(userId, "example.com", SiteStatus.ACTIVE) } returns false
+        every { entitlementService.requireCanAddSite(userId) } throws SiteLimitReachedException()
+
+        assertThrows<SiteLimitReachedException> { service.create(userId, "example.com") }
+
+        // The cap guard fires before any write — no site row, banner, or scan is created.
+        verify(exactly = 0) { siteRepository.saveAndFlush(any<SiteEntity>()) }
     }
 
     @Test
