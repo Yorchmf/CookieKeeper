@@ -45,10 +45,13 @@ export function ScanReportGate({
 
   return (
     <div className="relative overflow-hidden rounded-xl border border-border">
-      {/* Decorative blurred hint of the locked report — hidden from assistive tech. */}
+      {/* Decorative blurred hint of the locked report — hidden from assistive tech.
+          Absolutely positioned so it forms the background layer; the real form below
+          is what gives the panel its height (otherwise the form would overflow a panel
+          sized only to these few skeleton rows and get clipped by overflow-hidden). */}
       <div
         aria-hidden="true"
-        className="pointer-events-none flex select-none flex-col gap-2 p-6 opacity-60 blur-[3px]"
+        className="pointer-events-none absolute inset-0 flex select-none flex-col gap-2 p-6 opacity-60 blur-[3px]"
       >
         {[80, 65, 72, 58].map((width) => (
           <div key={width} className="flex items-center gap-3">
@@ -61,7 +64,8 @@ export function ScanReportGate({
         ))}
       </div>
 
-      <div className="absolute inset-0 flex items-center justify-center bg-background/70 p-4 backdrop-blur-sm">
+      {/* Real form layer — in normal flow, so the panel grows to fit it. */}
+      <div className="relative flex items-center justify-center bg-background/70 p-4 backdrop-blur-sm">
         <div className="w-full max-w-sm rounded-lg border border-border bg-card p-5 shadow-lg">
           <div className="mb-3 flex items-center gap-2">
             <span className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
