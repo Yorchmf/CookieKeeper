@@ -1,0 +1,139 @@
+package com.complyr.scan
+
+import com.complyr.common.ComplyrProperties
+import com.complyr.site.SiteEntity
+import com.complyr.site.SiteRepository
+import com.complyr.site.SiteStatus
+import com.microsoft.playwright.options.Cookie
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.verify
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
+import java.time.Duration
+import java.time.Instant
+import java.util.Optional
+import java.util.UUID
+import kotlin.test.assertEquals
+
+/**
+ * Orchestration around the browser-free [ScanEngine] seam: the ownership/state gates and the
+ * classify-then-persist path, exercised with a [FakeScanEngine] so no Chromium is launched. The crawl
+ * itself is the engine's concern and is not re-tested here.
+ */
+class PlaywrightScanCrawlerTest {
+    private val properties =
+        ComplyrProperties(
+            auth =
+                ComplyrProperties.Auth(
+                    jwtSecret = "unit-test-jwt-secret-0123456789-abcdefghijklmnop",
+                    accessTokenTtl = Duration.ofMinutes(15),
+                    refreshTokenTtl = Duration.ofDays(30),
+                    verificationTokenTtl = Duration.ofHours(24),
+                    resetTokenTtl = Duration.ofHours(1),
+                ),
+            appBaseUrl = "http://localhost:3000",
+            cdnBaseUrl = "https://cdn.complyr.eu",
+            mailFrom = "no-reply@complyr.eu",
+        )
+
+    private val now: Instant = Instant.parse("2026-08-01T12:00:00Z")
+    private val siteRepository = mockk<SiteRepository>()
+    private val cookieWriter = mockk<ScanCookieWriter>(relaxed = true)
+    private val classifier = mockk<CookieClassifier>()
+
+    private val siteId: UUID = UUID.randomUUID()
+    private val claim =
+        ClaimedScan(
+            jobId = UUID.randomUUID(),
+            scanId = UUID.randomUUID(),
+            siteId = siteId,
+            attempt = 1,
+            maxAttempts = 3,
+        )
+
+    /** Records what the crawler asked the engine to crawl, so we can assert domain + mode propagation. */
+    private class FakeScanEngine(
+        private val result: EngineCrawlResult,
+    ) : ScanEngine {
+        var callCount = 0
+        var lastDomain: String? = null
+        var lastMode: CrawlMode? = null
+
+        override fun crawl(
+            domain: String,
+            mode: CrawlMode,
+        ): EngineCrawlResult {
+            callCount++
+            lastDomain = domain
+            lastMode = mode
+            return result
+        }
+    }
+
+    private fun site(
+        status: SiteStatus = SiteStatus.ACTIVE,
+        verifiedAt: Instant? = now,
+    ): SiteEntity =
+        SiteEntity(
+            id = siteId,
+            userId = UUID.randomUUID(),
+            domain = "example.com",
+            siteKey = "pk_key",
+            status = status,
+            verifiedAt = verifiedAt,
+        )
+
+    private fun crawlerWith(engine: FakeScanEngine): PlaywrightScanCrawler =
+        PlaywrightScanCrawler(siteRepository, cookieWriter, classifier, engine, properties)
+
+    @Test
+    fun `unknown site fails as an internal error and never crawls`() {
+        every { siteRepository.findById(siteId) } returns Optional.empty()
+        val engine = FakeScanEngine(EngineCrawlResult(pagesCrawled = 0, cookies = emptyList()))
+
+        val ex = assertThrows<ScanTargetException> { crawlerWith(engine).crawl(claim) }
+
+        assertEquals(ScanFailureReason.INTERNAL, ex.reason)
+        assertEquals(0, engine.callCount, "the engine must not launch a browser for a missing site")
+    }
+
+    @Test
+    fun `archived site fails as an internal error and never crawls`() {
+        every { siteRepository.findById(siteId) } returns Optional.of(site(status = SiteStatus.ARCHIVED))
+        val engine = FakeScanEngine(EngineCrawlResult(pagesCrawled = 0, cookies = emptyList()))
+
+        val ex = assertThrows<ScanTargetException> { crawlerWith(engine).crawl(claim) }
+
+        assertEquals(ScanFailureReason.INTERNAL, ex.reason)
+        assertEquals(0, engine.callCount)
+    }
+
+    @Test
+    fun `unverified domain is refused before any crawl (SSRF posture)`() {
+        every { siteRepository.findById(siteId) } returns Optional.of(site(verifiedAt = null))
+        val engine = FakeScanEngine(EngineCrawlResult(pagesCrawled = 0, cookies = emptyList()))
+
+        val ex = assertThrows<ScanTargetException> { crawlerWith(engine).crawl(claim) }
+
+        assertEquals(ScanFailureReason.DOMAIN_NOT_VERIFIED, ex.reason)
+        assertEquals(0, engine.callCount, "an unverified domain must never reach the engine")
+    }
+
+    @Test
+    fun `verified site crawls its own domain in FULL mode, classifies, and propagates the page count`() {
+        every { siteRepository.findById(siteId) } returns Optional.of(site())
+        // Classifier is identity here — we assert wiring, not signature matching (covered elsewhere).
+        every { classifier.classify(any()) } answers { firstArg() }
+        val cookies = listOf(Cookie("_ga", "GA1.2").setDomain(".example.com"))
+        val engine = FakeScanEngine(EngineCrawlResult(pagesCrawled = 3, cookies = cookies))
+
+        val result = crawlerWith(engine).crawl(claim)
+
+        assertEquals(3, result.pagesCrawled, "the engine's page count flows through to the scan result")
+        assertEquals("example.com", engine.lastDomain, "the crawler must use the site's own domain")
+        assertEquals(CrawlMode.FULL, engine.lastMode, "the authenticated path is a full multi-page crawl")
+        verify(exactly = 1) { classifier.classify(any()) }
+        verify(exactly = 1) { cookieWriter.replace(claim.scanId, any()) }
+    }
+}
