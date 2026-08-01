@@ -1,10 +1,17 @@
 package com.complyr.billing
 
+import com.complyr.common.ComplyrProperties
 import com.stripe.StripeClient
+import com.stripe.exception.SignatureVerificationException
 import com.stripe.exception.StripeException
+import com.stripe.model.Event
+import com.stripe.model.Subscription
+import com.stripe.net.Webhook
 import com.stripe.param.checkout.SessionCreateParams
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import java.time.Instant
+import java.util.UUID
 import com.stripe.param.billingportal.SessionCreateParams as PortalSessionCreateParams
 
 /**
@@ -13,12 +20,21 @@ import com.stripe.param.billingportal.SessionCreateParams as PortalSessionCreate
  * shapes onto the SDK builders and translates the SDK's checked [StripeException] into a generic
  * [BillingUnavailableException]. On failure it logs the Stripe request id / status / code only —
  * never the exception message or payload, which can carry the customer id or email (CLAUDE.md #4).
+ *
+ * [webhookSecret] is the endpoint signing secret; [parseWebhookEvent] verifies every inbound body
+ * against it before this app trusts a single field of the event.
  */
 @Service
 class StripeApiGateway(
     private val stripeClient: StripeClient,
+    private val properties: ComplyrProperties,
 ) : StripeGateway {
     private val log = LoggerFactory.getLogger(StripeApiGateway::class.java)
+
+    private companion object {
+        /** Event-type prefix for the `customer.subscription.*` family the handler acts on. */
+        const val SUBSCRIPTION_EVENT_PREFIX = "customer.subscription."
+    }
 
     override fun createCheckoutSession(request: CheckoutRequest): String {
         val params =
@@ -33,7 +49,16 @@ class StripeApiGateway(
                     }
                 }.setSuccessUrl(request.successUrl)
                 .setCancelUrl(request.cancelUrl)
-                .addLineItem(
+                // client_reference_id + subscription metadata both carry our user id: the former lets
+                // `checkout.session.completed` self-identify, the latter stamps every later
+                // `customer.subscription.*` event so the webhook handler links without a lookup.
+                .setClientReferenceId(request.userId.toString())
+                .setSubscriptionData(
+                    SessionCreateParams.SubscriptionData
+                        .builder()
+                        .putMetadata(STRIPE_METADATA_USER_ID, request.userId.toString())
+                        .build(),
+                ).addLineItem(
                     SessionCreateParams.LineItem
                         .builder()
                         .setPrice(request.priceId)
@@ -80,6 +105,73 @@ class StripeApiGateway(
             throw BillingUnavailableException()
         }
     }
+
+    // SwallowedException is intentional here: the Stripe exception can echo the attacker-supplied
+    // signature/body, so we deliberately drop it and surface only a generic typed failure (no cause
+    // chained, nothing from `e` logged) — a forger/misroute must learn nothing from the rejection.
+    @Suppress("SwallowedException")
+    override fun parseWebhookEvent(
+        payload: String,
+        signatureHeader: String,
+    ): StripeWebhookEvent {
+        val event =
+            try {
+                Webhook.constructEvent(payload, signatureHeader, properties.billing.webhookSecret)
+            } catch (e: SignatureVerificationException) {
+                log.warn("Rejected Stripe webhook: signature verification failed")
+                throw WebhookSignatureException()
+            }
+        return StripeWebhookEvent(
+            id = event.id,
+            type = event.type,
+            created = Instant.ofEpochSecond(event.created),
+            payload = payload,
+            data = reduce(event.type, extractSubscription(event)),
+        )
+    }
+
+    /**
+     * Pull the typed [Subscription] out of a `customer.subscription.*` event, or null for any other
+     * type. Prefer the SDK's version-matched [java.util.Optional] object; fall back to
+     * `deserializeUnsafe()` only when the account's API version differs from the SDK's (the object is
+     * still the same shape for the fields we read). A deserialization failure yields null → Ignored,
+     * so a malformed/unexpected event is logged for audit but never crashes the handler.
+     */
+    private fun extractSubscription(event: Event): Subscription? {
+        if (!event.type.startsWith(SUBSCRIPTION_EVENT_PREFIX)) return null
+        val deserializer = event.dataObjectDeserializer
+        val obj =
+            deserializer.getObject().orElseGet {
+                // Narrow the swallow to the SDK's deserialization failure; rethrow JVM Errors
+                // (OOM/StackOverflow) rather than masking them as a benign null → Ignored.
+                runCatching { deserializer.deserializeUnsafe() }
+                    .getOrElse { cause -> if (cause is Error) throw cause else null }
+            }
+        return obj as? Subscription
+    }
+
+    /** Map an extracted subscription (or its absence) to our closed [StripeEventData]. */
+    private fun reduce(
+        type: String,
+        subscription: Subscription?,
+    ): StripeEventData {
+        if (subscription == null) return StripeEventData.Ignored
+        val item = subscription.items?.data?.firstOrNull()
+        return StripeEventData
+            .SubscriptionChanged(
+                userId = subscription.metadata?.get(STRIPE_METADATA_USER_ID)?.let(::parseUuidOrNull),
+                subscriptionId = subscription.id,
+                customerId = subscription.customer,
+                status = subscription.status,
+                priceId = item?.price?.id,
+                currentPeriodEnd = item?.currentPeriodEnd?.let(Instant::ofEpochSecond),
+            ).also {
+                // Note the type only; never log ids/metadata (customer-linkable). Aids audit of what was applied.
+                log.info("Parsed Stripe subscription event type={}", type)
+            }
+    }
+
+    private fun parseUuidOrNull(value: String): UUID? = runCatching { UUID.fromString(value) }.getOrNull()
 
     private fun logStripeFailure(
         operation: String,

@@ -7,6 +7,8 @@ import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 import java.time.Instant
 import java.util.UUID
 
@@ -41,6 +43,12 @@ data class SubscriptionEntity(
     val createdAt: Instant,
     @Column(name = "updated_at", nullable = false)
     val updatedAt: Instant,
+    // Stripe `created` of the last subscription event applied to this row (V13). The webhook handler
+    // skips any event strictly OLDER than this (a reordered redelivery) so it can't clobber newer
+    // state; same-second ties are applied in arrival order under a per-subscription lock. Null until
+    // the first event stamps it.
+    @Column(name = "stripe_event_at")
+    val stripeEventAt: Instant? = null,
 ) {
     /** True for the Stripe statuses that entitle the user to their plan. */
     val isActive: Boolean get() = status in ACTIVE_STATUSES
@@ -60,4 +68,20 @@ interface SubscriptionRepository : JpaRepository<SubscriptionEntity, UUID> {
 
     /** Resolve the Stripe customer id → our row, for events that carry only the customer. */
     fun findByStripeCustomerId(stripeCustomerId: String): SubscriptionEntity?
+
+    /**
+     * Transaction-scoped Postgres advisory lock keyed on a Stripe subscription, taken before the
+     * read-modify-write in [BillingWebhookService.applySubscription] so two concurrently-delivered
+     * events for the SAME subscription serialize instead of both reading the old `stripe_event_at`
+     * watermark and racing to save (last-writer-wins, which could strand e.g. `active` after
+     * `canceled`). Released automatically at commit/rollback; the wrapping `SELECT count(*)` just
+     * gives the native query a mappable non-void result (mirrors PolicyService's site lock).
+     */
+    @Query(
+        value = "SELECT count(*) FROM (SELECT pg_advisory_xact_lock(:key)) AS _lock",
+        nativeQuery = true,
+    )
+    fun acquireSubscriptionLock(
+        @Param("key") key: Long,
+    ): Long
 }

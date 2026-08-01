@@ -14,7 +14,7 @@ import org.springframework.dao.DataIntegrityViolationException
 import java.time.Instant
 import java.util.UUID
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -103,30 +103,84 @@ class BillingRepositoryIntegrationTest {
     }
 
     @Test
-    fun `stripe events dedupe on the stripe event id`() {
-        stripeEventRepository.saveAndFlush(
-            StripeEventEntity(
+    fun `insertIfAbsent claims an event id once and no-ops on Stripe re-delivery`() {
+        val inserted =
+            stripeEventRepository.insertIfAbsent(
+                id = UUID.randomUUID(),
                 stripeEventId = "evt_1",
                 type = "customer.subscription.updated",
                 payload = "{\"id\":\"evt_1\"}",
                 receivedAt = now,
-                processedAt = null,
-            ),
+            )
+        assertEquals(1, inserted, "first insert of an id claims it")
+
+        // A re-delivery of the SAME id changes nothing and must not overwrite the original row.
+        val redelivered =
+            stripeEventRepository.insertIfAbsent(
+                id = UUID.randomUUID(),
+                stripeEventId = "evt_1",
+                type = "customer.subscription.deleted",
+                payload = "{\"id\":\"evt_1\",\"dup\":true}",
+                receivedAt = now.plusSeconds(1),
+            )
+        assertEquals(0, redelivered, "re-delivery of a claimed id inserts nothing")
+
+        entityManager.clear()
+        val row = requireNotNull(stripeEventRepository.findByStripeEventId("evt_1"))
+        assertEquals("customer.subscription.updated", row.type, "original row survives the re-delivery")
+        assertEquals("{\"id\":\"evt_1\"}", row.payload)
+        assertNull(row.processedAt)
+        assertNull(stripeEventRepository.findByStripeEventId("evt_missing"))
+    }
+
+    @Test
+    fun `markProcessedAndRedact stamps processed_at, nulls the payload, and is a one-time winner`() {
+        stripeEventRepository.insertIfAbsent(
+            id = UUID.randomUUID(),
+            stripeEventId = "evt_2",
+            type = "customer.subscription.updated",
+            payload = "{\"email\":\"owner@example.com\"}",
+            receivedAt = now,
         )
 
-        assertTrue(stripeEventRepository.existsByStripeEventId("evt_1"))
-        assertFalse(stripeEventRepository.existsByStripeEventId("evt_2"))
+        val first = stripeEventRepository.markProcessedAndRedact("evt_2", now.plusSeconds(5))
+        assertEquals(1, first, "the first mark wins")
+        // A concurrent duplicate finds processed_at already set (guarded by `processed_at IS NULL`).
+        val second = stripeEventRepository.markProcessedAndRedact("evt_2", now.plusSeconds(10))
+        assertEquals(0, second, "a second mark is a no-op")
 
-        assertThrows<DataIntegrityViolationException> {
-            stripeEventRepository.saveAndFlush(
-                StripeEventEntity(
-                    stripeEventId = "evt_1",
-                    type = "customer.subscription.deleted",
-                    payload = "{\"id\":\"evt_1\",\"dup\":true}",
-                    receivedAt = now,
-                    processedAt = now,
-                ),
-            )
-        }
+        entityManager.clear()
+        val row = requireNotNull(stripeEventRepository.findByStripeEventId("evt_2"))
+        assertEquals(now.plusSeconds(5), row.processedAt)
+        assertNull(row.payload, "the raw body is redacted on process — no PII retained")
+    }
+
+    @Test
+    fun `deleteBatchReceivedBefore removes only rows older than the cutoff, bounded by the batch size`() {
+        stripeEventRepository.insertIfAbsent(UUID.randomUUID(), "evt_old_1", "t", "{}", now.minusSeconds(100))
+        stripeEventRepository.insertIfAbsent(UUID.randomUUID(), "evt_old_2", "t", "{}", now.minusSeconds(90))
+        stripeEventRepository.insertIfAbsent(UUID.randomUUID(), "evt_new", "t", "{}", now.plusSeconds(100))
+
+        // Batch cap honored: only the single oldest row goes in the first pass.
+        assertEquals(1, stripeEventRepository.deleteBatchReceivedBefore(now, batchSize = 1))
+        // The remaining older row drains in the next pass; the newer-than-cutoff row is untouched.
+        assertEquals(1, stripeEventRepository.deleteBatchReceivedBefore(now, batchSize = 10))
+
+        entityManager.clear()
+        assertNull(stripeEventRepository.findByStripeEventId("evt_old_1"))
+        assertNull(stripeEventRepository.findByStripeEventId("evt_old_2"))
+        assertNotNull(stripeEventRepository.findByStripeEventId("evt_new"), "rows newer than the cutoff survive")
+    }
+
+    @Test
+    fun `tryAcquireAdvisoryXactLock grants the reaper lock inside the transaction`() {
+        assertTrue(stripeEventRepository.tryAcquireAdvisoryXactLock(StripeWebhookReaper.ADVISORY_LOCK_KEY))
+    }
+
+    @Test
+    fun `acquireSubscriptionLock takes the per-subscription advisory lock and returns a mappable result`() {
+        // The native `SELECT count(*) FROM (SELECT pg_advisory_xact_lock(:key))` wrapper must execute
+        // and map cleanly (the wrapping count gives the void lock function a non-void result).
+        assertEquals(1L, subscriptionRepository.acquireSubscriptionLock(123_456_789L))
     }
 }

@@ -77,6 +77,11 @@ class SecurityConfig(
                     // read-only, cacheable (Cloudflare), rate-limited on the PUBLIC_POLICY tier.
                     .requestMatchers(HttpMethod.GET, "/api/v1/public/policy/*")
                     .permitAll()
+                    // Stripe webhook: unauthenticated by construction (Stripe cannot send a JWT). Its
+                    // gate is the per-request Stripe signature verified in StripeApiGateway, plus a body-
+                    // size cap — no session/JWT applies. Everything else under /billing stays authed.
+                    .requestMatchers(HttpMethod.POST, "/api/v1/billing/webhook")
+                    .permitAll()
                     .requestMatchers(HttpMethod.POST, *PUBLIC_AUTH_ENDPOINTS)
                     .permitAll()
                     .anyRequest()

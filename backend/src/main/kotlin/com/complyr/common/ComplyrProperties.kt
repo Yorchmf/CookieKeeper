@@ -274,7 +274,19 @@ data class ComplyrProperties(
      * TEST-mode price id is invalid against a live key and vice versa, so they must never be shared
      * across environments. The empty defaults below exist only so the no-arg `Billing()` used by the
      * data-model unit tests still constructs; a real secret/price is required to actually reach Stripe.
-     * The webhook signing secret is bound in Slice 3 when the webhook handler lands.
+     *
+     * [webhookSecret] is the endpoint's Stripe signing secret (`whsec_…`), used by
+     * [com.complyr.billing.StripeApiGateway.parseWebhookEvent] to verify every inbound webhook. Like
+     * the secret key it is env-specific (each environment registers its own webhook endpoint and gets
+     * its own secret) and bound from `${'$'}{STRIPE_WEBHOOK_SECRET}` with no default in application.yml
+     * so dev/prd fail fast if unset; the empty default only lets the no-arg `Billing()` construct.
+     *
+     * [stripeEventRetention] / [stripeEventPruneBatchSize] tune the `stripe_events` inbox reaper (see
+     * [com.complyr.billing.StripeWebhookReaper]). Retention only has to outlive Stripe's redelivery
+     * window (a few days) since the row exists solely for idempotency/audit; a redacted processed row
+     * carries no PII but is still pruned to bound the table. Batch size chunks a backlog into short,
+     * vacuum-friendly DELETE transactions. The prune schedule itself is the raw
+     * `complyr.billing.stripe-event-prune-cron` property read by `@Scheduled`, not typed here.
      *
      * [automaticTax] toggles Stripe Tax on Checkout: on in prd (Stripe Tax configured), off-able per
      * environment where Tax isn't set up (a Checkout with automatic_tax against a Tax-less account
@@ -284,6 +296,7 @@ data class ComplyrProperties(
         val trialPeriod: Duration = Duration.ofDays(DEFAULT_TRIAL_DAYS),
         val trialConsentEventCap: Long = DEFAULT_TRIAL_CONSENT_EVENT_CAP,
         val stripeSecretKey: String = "",
+        val webhookSecret: String = "",
         val priceIds: PriceIds = PriceIds(),
         val automaticTax: Boolean = true,
         // Dashboard-relative return paths Stripe redirects back to after Checkout / Portal. Combined
@@ -291,6 +304,9 @@ data class ComplyrProperties(
         val checkoutSuccessPath: String = DEFAULT_CHECKOUT_SUCCESS_PATH,
         val checkoutCancelPath: String = DEFAULT_CHECKOUT_CANCEL_PATH,
         val portalReturnPath: String = DEFAULT_PORTAL_RETURN_PATH,
+        // `stripe_events` inbox retention + prune batch (see [com.complyr.billing.StripeWebhookReaper]).
+        val stripeEventRetention: Duration = Duration.ofDays(DEFAULT_STRIPE_EVENT_RETENTION_DAYS),
+        val stripeEventPruneBatchSize: Int = DEFAULT_STRIPE_EVENT_PRUNE_BATCH_SIZE,
     ) {
         init {
             require(!trialPeriod.isZero && !trialPeriod.isNegative) {
@@ -298,6 +314,15 @@ data class ComplyrProperties(
             }
             require(trialConsentEventCap > 0) {
                 "complyr.billing.trial-consent-event-cap must be positive (was $trialConsentEventCap)"
+            }
+            // A zero/negative window makes cutoff >= now, so the reaper would delete rows for events
+            // Stripe may still redeliver — reopening the dedupe window. Refuse the misconfig at startup.
+            require(!stripeEventRetention.isZero && !stripeEventRetention.isNegative) {
+                "complyr.billing.stripe-event-retention must be a positive duration (was $stripeEventRetention)"
+            }
+            // A non-positive batch size makes the reaper delete nothing and loop until its per-run cap.
+            require(stripeEventPruneBatchSize > 0) {
+                "complyr.billing.stripe-event-prune-batch-size must be positive (was $stripeEventPruneBatchSize)"
             }
         }
 
@@ -322,6 +347,14 @@ data class ComplyrProperties(
             const val DEFAULT_CHECKOUT_SUCCESS_PATH = "/billing?checkout=success"
             const val DEFAULT_CHECKOUT_CANCEL_PATH = "/billing?checkout=cancel"
             const val DEFAULT_PORTAL_RETURN_PATH = "/billing"
+
+            // A few days comfortably outlives Stripe's redelivery window (retries taper over ~72h),
+            // so the inbox keeps deduping every real re-delivery while the reaper bounds table growth.
+            const val DEFAULT_STRIPE_EVENT_RETENTION_DAYS = 30L
+
+            // Rows per prune transaction. Steady-state webhook volume is tiny, so this only matters
+            // when draining a backlog; kept small for short, vacuum-friendly DELETEs.
+            const val DEFAULT_STRIPE_EVENT_PRUNE_BATCH_SIZE = 500
         }
     }
 }

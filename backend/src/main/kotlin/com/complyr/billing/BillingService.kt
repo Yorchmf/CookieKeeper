@@ -25,6 +25,7 @@ class BillingService(
     private val gateway: StripeGateway,
     private val subscriptionRepository: SubscriptionRepository,
     private val userRepository: UserRepository,
+    private val planCatalog: PlanCatalog,
     private val properties: ComplyrProperties,
 ) {
     fun startCheckout(
@@ -45,7 +46,8 @@ class BillingService(
             }
         val request =
             CheckoutRequest(
-                priceId = priceIdFor(plan),
+                userId = userId,
+                priceId = planCatalog.priceIdFor(plan),
                 customer = customer,
                 successUrl = properties.appBaseUrl + billing.checkoutSuccessPath,
                 cancelUrl = properties.appBaseUrl + billing.checkoutCancelPath,
@@ -53,16 +55,6 @@ class BillingService(
             )
         return gateway.createCheckoutSession(request)
     }
-
-    /** The configured Stripe price id for [plan]; exhaustive so a new plan can't silently miss one. */
-    private fun priceIdFor(plan: Plan): String =
-        with(properties.billing.priceIds) {
-            when (plan) {
-                Plan.STARTER -> starter
-                Plan.PRO -> pro
-                Plan.BUSINESS -> business
-            }
-        }
 
     fun openPortal(userId: UUID): String {
         val customerId =

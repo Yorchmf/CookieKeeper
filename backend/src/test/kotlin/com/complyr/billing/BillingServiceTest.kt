@@ -39,6 +39,11 @@ class BillingServiceTest {
             lastPortalReturnUrl = returnUrl
             return PORTAL_URL
         }
+
+        override fun parseWebhookEvent(
+            payload: String,
+            signatureHeader: String,
+        ): StripeWebhookEvent = throw NotImplementedError("BillingService does not parse webhooks")
     }
 
     private val gateway = FakeStripeGateway()
@@ -71,7 +76,8 @@ class BillingServiceTest {
             mailFrom = "no-reply@complyr.test",
         )
 
-    private val service = BillingService(gateway, subscriptionRepository, userRepository, properties)
+    private val planCatalog = PlanCatalog(properties)
+    private val service = BillingService(gateway, subscriptionRepository, userRepository, planCatalog, properties)
 
     private val userId = UUID.randomUUID()
     private val user = UserEntity(id = userId, email = "owner@example.com", passwordHash = "hash")
@@ -98,6 +104,9 @@ class BillingServiceTest {
         assertEquals(CHECKOUT_URL, url)
         val request = requireNotNull(gateway.lastCheckout)
         assertEquals("price_pro", request.priceId)
+        // The user id is stamped on the request so the gateway can attach it to the subscription
+        // metadata — the link the webhook handler later recovers the account from.
+        assertEquals(userId, request.userId)
         assertEquals(CheckoutCustomer.New("owner@example.com"), request.customer)
         assertEquals("https://app.complyr.test/billing?checkout=success", request.successUrl)
         assertEquals("https://app.complyr.test/billing?checkout=cancel", request.cancelUrl)

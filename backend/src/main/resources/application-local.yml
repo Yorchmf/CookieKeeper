@@ -13,6 +13,9 @@ complyr:
     # placeholders — Checkout/Portal calls fail against them; set real TEST-mode values in .env to
     # exercise billing locally. dev/prd have NO fallback and fail fast when these env vars are unset.
     stripe-secret-key: ${STRIPE_SECRET_KEY:sk_test_local_placeholder}
+    # Dev-only placeholder; a webhook signed with a real whsec_ won't verify against it. Set a real
+    # TEST-mode signing secret in .env (or `stripe listen --forward-to`) to exercise webhooks locally.
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_local_placeholder}
     price-ids:
       starter: ${STRIPE_PRICE_STARTER:price_local_placeholder_starter}
       pro: ${STRIPE_PRICE_PRO:price_local_placeholder_pro}

@@ -87,6 +87,10 @@ complyr:
     # against a live key and vice versa, so they are never shared. A dev-only fallback lives in
     # application-local.yml; tests set placeholders in application.properties.
     stripe-secret-key: ${STRIPE_SECRET_KEY}
+    # Webhook endpoint signing secret (whsec_...). Also env-specific and no default here: each
+    # environment registers its own Stripe webhook endpoint and gets its own secret. Every inbound
+    # webhook body is HMAC-verified against this before a single field is trusted.
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET}
     price-ids:
       starter: ${STRIPE_PRICE_STARTER}
       pro: ${STRIPE_PRICE_PRO}
