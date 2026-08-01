@@ -67,4 +67,14 @@ interface PublicScanRepository : JpaRepository<PublicScanEntity, UUID> {
         status: ScanStatus,
         createdAtFrom: Instant,
     ): PublicScanEntity?
+
+    /**
+     * How many scans a single requester (by rotating-salt [ipHash]) currently has in flight — the
+     * abuse-cap probe used before enqueuing a new crawl. Callers pass the in-flight statuses
+     * ([ScanStatus.QUEUED], [ScanStatus.RUNNING]); terminal `done`/`failed` rows never count.
+     */
+    fun countByIpHashAndStatusIn(
+        ipHash: String,
+        statuses: Collection<ScanStatus>,
+    ): Long
 }

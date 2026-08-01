@@ -46,10 +46,16 @@ data class ComplyrProperties(
         // single visitor emits ~1 event per choice. Edge rate limiting (Cloudflare) absorbs
         // volumetric floods; this is only the coarse per-IP backstop.
         val consentPerMinute: Long = DEFAULT_CONSENT_PER_MINUTE,
+        // Requests per minute per client IP on the anonymous free-scan endpoint. Tighter than
+        // consent: a human scans their own domain a handful of times, and every request can spawn a
+        // Chromium crawl, so this tier is the first-line brake on crawl-compute abuse. The per-IP
+        // concurrency cap (complyr.scan.max-concurrent-scans-per-ip) and edge limiting back it up.
+        val publicScanPerMinute: Long = DEFAULT_PUBLIC_SCAN_PER_MINUTE,
     ) {
         companion object {
             const val DEFAULT_AUTH_PER_MINUTE = 10L
             const val DEFAULT_CONSENT_PER_MINUTE = 120L
+            const val DEFAULT_PUBLIC_SCAN_PER_MINUTE = 10L
         }
     }
 
@@ -145,6 +151,12 @@ data class ComplyrProperties(
         // column. [maxCookies] caps the rows one scan records; [maxCookieNameLength] truncates names.
         val maxCookies: Int = DEFAULT_MAX_COOKIES,
         val maxCookieNameLength: Int = DEFAULT_MAX_COOKIE_NAME_LENGTH,
+        // Abuse cap on the anonymous funnel: how many scans one requester (by rotating-salt ip_hash)
+        // may have in flight (queued or running) at once. Bounds a single requester's share of the
+        // shared crawl pool beyond the per-minute rate limit, since a burst under the rate limit
+        // could otherwise stack many concurrent Chromium crawls. Enforced only when an ip_hash is
+        // available; see [com.complyr.scan.PublicScanService].
+        val maxConcurrentScansPerIp: Int = DEFAULT_MAX_CONCURRENT_SCANS_PER_IP,
     ) {
         init {
             require(!visibilityTimeout.isZero && !visibilityTimeout.isNegative) {
@@ -165,6 +177,9 @@ data class ComplyrProperties(
             require(maxCookies > 0) { "complyr.scan.max-cookies must be positive (was $maxCookies)" }
             require(maxCookieNameLength > 0) {
                 "complyr.scan.max-cookie-name-length must be positive (was $maxCookieNameLength)"
+            }
+            require(maxConcurrentScansPerIp > 0) {
+                "complyr.scan.max-concurrent-scans-per-ip must be positive (was $maxConcurrentScansPerIp)"
             }
             // The queue redelivers a job once its visibility lease lapses; if a healthy crawl could run
             // longer than that lease it would be double-claimed (ADR-4 invariant). The job budget is
@@ -189,6 +204,10 @@ data class ComplyrProperties(
             // realistic pre-consent cookie name is short, so 256 chars only ever clips junk.
             const val DEFAULT_MAX_COOKIES = 500
             const val DEFAULT_MAX_COOKIE_NAME_LENGTH = 256
+
+            // A human scanning a couple of domains never needs more than a few in flight; a bot
+            // stacking crawls does. Low enough to bound abuse, high enough not to block real retries.
+            const val DEFAULT_MAX_CONCURRENT_SCANS_PER_IP = 3
         }
     }
 }

@@ -18,6 +18,7 @@ import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
@@ -63,6 +64,26 @@ class PublicScanApiIntegrationTest {
         val scan = publicScanRepository.findAll().single()
         assertEquals("acme.example.com", scan.domain)
         assertEquals(ScanStatus.QUEUED, scan.status)
+        // The requester IP is captured only as its rotating-salt hash — never the raw address.
+        val ipHash = assertNotNull(scan.ipHash, "the source IP must be persisted as a hash for abuse analysis")
+        assertTrue(ipHash.none { it == '.' || it == ':' }, "ip_hash must not look like a raw IP")
+    }
+
+    @Test
+    fun `a request with the honeypot field populated is silently accepted but never persisted`() {
+        mockMvc
+            .perform(
+                post("/api/v1/public-scan")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""{"domain":"acme.example.com","website":"http://spam.example"}"""),
+            ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
+            // A plausible queued response so the bot gets no signal it was detected...
+            .andExpect(jsonPath("$.data.status").value("queued"))
+            .andExpect(jsonPath("$.data.token").isNotEmpty)
+
+        // ...but nothing was enqueued: no scan row and no job were created.
+        assertTrue(publicScanRepository.findAll().isEmpty(), "a honeypot hit must not persist a scan")
     }
 
     @Test

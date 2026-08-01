@@ -18,9 +18,10 @@ import java.util.concurrent.ConcurrentHashMap
 
 /**
  * In-memory per-client-IP rate limiting (Bucket4j) for the unauthenticated public endpoints.
- * Two tiers with independent limits: the auth endpoints (tight) and public consent ingestion
- * (generous — see [ComplyrProperties.RateLimit.consentPerMinute]). Authenticated endpoints and
- * logout are exempt so a NATed office is not throttled out of normal session traffic.
+ * Three tiers with independent limits: the auth endpoints (tight), public consent ingestion
+ * (generous — see [ComplyrProperties.RateLimit.consentPerMinute]), and the anonymous free-scan
+ * endpoint (tight — each request can spawn a crawl). Authenticated endpoints and logout are exempt
+ * so a NATed office is not throttled out of normal session traffic.
  * CORS preflight (OPTIONS) is never counted. `remoteAddr` is the real client IP behind Caddy
  * thanks to `server.forward-headers-strategy: native` (see application.yml for the trust model).
  *
@@ -88,6 +89,7 @@ class RateLimitFilter(
         when {
             uri in AUTH_PATHS -> Tier.AUTH
             uri == CONSENT_PATH -> Tier.CONSENT
+            uri == PUBLIC_SCAN_PATH -> Tier.PUBLIC_SCAN
             else -> null
         }
 
@@ -95,6 +97,7 @@ class RateLimitFilter(
         when (tier) {
             Tier.AUTH -> properties.rateLimit.authPerMinute
             Tier.CONSENT -> properties.rateLimit.consentPerMinute
+            Tier.PUBLIC_SCAN -> properties.rateLimit.publicScanPerMinute
         }
 
     private fun writeRateLimited(response: HttpServletResponse) {
@@ -119,7 +122,7 @@ class RateLimitFilter(
                     .build(),
             ).build()
 
-    private enum class Tier { AUTH, CONSENT }
+    private enum class Tier { AUTH, CONSENT, PUBLIC_SCAN }
 
     private class TrackedBucket(
         val bucket: Bucket,
@@ -138,6 +141,7 @@ class RateLimitFilter(
                 "/api/v1/auth/reset-password",
             )
         const val CONSENT_PATH = "/api/v1/consent"
+        const val PUBLIC_SCAN_PATH = "/api/v1/public-scan"
         const val MAX_TRACKED_CLIENTS = 10_000
     }
 }

@@ -22,7 +22,7 @@ class RateLimitFilterTest {
                     verificationTokenTtl = Duration.ofHours(24),
                     resetTokenTtl = Duration.ofHours(1),
                 ),
-            rateLimit = ComplyrProperties.RateLimit(authPerMinute = 2, consentPerMinute = 3),
+            rateLimit = ComplyrProperties.RateLimit(authPerMinute = 2, consentPerMinute = 3, publicScanPerMinute = 2),
             appBaseUrl = "http://localhost:3000",
             cdnBaseUrl = "http://localhost:8081",
             mailFrom = "no-reply@complyr.eu",
@@ -83,6 +83,24 @@ class RateLimitFilterTest {
 
         val limited = MockHttpServletResponse()
         filter.doFilter(request("/api/v1/consent"), limited, chain)
+        assertEquals(429, limited.status)
+        assertTrue(limited.contentAsString.contains("\"RATE_LIMITED\""), limited.contentAsString)
+    }
+
+    @Test
+    fun `the public-scan endpoint has its own tier independent of auth and consent`() {
+        val chain = mockk<FilterChain>(relaxed = true)
+
+        // PUBLIC_SCAN tier allows 2/min; the 3rd is throttled. Its own bucket, so it neither
+        // borrows from nor drains the auth (2/min) or consent (3/min) tiers.
+        repeat(2) {
+            val response = MockHttpServletResponse()
+            filter.doFilter(request("/api/v1/public-scan"), response, chain)
+            assertEquals(200, response.status)
+        }
+
+        val limited = MockHttpServletResponse()
+        filter.doFilter(request("/api/v1/public-scan"), limited, chain)
         assertEquals(429, limited.status)
         assertTrue(limited.contentAsString.contains("\"RATE_LIMITED\""), limited.contentAsString)
     }
