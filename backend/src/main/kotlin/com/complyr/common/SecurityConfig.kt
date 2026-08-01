@@ -59,6 +59,10 @@ class SecurityConfig(
                     .permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/v1/consent")
                     .permitAll()
+                    // Anonymous marketing-funnel free scan (docs ADR-12). Abuse controls (per-IP
+                    // rate-limit tier, honeypot, concurrent-scan cap) land in slice D.
+                    .requestMatchers(HttpMethod.POST, "/api/v1/public-scan")
+                    .permitAll()
                     .requestMatchers(HttpMethod.POST, *PUBLIC_AUTH_ENDPOINTS)
                     .permitAll()
                     .anyRequest()
