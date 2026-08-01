@@ -197,7 +197,10 @@
       "archiveConfirmDescription": "{domain} wird archiviert. Das Banner wird nicht mehr ausgeliefert und die Website verschwindet aus Ihrer Liste.",
       "archiveConfirm": "Archivieren",
       "cancel": "Abbrechen",
-      "archivedToast": "Website archiviert"
+      "archivedToast": "Website archiviert",
+      "policyTitle": "Cookie-Richtlinie",
+      "policyDescription": "Erstellen und veröffentlichen Sie eine DSGVO-Cookie-Richtlinie für diese Website.",
+      "policyCta": "Richtlinie verwalten"
     }
   },
   "dashboard": {
@@ -257,6 +260,70 @@
       "empty": {
         "title": "Keine Cookies gefunden",
         "description": "Bei diesem Scan wurden keine Cookies auf der Website erkannt."
+      }
+    }
+  },
+  "policy": {
+    "title": "Cookie-Richtlinie",
+    "subtitle": "Erstellen Sie aus Ihrem letzten Scan eine DSGVO-Cookie-Richtlinie – gehostet, versioniert und sofort verlinkbar.",
+    "loadError": "Ihre Cookie-Richtlinie konnte nicht geladen werden. Bitte versuchen Sie es erneut.",
+    "form": {
+      "title": "Unternehmensangaben",
+      "description": "Diese Angaben erscheinen in Ihrer veröffentlichten Richtlinie. Aktualisieren Sie sie und generieren Sie jederzeit neu.",
+      "companyName": "Firmenname",
+      "companyNamePlaceholder": "Acme GmbH",
+      "contactEmail": "Kontakt-E-Mail",
+      "contactEmailPlaceholder": "datenschutz@example.eu",
+      "websiteUrl": "Website-URL",
+      "websiteUrlPlaceholder": "https://www.example.eu",
+      "websiteUrlHint": "Optional – standardmäßig die Domain Ihrer Website.",
+      "address": "Postanschrift",
+      "addressPlaceholder": "Hauptstraße 1, 10115 Berlin",
+      "addressHint": "Optional – wird in der Richtlinie angezeigt, sofern angegeben.",
+      "submit": "Richtlinie generieren",
+      "regenerate": "Richtlinie neu generieren",
+      "submitting": "Wird generiert …",
+      "generated": "Ihre Cookie-Richtlinie wurde generiert",
+      "error": "Die Richtlinie konnte nicht generiert werden. Bitte versuchen Sie es erneut.",
+      "validation": {
+        "companyRequired": "Geben Sie Ihren Firmennamen ein",
+        "emailInvalid": "Geben Sie eine gültige E-Mail-Adresse ein"
+      }
+    },
+    "empty": {
+      "title": "Noch keine Richtlinie",
+      "description": "Füllen Sie oben Ihre Unternehmensangaben aus und generieren Sie Ihre erste Cookie-Richtlinie."
+    },
+    "published": {
+      "title": "Veröffentlichte Richtlinie",
+      "version": "Version {version}",
+      "updated": "Aktualisiert {date}",
+      "languages": "Sprachen",
+      "hostedUrl": "Gehostete Seite",
+      "open": "Öffnen",
+      "copyUrl": "Link kopieren",
+      "copied": "Kopiert!",
+      "embedTitle": "Auf Ihrer Website einbetten",
+      "embedDescription": "Fügen Sie dieses HTML dort ein, wo die Richtlinie auf Ihren eigenen Seiten erscheinen soll.",
+      "copyHtml": "HTML kopieren"
+    },
+    "preview": {
+      "title": "Vorschau",
+      "description": "Genau das, was Besucher auf Ihrer gehosteten Richtlinienseite sehen.",
+      "loadError": "Die Vorschau konnte nicht geladen werden.",
+      "languageLabel": "Vorschausprache"
+    },
+    "hosted": {
+      "languageLabel": "Sprache der Richtlinie",
+      "loading": "Cookie-Richtlinie wird geladen …",
+      "poweredBy": "Cookie-Richtlinie von {app}",
+      "notFound": {
+        "title": "Richtlinie nicht gefunden",
+        "description": "Dieser Cookie-Richtlinien-Link ist ungültig oder nicht mehr verfügbar."
+      },
+      "error": {
+        "title": "Etwas ist schiefgelaufen",
+        "description": "Diese Cookie-Richtlinie konnte nicht geladen werden. Bitte versuchen Sie es später erneut."
       }
     }
   }

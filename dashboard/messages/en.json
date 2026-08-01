@@ -197,7 +197,10 @@
       "archiveConfirmDescription": "{domain} will be archived. The banner stops being served and the site disappears from your list.",
       "archiveConfirm": "Archive",
       "cancel": "Cancel",
-      "archivedToast": "Site archived"
+      "archivedToast": "Site archived",
+      "policyTitle": "Cookie policy",
+      "policyDescription": "Generate and publish a GDPR cookie policy for this site.",
+      "policyCta": "Manage policy"
     }
   },
   "dashboard": {
@@ -257,6 +260,70 @@
       "empty": {
         "title": "No cookies found",
         "description": "This scan did not detect any cookies on the site."
+      }
+    }
+  },
+  "policy": {
+    "title": "Cookie policy",
+    "subtitle": "Generate a GDPR cookie policy from your latest scan — hosted, versioned, and ready to link.",
+    "loadError": "Your cookie policy could not be loaded. Please try again.",
+    "form": {
+      "title": "Business details",
+      "description": "These details appear in your published policy. Update them and regenerate anytime.",
+      "companyName": "Company name",
+      "companyNamePlaceholder": "Acme GmbH",
+      "contactEmail": "Contact email",
+      "contactEmailPlaceholder": "privacy@example.eu",
+      "websiteUrl": "Website URL",
+      "websiteUrlPlaceholder": "https://www.example.eu",
+      "websiteUrlHint": "Optional — defaults to your site's domain.",
+      "address": "Postal address",
+      "addressPlaceholder": "1 Main Street, 10115 Berlin",
+      "addressHint": "Optional — shown in the policy when provided.",
+      "submit": "Generate policy",
+      "regenerate": "Regenerate policy",
+      "submitting": "Generating…",
+      "generated": "Your cookie policy has been generated",
+      "error": "The policy could not be generated. Please try again.",
+      "validation": {
+        "companyRequired": "Enter your company name",
+        "emailInvalid": "Enter a valid email address"
+      }
+    },
+    "empty": {
+      "title": "No policy yet",
+      "description": "Fill in your business details above and generate your first cookie policy."
+    },
+    "published": {
+      "title": "Published policy",
+      "version": "Version {version}",
+      "updated": "Updated {date}",
+      "languages": "Languages",
+      "hostedUrl": "Hosted page",
+      "open": "Open",
+      "copyUrl": "Copy link",
+      "copied": "Copied!",
+      "embedTitle": "Embed on your site",
+      "embedDescription": "Paste this HTML where you want the policy to appear on your own pages.",
+      "copyHtml": "Copy HTML"
+    },
+    "preview": {
+      "title": "Preview",
+      "description": "Exactly what visitors see on your hosted policy page.",
+      "loadError": "The preview could not be loaded.",
+      "languageLabel": "Preview language"
+    },
+    "hosted": {
+      "languageLabel": "Policy language",
+      "loading": "Loading cookie policy…",
+      "poweredBy": "Cookie policy by {app}",
+      "notFound": {
+        "title": "Policy not found",
+        "description": "This cookie policy link is invalid or is no longer available."
+      },
+      "error": {
+        "title": "Something went wrong",
+        "description": "This cookie policy could not be loaded. Please try again later."
       }
     }
   }

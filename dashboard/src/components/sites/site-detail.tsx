@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useArchiveSite, useSite } from "@/hooks/use-sites";
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { getApiErrorCode } from "@/lib/api-error-codes";
 
 export function SiteDetail({ siteId }: { siteId: string }) {
@@ -115,6 +115,21 @@ export function SiteDetail({ siteId }: { siteId: string }) {
         </Card>
 
         <ScanHistory siteId={siteId} />
+
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("detail.policyTitle")}</CardTitle>
+            <CardDescription>{t("detail.policyDescription")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="outline"
+              render={<Link href={`/sites/${siteId}/policy`} />}
+            >
+              {t("detail.policyCta")}
+            </Button>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>

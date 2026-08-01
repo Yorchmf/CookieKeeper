@@ -197,7 +197,10 @@
       "archiveConfirmDescription": "{domain} verrà archiviato. Il banner non sarà più mostrato e il sito scomparirà dal tuo elenco.",
       "archiveConfirm": "Archivia",
       "cancel": "Annulla",
-      "archivedToast": "Sito archiviato"
+      "archivedToast": "Sito archiviato",
+      "policyTitle": "Informativa sui cookie",
+      "policyDescription": "Genera e pubblica un'informativa sui cookie conforme al GDPR per questo sito.",
+      "policyCta": "Gestisci informativa"
     }
   },
   "dashboard": {
@@ -257,6 +260,70 @@
       "empty": {
         "title": "Nessun cookie trovato",
         "description": "Questa scansione non ha rilevato alcun cookie sul sito."
+      }
+    }
+  },
+  "policy": {
+    "title": "Informativa sui cookie",
+    "subtitle": "Genera un'informativa sui cookie conforme al GDPR dalla tua ultima scansione: ospitata, versionata e pronta da condividere.",
+    "loadError": "Impossibile caricare la tua informativa sui cookie. Riprova.",
+    "form": {
+      "title": "Dati dell'azienda",
+      "description": "Questi dati compaiono nella tua informativa pubblicata. Aggiornali e rigenera in qualsiasi momento.",
+      "companyName": "Nome dell'azienda",
+      "companyNamePlaceholder": "Acme S.r.l.",
+      "contactEmail": "E-mail di contatto",
+      "contactEmailPlaceholder": "privacy@example.eu",
+      "websiteUrl": "URL del sito web",
+      "websiteUrlPlaceholder": "https://www.example.eu",
+      "websiteUrlHint": "Facoltativo: per impostazione predefinita, il dominio del tuo sito.",
+      "address": "Indirizzo postale",
+      "addressPlaceholder": "Via Roma 1, 00184 Roma",
+      "addressHint": "Facoltativo: mostrato nell'informativa quando indicato.",
+      "submit": "Genera informativa",
+      "regenerate": "Rigenera informativa",
+      "submitting": "Generazione in corso…",
+      "generated": "La tua informativa sui cookie è stata generata",
+      "error": "Impossibile generare l'informativa. Riprova.",
+      "validation": {
+        "companyRequired": "Inserisci il nome della tua azienda",
+        "emailInvalid": "Inserisci un indirizzo e-mail valido"
+      }
+    },
+    "empty": {
+      "title": "Ancora nessuna informativa",
+      "description": "Compila i dati della tua azienda qui sopra e genera la tua prima informativa sui cookie."
+    },
+    "published": {
+      "title": "Informativa pubblicata",
+      "version": "Versione {version}",
+      "updated": "Aggiornata il {date}",
+      "languages": "Lingue",
+      "hostedUrl": "Pagina ospitata",
+      "open": "Apri",
+      "copyUrl": "Copia link",
+      "copied": "Copiato!",
+      "embedTitle": "Incorpora nel tuo sito",
+      "embedDescription": "Incolla questo HTML dove vuoi che l'informativa appaia sulle tue pagine.",
+      "copyHtml": "Copia HTML"
+    },
+    "preview": {
+      "title": "Anteprima",
+      "description": "Esattamente ciò che i visitatori vedono sulla tua pagina dell'informativa ospitata.",
+      "loadError": "Impossibile caricare l'anteprima.",
+      "languageLabel": "Lingua dell'anteprima"
+    },
+    "hosted": {
+      "languageLabel": "Lingua dell'informativa",
+      "loading": "Caricamento dell'informativa sui cookie…",
+      "poweredBy": "Informativa sui cookie di {app}",
+      "notFound": {
+        "title": "Informativa non trovata",
+        "description": "Questo link all'informativa sui cookie non è valido o non è più disponibile."
+      },
+      "error": {
+        "title": "Qualcosa è andato storto",
+        "description": "Impossibile caricare questa informativa sui cookie. Riprova più tardi."
       }
     }
   }

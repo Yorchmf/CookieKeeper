@@ -197,7 +197,10 @@
       "archiveConfirmDescription": "{domain} sera archivé. La bannière ne sera plus diffusée et le site disparaîtra de votre liste.",
       "archiveConfirm": "Archiver",
       "cancel": "Annuler",
-      "archivedToast": "Site archivé"
+      "archivedToast": "Site archivé",
+      "policyTitle": "Politique de cookies",
+      "policyDescription": "Générez et publiez une politique de cookies conforme au RGPD pour ce site.",
+      "policyCta": "Gérer la politique"
     }
   },
   "dashboard": {
@@ -257,6 +260,70 @@
       "empty": {
         "title": "Aucun cookie trouvé",
         "description": "Ce scan n'a détecté aucun cookie sur le site."
+      }
+    }
+  },
+  "policy": {
+    "title": "Politique de cookies",
+    "subtitle": "Générez une politique de cookies conforme au RGPD à partir de votre dernier scan — hébergée, versionnée et prête à être partagée.",
+    "loadError": "Votre politique de cookies n'a pas pu être chargée. Veuillez réessayer.",
+    "form": {
+      "title": "Informations sur l'entreprise",
+      "description": "Ces informations apparaissent dans votre politique publiée. Modifiez-les et régénérez à tout moment.",
+      "companyName": "Nom de l'entreprise",
+      "companyNamePlaceholder": "Acme SARL",
+      "contactEmail": "E-mail de contact",
+      "contactEmailPlaceholder": "confidentialite@example.eu",
+      "websiteUrl": "URL du site web",
+      "websiteUrlPlaceholder": "https://www.example.eu",
+      "websiteUrlHint": "Facultatif — correspond par défaut au domaine de votre site.",
+      "address": "Adresse postale",
+      "addressPlaceholder": "1 rue Principale, 75001 Paris",
+      "addressHint": "Facultatif — affiché dans la politique lorsqu'il est renseigné.",
+      "submit": "Générer la politique",
+      "regenerate": "Régénérer la politique",
+      "submitting": "Génération…",
+      "generated": "Votre politique de cookies a été générée",
+      "error": "La politique n'a pas pu être générée. Veuillez réessayer.",
+      "validation": {
+        "companyRequired": "Saisissez le nom de votre entreprise",
+        "emailInvalid": "Saisissez une adresse e-mail valide"
+      }
+    },
+    "empty": {
+      "title": "Aucune politique pour le moment",
+      "description": "Renseignez les informations de votre entreprise ci-dessus et générez votre première politique de cookies."
+    },
+    "published": {
+      "title": "Politique publiée",
+      "version": "Version {version}",
+      "updated": "Mise à jour {date}",
+      "languages": "Langues",
+      "hostedUrl": "Page hébergée",
+      "open": "Ouvrir",
+      "copyUrl": "Copier le lien",
+      "copied": "Copié !",
+      "embedTitle": "Intégrer sur votre site",
+      "embedDescription": "Collez ce code HTML là où vous souhaitez afficher la politique sur vos propres pages.",
+      "copyHtml": "Copier le HTML"
+    },
+    "preview": {
+      "title": "Aperçu",
+      "description": "Exactement ce que voient les visiteurs sur votre page de politique hébergée.",
+      "loadError": "L'aperçu n'a pas pu être chargé.",
+      "languageLabel": "Langue de l'aperçu"
+    },
+    "hosted": {
+      "languageLabel": "Langue de la politique",
+      "loading": "Chargement de la politique de cookies…",
+      "poweredBy": "Politique de cookies par {app}",
+      "notFound": {
+        "title": "Politique introuvable",
+        "description": "Ce lien de politique de cookies est invalide ou n'est plus disponible."
+      },
+      "error": {
+        "title": "Une erreur est survenue",
+        "description": "Cette politique de cookies n'a pas pu être chargée. Veuillez réessayer plus tard."
       }
     }
   }
