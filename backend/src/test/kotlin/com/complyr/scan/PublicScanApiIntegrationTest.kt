@@ -1,6 +1,7 @@
 package com.complyr.scan
 
 import com.complyr.TestcontainersConfiguration
+import org.hamcrest.Matchers.not
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -17,6 +18,7 @@ import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
  * The public, unauthenticated free-scan endpoint (`POST /api/v1/public-scan`). Covers that it is
@@ -33,6 +35,9 @@ class PublicScanApiIntegrationTest {
 
     @Autowired
     private lateinit var publicScanRepository: PublicScanRepository
+
+    @Autowired
+    private lateinit var publicScanCookieRepository: PublicScanCookieRepository
 
     @Autowired
     private lateinit var jdbcTemplate: JdbcTemplate
@@ -83,7 +88,7 @@ class PublicScanApiIntegrationTest {
     }
 
     @Test
-    fun `a fresh completed scan is served from cache instead of enqueuing a new one`() {
+    fun `a fresh completed scan reuses the crawl but hands the visitor a new per-visitor result`() {
         val cached =
             publicScanRepository.save(
                 PublicScanEntity(
@@ -95,6 +100,15 @@ class PublicScanApiIntegrationTest {
                     expiresAt = Instant.now().plus(Duration.ofDays(7)),
                 ),
             )
+        publicScanCookieRepository.save(
+            PublicScanCookieEntity(
+                publicScanId = cached.id,
+                name = "_ga",
+                category = "statistics",
+                provider = "Google Analytics",
+                isKnown = true,
+            ),
+        )
 
         mockMvc
             .perform(
@@ -103,9 +117,20 @@ class PublicScanApiIntegrationTest {
                     .content("""{"domain":"cached.example"}"""),
             ).andExpect(status().isOk)
             .andExpect(jsonPath("$.data.status").value("done"))
-            .andExpect(jsonPath("$.data.token").value(cached.publicToken))
+            // A fresh per-visitor token, never the shared cached one.
+            .andExpect(jsonPath("$.data.token").value(not(cached.publicToken)))
 
-        // No second scan row was created — the cache reused the existing completed one.
-        assertEquals(1, publicScanRepository.findAll().size)
+        // A second row was materialized (the per-visitor copy) rather than reusing the cached identity.
+        val rows = publicScanRepository.findAll()
+        assertEquals(2, rows.size)
+        val copy = rows.single { it.id != cached.id }
+        assertEquals(ScanStatus.DONE, copy.status)
+        assertEquals("cached.example", copy.domain)
+
+        // The copy carries the crawl's cookies re-keyed to the new row; the original's are untouched.
+        val copiedCookies = publicScanCookieRepository.findByPublicScanId(copy.id)
+        assertEquals(1, copiedCookies.size)
+        assertTrue(copiedCookies.single().let { it.name == "_ga" && it.category == "statistics" })
+        assertEquals(1, publicScanCookieRepository.findByPublicScanId(cached.id).size)
     }
 }

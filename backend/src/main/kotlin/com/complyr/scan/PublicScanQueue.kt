@@ -36,6 +36,8 @@ data class ClaimedPublicScan(
 @Component
 class PublicScanQueue(
     private val publicScanRepository: PublicScanRepository,
+    private val publicScanCookieRepository: PublicScanCookieRepository,
+    private val cookieWriter: PublicScanCookieWriter,
     private val jobRepository: JobRepository,
     private val properties: ComplyrProperties,
     private val clock: Clock,
@@ -78,6 +80,44 @@ class PublicScanQueue(
             ),
         )
         return scan.publicToken
+    }
+
+    /**
+     * Materialize a per-visitor result from a still-fresh cached crawl of the same domain, returning the
+     * new read token. Instead of sharing one row+token across every visitor of a domain (which would
+     * collide on the Slice-E `email` lead slot and could disclose one visitor's email to another), each
+     * request gets its OWN `done` row — its own token, its own null `email` slot, its own [ipHash] — and
+     * we copy the cached crawl's (already capped/classified) cookies onto it. This reuses the expensive
+     * crawl artifact without re-crawling, but never shares identity between visitors.
+     *
+     * No job row is created: the result is `done` on arrival, so there is nothing for a worker to run.
+     */
+    @Transactional
+    fun reuseCachedResult(
+        cached: PublicScanEntity,
+        ipHash: String?,
+    ): String {
+        val now = clock.instant()
+        val copy =
+            publicScanRepository.save(
+                PublicScanEntity(
+                    domain = cached.domain,
+                    status = ScanStatus.DONE,
+                    publicToken = OpaqueTokens.generate(),
+                    ipHash = ipHash,
+                    createdAt = now,
+                    updatedAt = now,
+                    expiresAt = now.plus(RESULT_TTL),
+                ),
+            )
+        // Re-key each cached finding onto the new row (fresh PK + FK); the cookie set is bounded and
+        // truncated at crawl time (ScanCookieMapper caps), so this copy is cheap.
+        val copiedCookies =
+            publicScanCookieRepository
+                .findByPublicScanId(cached.id)
+                .map { it.copy(id = UUID.randomUUID(), publicScanId = copy.id) }
+        cookieWriter.replace(copy.id, copiedCookies)
+        return copy.publicToken
     }
 
     /**

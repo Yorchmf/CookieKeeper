@@ -8,8 +8,11 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.TestPropertySource
+import java.time.Duration
+import java.time.Instant
 import java.util.UUID
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -34,6 +37,9 @@ class PublicScanQueueTest {
 
     @Autowired
     private lateinit var publicScanRepository: PublicScanRepository
+
+    @Autowired
+    private lateinit var publicScanCookieRepository: PublicScanCookieRepository
 
     @Autowired
     private lateinit var jobRepository: JobRepository
@@ -131,6 +137,46 @@ class PublicScanQueueTest {
 
         publicScanQueue.markSucceeded(live)
         assertEquals(ScanStatus.DONE, publicScanRepository.findById(scanId).orElseThrow().status)
+    }
+
+    @Test
+    fun `reuseCachedResult mints a new per-visitor row and copies the cached cookies without a job`() {
+        val now = Instant.now()
+        val cached =
+            publicScanRepository.save(
+                PublicScanEntity(
+                    domain = "acme.example",
+                    status = ScanStatus.DONE,
+                    publicToken = "tok_cached",
+                    createdAt = now,
+                    updatedAt = now,
+                    expiresAt = now.plus(Duration.ofDays(7)),
+                ),
+            )
+        publicScanCookieRepository.save(
+            PublicScanCookieEntity(publicScanId = cached.id, name = "_ga", category = "statistics", isKnown = true),
+        )
+
+        val token = publicScanQueue.reuseCachedResult(cached, ipHash = "hash_2")
+
+        assertNotEquals("tok_cached", token, "the visitor gets their own token, not the shared cached one")
+        val copy = assertNotNull(publicScanRepository.findByPublicToken(token))
+        assertNotEquals(cached.id, copy.id)
+        assertEquals(ScanStatus.DONE, copy.status)
+        assertEquals("acme.example", copy.domain)
+        assertEquals("hash_2", copy.ipHash)
+        assertNull(copy.email, "a fresh, empty lead slot — never the cached row's email")
+
+        // The cached findings are copied onto the new row with fresh keys; the source row keeps its own.
+        val copiedCookies = publicScanCookieRepository.findByPublicScanId(copy.id)
+        assertEquals(1, copiedCookies.size)
+        assertEquals("_ga", copiedCookies.single().name)
+        assertNotEquals(cached.id, copiedCookies.single().publicScanId, "the copy is FK'd to the new row")
+        assertEquals(1, publicScanCookieRepository.findByPublicScanId(cached.id).size)
+
+        // Reuse never enqueues: a done result has nothing for a worker to run.
+        assertEquals(0, jobRepository.findAll().count { it.type == PublicScanQueue.JOB_TYPE_PUBLIC_SCAN })
+        assertNull(publicScanQueue.claimNext())
     }
 
     private fun onlyPublicJob(): JobEntity {

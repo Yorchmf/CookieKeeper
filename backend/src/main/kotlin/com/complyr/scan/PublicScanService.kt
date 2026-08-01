@@ -15,11 +15,14 @@ import java.time.Duration
  *
  * The 24h per-domain cache is scoped to [ScanStatus.DONE] (see the repository finder): only a
  * *completed* result is ever reused, so a recent failed/running row neither shows as the verdict nor
- * pins the domain against a retry. Its cost/abuse bound is therefore ONLY realized *after* a first
- * crawl completes — it does NOT dedupe concurrent or repeated requests while a scan is still
- * queued/running, nor across distinct domains, and there is no per-requester rate limit yet. Until the
- * slice-D abuse controls (rate limit + honeypot + concurrency cap) land, the crawl/row/job count this
- * endpoint can drive is effectively unbounded; it must not be routed to the public internet before then.
+ * pins the domain against a retry. On a hit it reuses the crawl *artifact*, not the *identity*: each
+ * request gets its OWN row+token+`email` slot via [PublicScanQueue.reuseCachedResult] (findings copied,
+ * no re-crawl), so a popular domain captures every visitor's lead independently and no visitor can read
+ * another's email. The bound the cache provides is therefore only on *crawl* cost, not on rows/tokens:
+ * it does NOT dedupe concurrent requests still queued/running, nor across distinct domains, and there is
+ * no per-requester rate limit yet. Until the slice-D abuse controls (rate limit + honeypot + concurrency
+ * cap) land, the row/job count this endpoint can drive is effectively unbounded; it must not be routed
+ * to the public internet before then.
  */
 @Service
 class PublicScanService(
@@ -41,7 +44,10 @@ class PublicScanService(
                 createdAtFrom = clock.instant().minus(CACHE_WINDOW),
             )
         if (cached != null) {
-            return PublicScanCreatedResponse(token = cached.publicToken, status = cached.status.dbValue)
+            // Reuse the crawl, not the identity: mint a fresh per-visitor row+token backed by the cached
+            // findings so this visitor's future email lead can't collide with or leak another's.
+            val token = queue.reuseCachedResult(cached = cached, ipHash = null)
+            return PublicScanCreatedResponse(token = token, status = ScanStatus.DONE.dbValue)
         }
         // ipHash (rotating-salt requester hash) is wired in slice D alongside rate-limiting/honeypot.
         val token = queue.enqueue(domain = domain, ipHash = null)

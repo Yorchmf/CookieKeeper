@@ -64,19 +64,23 @@ class PublicScanServiceTest {
     }
 
     @Test
-    fun `a fresh cached done scan is reused instead of enqueuing a new crawl`() {
+    fun `a fresh cached done scan is reused as a new per-visitor result instead of enqueuing a crawl`() {
+        val cached = scan("acme.example.com", "tok_cached", ScanStatus.DONE)
         every {
             repository.findFirstByDomainAndStatusAndCreatedAtAfterOrderByCreatedAtDesc(
                 "acme.example.com",
                 ScanStatus.DONE,
                 now.minusSeconds(24 * 3600),
             )
-        } returns scan("acme.example.com", "tok_cached", ScanStatus.DONE)
+        } returns cached
+        every { queue.reuseCachedResult(cached, null) } returns "tok_reused"
 
         val response = service.request(PublicScanRequest("acme.example.com"))
 
-        assertEquals("tok_cached", response.token, "the cached scan's token is returned")
+        // The visitor gets their OWN fresh token, not the shared cached one — never the same identity.
+        assertEquals("tok_reused", response.token, "a fresh per-visitor token backed by the cached crawl")
         assertEquals("done", response.status)
+        verify(exactly = 1) { queue.reuseCachedResult(cached, null) }
         verify(exactly = 0) { queue.enqueue(any(), any()) }
     }
 
