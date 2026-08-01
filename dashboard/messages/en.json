@@ -21,6 +21,50 @@
     "footer": {
       "legal": "Legal",
       "privacy": "Privacy"
+    },
+    "scan": {
+      "eyebrow": "Free cookie audit",
+      "title": "See what's tracking your visitors",
+      "subtitle": "Enter your domain for an instant, no-signup scan of the cookies and trackers your site loads.",
+      "domainLabel": "Your website domain",
+      "domainPlaceholder": "www.example.eu",
+      "domainInvalid": "Enter a valid domain, e.g. www.example.eu",
+      "submit": "Scan my site",
+      "scanningShort": "Scanning…",
+      "scanning": "Scanning {domain}…",
+      "scanningHint": "This usually takes under a minute. Results appear here automatically.",
+      "failed": {
+        "title": "We couldn't complete this scan",
+        "description": "Something went wrong, or this scan link has expired. Please try again.",
+        "retry": "Try another scan"
+      },
+      "verdict": {
+        "title": "Scan complete",
+        "totalLabel": "cookies & trackers found on {domain}",
+        "needsReview": "{count, plural, one {# cookie needs review} other {# cookies need review}}"
+      },
+      "gate": {
+        "title": "Unlock the full report",
+        "description": "See every cookie, its provider, and how long it lasts. Enter your email to reveal the detailed breakdown.",
+        "emailLabel": "Email address",
+        "emailPlaceholder": "you@example.eu",
+        "submit": "Show me the details",
+        "submitting": "Unlocking…",
+        "consent": "We'll email your report and occasional product tips. Unsubscribe anytime."
+      },
+      "report": {
+        "heading": "Detailed report",
+        "empty": {
+          "title": "No cookies found",
+          "description": "This scan didn't detect any cookies on your site."
+        }
+      },
+      "cta": {
+        "title": "Make your site compliant in minutes",
+        "description": "Complyr blocks these cookies until visitors consent — and keeps audit-ready logs. Start free, no card required.",
+        "action": "Get started free"
+      },
+      "reset": "Scan another site"
     }
   },
   "nav": {

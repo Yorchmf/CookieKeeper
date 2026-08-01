@@ -21,6 +21,50 @@
     "footer": {
       "legal": "Impressum",
       "privacy": "Datenschutz"
+    },
+    "scan": {
+      "eyebrow": "Kostenloser Cookie-Check",
+      "title": "Sehen Sie, was Ihre Besucher verfolgt",
+      "subtitle": "Geben Sie Ihre Domain ein für einen sofortigen Scan der Cookies und Tracker Ihrer Website – ganz ohne Anmeldung.",
+      "domainLabel": "Ihre Website-Domain",
+      "domainPlaceholder": "www.beispiel.eu",
+      "domainInvalid": "Geben Sie eine gültige Domain ein, z. B. www.beispiel.eu",
+      "submit": "Meine Website scannen",
+      "scanningShort": "Wird gescannt …",
+      "scanning": "{domain} wird gescannt …",
+      "scanningHint": "Das dauert meist unter einer Minute. Die Ergebnisse erscheinen hier automatisch.",
+      "failed": {
+        "title": "Der Scan konnte nicht abgeschlossen werden",
+        "description": "Etwas ist schiefgelaufen oder dieser Scan-Link ist abgelaufen. Bitte versuchen Sie es erneut.",
+        "retry": "Erneut scannen"
+      },
+      "verdict": {
+        "title": "Scan abgeschlossen",
+        "totalLabel": "Cookies & Tracker auf {domain} gefunden",
+        "needsReview": "{count, plural, one {# Cookie muss geprüft werden} other {# Cookies müssen geprüft werden}}"
+      },
+      "gate": {
+        "title": "Vollständigen Bericht freischalten",
+        "description": "Sehen Sie jedes Cookie, seinen Anbieter und seine Laufzeit. Geben Sie Ihre E-Mail-Adresse ein, um die Details anzuzeigen.",
+        "emailLabel": "E-Mail-Adresse",
+        "emailPlaceholder": "sie@beispiel.eu",
+        "submit": "Details anzeigen",
+        "submitting": "Wird freigeschaltet …",
+        "consent": "Wir senden Ihnen Ihren Bericht und gelegentlich Produkttipps. Jederzeit abbestellbar."
+      },
+      "report": {
+        "heading": "Detaillierter Bericht",
+        "empty": {
+          "title": "Keine Cookies gefunden",
+          "description": "Bei diesem Scan wurden keine Cookies auf Ihrer Website erkannt."
+        }
+      },
+      "cta": {
+        "title": "Machen Sie Ihre Website in Minuten konform",
+        "description": "Complyr blockiert diese Cookies bis Besucher einwilligen – und führt prüfsichere Protokolle. Kostenlos starten, ohne Karte.",
+        "action": "Kostenlos loslegen"
+      },
+      "reset": "Andere Website scannen"
     }
   },
   "nav": {

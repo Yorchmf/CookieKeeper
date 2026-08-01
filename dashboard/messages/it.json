@@ -21,6 +21,50 @@
     "footer": {
       "legal": "Note legali",
       "privacy": "Privacy"
+    },
+    "scan": {
+      "eyebrow": "Controllo cookie gratuito",
+      "title": "Scopri cosa traccia i tuoi visitatori",
+      "subtitle": "Inserisci il tuo dominio per una scansione istantanea dei cookie e tracker del tuo sito, senza registrazione.",
+      "domainLabel": "Il dominio del tuo sito",
+      "domainPlaceholder": "www.esempio.eu",
+      "domainInvalid": "Inserisci un dominio valido, ad es. www.esempio.eu",
+      "submit": "Analizza il mio sito",
+      "scanningShort": "Scansione…",
+      "scanning": "Scansione di {domain}…",
+      "scanningHint": "Di solito richiede meno di un minuto. I risultati appaiono qui automaticamente.",
+      "failed": {
+        "title": "Non è stato possibile completare la scansione",
+        "description": "Qualcosa è andato storto o questo link di scansione è scaduto. Riprova.",
+        "retry": "Nuova scansione"
+      },
+      "verdict": {
+        "title": "Scansione completata",
+        "totalLabel": "cookie e tracker trovati su {domain}",
+        "needsReview": "{count, plural, one {# cookie da verificare} other {# cookie da verificare}}"
+      },
+      "gate": {
+        "title": "Sblocca il report completo",
+        "description": "Vedi ogni cookie, il suo fornitore e la sua durata. Inserisci la tua email per rivelare il dettaglio.",
+        "emailLabel": "Indirizzo email",
+        "emailPlaceholder": "tu@esempio.eu",
+        "submit": "Mostra i dettagli",
+        "submitting": "Sblocco…",
+        "consent": "Ti invieremo il report e occasionalmente consigli sul prodotto. Puoi annullare l'iscrizione in qualsiasi momento."
+      },
+      "report": {
+        "heading": "Report dettagliato",
+        "empty": {
+          "title": "Nessun cookie trovato",
+          "description": "Questa scansione non ha rilevato alcun cookie sul tuo sito."
+        }
+      },
+      "cta": {
+        "title": "Rendi il tuo sito conforme in pochi minuti",
+        "description": "Complyr blocca questi cookie finché i visitatori non acconsentono e mantiene registri pronti per l'audit. Inizia gratis, senza carta.",
+        "action": "Inizia gratis"
+      },
+      "reset": "Analizza un altro sito"
     }
   },
   "nav": {

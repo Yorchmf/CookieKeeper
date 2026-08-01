@@ -21,6 +21,50 @@
     "footer": {
       "legal": "Mentions légales",
       "privacy": "Confidentialité"
+    },
+    "scan": {
+      "eyebrow": "Audit de cookies gratuit",
+      "title": "Découvrez ce qui piste vos visiteurs",
+      "subtitle": "Saisissez votre domaine pour une analyse instantanée des cookies et traceurs de votre site, sans inscription.",
+      "domainLabel": "Le domaine de votre site",
+      "domainPlaceholder": "www.exemple.eu",
+      "domainInvalid": "Saisissez un domaine valide, p. ex. www.exemple.eu",
+      "submit": "Analyser mon site",
+      "scanningShort": "Analyse…",
+      "scanning": "Analyse de {domain}…",
+      "scanningHint": "Cela prend généralement moins d'une minute. Les résultats s'affichent ici automatiquement.",
+      "failed": {
+        "title": "Nous n'avons pas pu terminer cette analyse",
+        "description": "Une erreur s'est produite ou ce lien d'analyse a expiré. Veuillez réessayer.",
+        "retry": "Relancer une analyse"
+      },
+      "verdict": {
+        "title": "Analyse terminée",
+        "totalLabel": "cookies et traceurs trouvés sur {domain}",
+        "needsReview": "{count, plural, one {# cookie à examiner} other {# cookies à examiner}}"
+      },
+      "gate": {
+        "title": "Débloquer le rapport complet",
+        "description": "Consultez chaque cookie, son fournisseur et sa durée de vie. Saisissez votre e-mail pour révéler le détail.",
+        "emailLabel": "Adresse e-mail",
+        "emailPlaceholder": "vous@exemple.eu",
+        "submit": "Afficher les détails",
+        "submitting": "Déblocage…",
+        "consent": "Nous vous enverrons votre rapport et occasionnellement des conseils produit. Désinscription à tout moment."
+      },
+      "report": {
+        "heading": "Rapport détaillé",
+        "empty": {
+          "title": "Aucun cookie trouvé",
+          "description": "Cette analyse n'a détecté aucun cookie sur votre site."
+        }
+      },
+      "cta": {
+        "title": "Rendez votre site conforme en quelques minutes",
+        "description": "Complyr bloque ces cookies jusqu'au consentement des visiteurs et conserve des journaux prêts pour un audit. Commencez gratuitement, sans carte.",
+        "action": "Commencer gratuitement"
+      },
+      "reset": "Analyser un autre site"
     }
   },
   "nav": {
