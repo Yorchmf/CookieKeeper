@@ -106,4 +106,14 @@ interface ScanRepository : JpaRepository<ScanEntity, UUID> {
         id: UUID,
         siteId: UUID,
     ): ScanEntity?
+
+    /**
+     * The site's most recent scan in a given status — the policy generator reads this with
+     * [ScanStatus.DONE] to source the cookies it lists (null when the site has never completed a scan,
+     * in which case the policy legitimately states none were found).
+     */
+    fun findFirstBySiteIdAndStatusOrderByCreatedAtDesc(
+        siteId: UUID,
+        status: ScanStatus,
+    ): ScanEntity?
 }

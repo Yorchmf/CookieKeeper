@@ -73,6 +73,10 @@ class SecurityConfig(
                     .permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/v1/public-scan/*/report")
                     .permitAll()
+                    // Hosted cookie-policy read (docs §4.5). Addressed only by an opaque public id;
+                    // read-only, cacheable (Cloudflare), rate-limited on the PUBLIC_POLICY tier.
+                    .requestMatchers(HttpMethod.GET, "/api/v1/public/policy/*")
+                    .permitAll()
                     .requestMatchers(HttpMethod.POST, *PUBLIC_AUTH_ENDPOINTS)
                     .permitAll()
                     .anyRequest()

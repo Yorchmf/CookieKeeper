@@ -96,6 +96,10 @@ class RateLimitFilter(
             // read-only, gated by an unguessable token, and hit repeatedly while the caller polls, so
             // a tight per-minute cap would break the funnel. Edge (Cloudflare) is its volumetric guard.
             uri == PUBLIC_SCAN_PATH || isPublicScanReportPath(uri) -> Tier.PUBLIC_SCAN
+            // Hosted cookie-policy read (`/api/v1/public/policy/{publicId}`): a cacheable, read-only GET
+            // fronted by Cloudflare. Throttled generously as a per-IP backstop against a single id being
+            // hammered past the edge cache; the tail-segment wildcard match ignores the id value.
+            uri.startsWith("$PUBLIC_POLICY_PATH/") -> Tier.PUBLIC_POLICY
             else -> null
         }
 
@@ -107,6 +111,7 @@ class RateLimitFilter(
             Tier.AUTH -> properties.rateLimit.authPerMinute
             Tier.CONSENT -> properties.rateLimit.consentPerMinute
             Tier.PUBLIC_SCAN -> properties.rateLimit.publicScanPerMinute
+            Tier.PUBLIC_POLICY -> properties.rateLimit.publicPolicyPerMinute
         }
 
     private fun writeRateLimited(response: HttpServletResponse) {
@@ -131,7 +136,7 @@ class RateLimitFilter(
                     .build(),
             ).build()
 
-    private enum class Tier { AUTH, CONSENT, PUBLIC_SCAN }
+    private enum class Tier { AUTH, CONSENT, PUBLIC_SCAN, PUBLIC_POLICY }
 
     private class TrackedBucket(
         val bucket: Bucket,
@@ -152,6 +157,7 @@ class RateLimitFilter(
         const val CONSENT_PATH = "/api/v1/consent"
         const val CONSENT_TOKEN_PATH = "/api/v1/consent-token"
         const val PUBLIC_SCAN_PATH = "/api/v1/public-scan"
+        const val PUBLIC_POLICY_PATH = "/api/v1/public/policy"
         const val MAX_TRACKED_CLIENTS = 10_000
     }
 }

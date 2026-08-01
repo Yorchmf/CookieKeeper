@@ -51,11 +51,17 @@ data class ComplyrProperties(
         // Chromium crawl, so this tier is the first-line brake on crawl-compute abuse. The per-IP
         // concurrency cap (complyr.scan.max-concurrent-scans-per-ip) and edge limiting back it up.
         val publicScanPerMinute: Long = DEFAULT_PUBLIC_SCAN_PER_MINUTE,
+        // Requests per minute per client IP on the hosted cookie-policy read. Generous: the response
+        // is a cacheable GET fronted by Cloudflare, addressed by an unguessable public id, and a real
+        // visitor loads it once. This is only the coarse per-IP backstop against a single id being
+        // hammered past the edge cache; enumeration is infeasible (random UUID public id).
+        val publicPolicyPerMinute: Long = DEFAULT_PUBLIC_POLICY_PER_MINUTE,
     ) {
         companion object {
             const val DEFAULT_AUTH_PER_MINUTE = 10L
             const val DEFAULT_CONSENT_PER_MINUTE = 120L
             const val DEFAULT_PUBLIC_SCAN_PER_MINUTE = 10L
+            const val DEFAULT_PUBLIC_POLICY_PER_MINUTE = 120L
         }
     }
 
