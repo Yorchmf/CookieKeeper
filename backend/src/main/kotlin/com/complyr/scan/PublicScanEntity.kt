@@ -6,6 +6,9 @@ import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Modifying
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 import java.time.Instant
 import java.util.UUID
 
@@ -77,4 +80,42 @@ interface PublicScanRepository : JpaRepository<PublicScanEntity, UUID> {
         ipHash: String,
         statuses: Collection<ScanStatus>,
     ): Long
+
+    /**
+     * Try to take the transaction-scoped advisory lock [key], returning true only to the caller that
+     * acquired it. Leader-guards the scheduled retention prune across backend replicas (see
+     * [PublicScanReaper]): a losing caller skips its run. Held for the rest of the current transaction
+     * and released automatically at commit/rollback — so it must be called from within a transaction
+     * (the reaper runs each batch inside its own `TransactionTemplate`), never on its own.
+     */
+    @Query(value = "SELECT pg_try_advisory_xact_lock(:key)", nativeQuery = true)
+    fun tryAcquireAdvisoryXactLock(
+        @Param("key") key: Long,
+    ): Boolean
+
+    /**
+     * Delete up to [batchSize] scans whose TTL horizon has passed ([expiresAt] < [cutoff]), returning
+     * the number removed; [PublicScanCookieEntity] rows cascade via the FK's `ON DELETE CASCADE`. The
+     * reaper calls this in a loop (one transaction per batch) so a backlog drains in bounded chunks
+     * instead of one long DELETE that pins the vacuum horizon — see [PublicScanReaper].
+     *
+     * The inner `SELECT ctid ... ORDER BY expires_at LIMIT` walks `idx_public_scans_expires_at` to
+     * pick the oldest-expiring [batchSize] rows and deletes them by physical row id, which is why this
+     * must be native (`ctid` is not JPA-mapped). No `SKIP LOCKED` is needed: the reaper holds a
+     * per-batch advisory lock, so no two batches ever target overlapping rows concurrently. These
+     * rows are replaceable acquisition-funnel data, not append-only audit evidence, so DELETE is
+     * allowed here — unlike `consent_events`.
+     */
+    @Modifying
+    @Query(
+        value =
+            "DELETE FROM public_scans WHERE ctid IN " +
+                "(SELECT ctid FROM public_scans WHERE expires_at < :cutoff " +
+                "ORDER BY expires_at LIMIT :batchSize)",
+        nativeQuery = true,
+    )
+    fun deleteBatchExpiredBefore(
+        @Param("cutoff") cutoff: Instant,
+        @Param("batchSize") batchSize: Int,
+    ): Int
 }

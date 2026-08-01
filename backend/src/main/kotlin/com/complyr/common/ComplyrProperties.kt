@@ -157,6 +157,13 @@ data class ComplyrProperties(
         // could otherwise stack many concurrent Chromium crawls. Enforced only when an ip_hash is
         // available; see [com.complyr.scan.PublicScanService].
         val maxConcurrentScansPerIp: Int = DEFAULT_MAX_CONCURRENT_SCANS_PER_IP,
+        // Rows the retention reaper deletes per transaction (see [com.complyr.scan.PublicScanReaper]).
+        // Each deleted scan cascades to its `public_scan_cookies` (up to [maxCookies] rows), so this is
+        // kept an order of magnitude below the consent-idempotency batch: the cascade fan-out is what
+        // sizes the transaction, not the scan-row count. Large enough that a day's expiries drain in
+        // one batch, small enough to stay vacuum-friendly. The prune schedule is the raw
+        // `complyr.scan.public-scan-prune-cron` property read by `@Scheduled`, not typed here.
+        val publicScanPruneBatchSize: Int = DEFAULT_PUBLIC_SCAN_PRUNE_BATCH_SIZE,
     ) {
         init {
             require(!visibilityTimeout.isZero && !visibilityTimeout.isNegative) {
@@ -180,6 +187,11 @@ data class ComplyrProperties(
             }
             require(maxConcurrentScansPerIp > 0) {
                 "complyr.scan.max-concurrent-scans-per-ip must be positive (was $maxConcurrentScansPerIp)"
+            }
+            // A non-positive batch size makes the reaper delete nothing and loop until its per-run cap;
+            // refuse it at startup rather than silently disabling the retention prune.
+            require(publicScanPruneBatchSize > 0) {
+                "complyr.scan.public-scan-prune-batch-size must be positive (was $publicScanPruneBatchSize)"
             }
             // The queue redelivers a job once its visibility lease lapses; if a healthy crawl could run
             // longer than that lease it would be double-claimed (ADR-4 invariant). The job budget is
@@ -208,6 +220,12 @@ data class ComplyrProperties(
             // A human scanning a couple of domains never needs more than a few in flight; a bot
             // stacking crawls does. Low enough to bound abuse, high enough not to block real retries.
             const val DEFAULT_MAX_CONCURRENT_SCANS_PER_IP = 3
+
+            // Scans deleted per prune transaction. Kept well below the consent-idempotency batch (10k)
+            // because each row cascade-deletes up to `maxCookies` child rows: 500 scans * up to 500
+            // cookies bounds the transaction's row churn while still clearing a normal day's expiries
+            // in a single batch.
+            const val DEFAULT_PUBLIC_SCAN_PRUNE_BATCH_SIZE = 500
         }
     }
 }

@@ -1,7 +1,7 @@
 # Anonymous Scan Funnel — Design & Slice Plan
 
-**Status:** Ratified (decisions locked §9 — planning only, no code written)
-**Supersedes/updates on approval:** ARCHITECTURE.md §4.4 (SSRF invariant), §8 (Security Posture), §12 (add ADR-12)
+**Status:** IMPLEMENTED (through Slice G) — decisions locked §9; landed in `com.complyr.scan`
+**Recorded in:** ARCHITECTURE.md §4.4 (SSRF invariant), §5 (`public_scans`/`public_scan_cookies`), §8 (Security Posture), §12 (**ADR-12** recorded)
 **Reviewers required before merge:** `security-reviewer` (SSRF/abuse/PII — mandatory), `database-reviewer` (migration), `a11y-architect` (public scan widget)
 
 ---
@@ -111,7 +111,7 @@ lead to the account.
 | D | Abuse controls: new `PUBLIC_SCAN` rate-limit tier + **honeypot** + `ip_hash` (rotating salt) + concurrent-scan cap | `security-reviewer` |
 | E | Public read API: teaser verdict (no gate) + `POST .../report {email}` to unlock detailed DTO | ownership-free, token-scoped |
 | F | Marketing landing scan widget: domain input → poll → teaser → email-gate → full report + signup CTA | `a11y-architect`; anti-template design rules |
-| G | Retention job (purge `public_scans` past `expires_at`, 7-day) + ADR-12 & ARCHITECTURE.md §4.4/§8 update | mirrors consent reaper; `doc-updater` |
+| G | ✅ Retention job (`PublicScanReaper`, purge `public_scans` past `expires_at`, 7-day) + ADR-12 & ARCHITECTURE.md §4.4/§5/§8/§12 update | mirrors consent reaper; **shipped** |
 
 Cross-cutting: update ARCHITECTURE.md §4.4/§8/§12 (ADR-12) via `doc-updater` once the invariant
 change is ratified.
