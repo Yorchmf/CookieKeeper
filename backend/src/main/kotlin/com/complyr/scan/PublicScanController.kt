@@ -2,9 +2,14 @@ package com.complyr.scan
 
 import com.complyr.common.ApiResponse
 import com.complyr.scan.dto.PublicScanCreatedResponse
+import com.complyr.scan.dto.PublicScanReportRequest
+import com.complyr.scan.dto.PublicScanReportResponse
 import com.complyr.scan.dto.PublicScanRequest
+import com.complyr.scan.dto.PublicScanTeaserResponse
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -23,11 +28,16 @@ import org.springframework.web.bind.annotation.RestController
  * domain is only enqueued here — the load-bearing defense ([ScanTargetValidator] resolve-public
  * pre-flight + per-request guards + scanner network isolation) runs later inside the crawl engine, not
  * on this request thread.
+ *
+ * Read side ([PublicScanReadService]): the result is addressed only by its opaque token, never by an
+ * owner. [teaser] is free (counts only); [report] captures the visitor's email to unlock the detail.
+ * An unknown/expired/honeypot token yields one identical 404 so the honeypot is not a detection oracle.
  */
 @RestController
 @RequestMapping("/api/v1/public-scan")
 class PublicScanController(
     private val publicScanService: PublicScanService,
+    private val publicScanReadService: PublicScanReadService,
 ) {
     @PostMapping
     fun request(
@@ -37,4 +47,15 @@ class PublicScanController(
         // remoteAddr is the real client IP behind Caddy (server.forward-headers-strategy: native).
         return ApiResponse.success(publicScanService.request(request, httpRequest.remoteAddr))
     }
+
+    @GetMapping("/{token}")
+    fun teaser(
+        @PathVariable token: String,
+    ): ApiResponse<PublicScanTeaserResponse> = ApiResponse.success(publicScanReadService.teaser(token))
+
+    @PostMapping("/{token}/report")
+    fun report(
+        @PathVariable token: String,
+        @Valid @RequestBody request: PublicScanReportRequest,
+    ): ApiResponse<PublicScanReportResponse> = ApiResponse.success(publicScanReadService.unlockReport(token, request))
 }

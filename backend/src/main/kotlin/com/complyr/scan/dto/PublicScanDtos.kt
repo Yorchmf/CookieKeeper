@@ -1,6 +1,8 @@
 package com.complyr.scan.dto
 
+import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.Size
 
 /**
  * Anonymous free-scan request from the marketing site. Only a raw domain — no auth, no owning site.
@@ -27,4 +29,19 @@ data class PublicScanRequest(
 data class PublicScanCreatedResponse(
     val token: String,
     val status: String,
+)
+
+/**
+ * The email gate that unlocks the detailed report ([PublicScanReportResponse]). The address is the
+ * marketing lead — validated syntactically here and captured onto the scan row, never logged (PII,
+ * CLAUDE.md #4). The lawful basis / consent copy for storing it lives in the funnel UI (slice F).
+ */
+data class PublicScanReportRequest(
+    @field:NotBlank
+    @field:Email
+    // Bound attacker-controlled input at the boundary (RFC 5321 max) rather than at the raw DB length;
+    // `@Email` is only a syntactic check. Downstream consumers (lead export, marketing email templates)
+    // must still escape/neutralize this value — a stored address can carry CSV-formula or HTML payloads.
+    @field:Size(max = 254)
+    val email: String,
 )

@@ -106,6 +106,39 @@ class RateLimitFilterTest {
     }
 
     @Test
+    fun `the email-gated report write shares the public-scan tier`() {
+        val chain = mockk<FilterChain>(relaxed = true)
+
+        // The report POST is throttled under the same PUBLIC_SCAN tier (2/min in this test), matched
+        // by its `/report` suffix without the token value; the 3rd is refused.
+        repeat(2) {
+            val response = MockHttpServletResponse()
+            filter.doFilter(request("/api/v1/public-scan/tok123/report"), response, chain)
+            assertEquals(200, response.status)
+        }
+
+        val limited = MockHttpServletResponse()
+        filter.doFilter(request("/api/v1/public-scan/tok123/report"), limited, chain)
+        assertEquals(429, limited.status)
+        assertTrue(limited.contentAsString.contains("\"RATE_LIMITED\""), limited.contentAsString)
+    }
+
+    @Test
+    fun `the polled teaser read is not rate limited`() {
+        val chain = mockk<FilterChain>(relaxed = true)
+
+        // `/api/v1/public-scan/{token}` is the read path the funnel polls; it must not fall under any
+        // tight tier, so repeated reads sail through (token-gating + edge are its controls).
+        repeat(5) {
+            val response = MockHttpServletResponse()
+            filter.doFilter(request("/api/v1/public-scan/tok123"), response, chain)
+            assertEquals(200, response.status)
+        }
+
+        verify(exactly = 5) { chain.doFilter(any(), any()) }
+    }
+
+    @Test
     fun `CORS preflight OPTIONS on a public endpoint is never counted`() {
         val chain = mockk<FilterChain>(relaxed = true)
 

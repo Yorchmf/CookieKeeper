@@ -60,8 +60,14 @@ class SecurityConfig(
                     .requestMatchers(HttpMethod.POST, "/api/v1/consent")
                     .permitAll()
                     // Anonymous marketing-funnel free scan (docs ADR-12). Abuse controls (per-IP
-                    // rate-limit tier, honeypot, concurrent-scan cap) land in slice D.
+                    // rate-limit tier, honeypot, concurrent-scan cap) live in the RateLimitFilter and
+                    // PublicScanService. The result is read by its opaque token only: the teaser GET
+                    // and the email-gated report POST are token-scoped, not owner-scoped.
                     .requestMatchers(HttpMethod.POST, "/api/v1/public-scan")
+                    .permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/v1/public-scan/*")
+                    .permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/v1/public-scan/*/report")
                     .permitAll()
                     .requestMatchers(HttpMethod.POST, *PUBLIC_AUTH_ENDPOINTS)
                     .permitAll()

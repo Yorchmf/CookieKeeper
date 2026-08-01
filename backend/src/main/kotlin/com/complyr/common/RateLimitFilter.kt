@@ -89,9 +89,16 @@ class RateLimitFilter(
         when {
             uri in AUTH_PATHS -> Tier.AUTH
             uri == CONSENT_PATH -> Tier.CONSENT
-            uri == PUBLIC_SCAN_PATH -> Tier.PUBLIC_SCAN
+            // The scan-spawning POST and the email-writing report POST share the tier; the polled
+            // teaser GET (`/api/v1/public-scan/{token}`) is deliberately NOT throttled here — it is
+            // read-only, gated by an unguessable token, and hit repeatedly while the caller polls, so
+            // a tight per-minute cap would break the funnel. Edge (Cloudflare) is its volumetric guard.
+            uri == PUBLIC_SCAN_PATH || isPublicScanReportPath(uri) -> Tier.PUBLIC_SCAN
             else -> null
         }
+
+    /** `/api/v1/public-scan/{token}/report` — the email-gated write, matched without the token value. */
+    private fun isPublicScanReportPath(uri: String): Boolean = uri.startsWith("$PUBLIC_SCAN_PATH/") && uri.endsWith("/report")
 
     private fun capacityFor(tier: Tier): Long =
         when (tier) {
