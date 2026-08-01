@@ -78,7 +78,8 @@ data class ComplyrProperties(
             val DEFAULT_ALLOWED_METHODS = listOf("GET", "POST", "OPTIONS")
             val DEFAULT_ALLOWED_HEADERS = listOf("Content-Type")
             const val DEFAULT_MAX_AGE_SECONDS = 3600L
-            val DEFAULT_PATHS = listOf("/api/v1/consent", "/api/v1/widget-config/**")
+            val DEFAULT_PATHS =
+                listOf("/api/v1/consent", "/api/v1/consent-token/**", "/api/v1/widget-config/**")
         }
     }
 
@@ -95,10 +96,22 @@ data class ComplyrProperties(
      * backlog (e.g. the reaper disabled for a stretch, or a widened retention window) drains in
      * bounded chunks instead of one long-running DELETE that pins the vacuum horizon and bursts
      * dead tuples — see [com.complyr.consent.ConsentIdempotencyReaper].
+     *
+     * [originTokenSecret] / [originTokenTtl] configure the stateless HMAC consent-origin token (see
+     * [com.complyr.consent.ConsentOriginToken]). The secret is CONFIGURED, not random-per-process,
+     * so a token minted just before a deploy still verifies afterwards — a restart must never reject
+     * a legitimate in-flight consent event (that would lose audit evidence). It is bound in from
+     * `${'$'}{CONSENT_ORIGIN_TOKEN_SECRET}` with no default in application.yml (dev/prd fail fast if
+     * unset); the empty default below only exists so the no-arg `Consent()` used by unrelated unit
+     * tests still constructs — the [com.complyr.consent.ConsentOriginToken] bean rejects a secret
+     * shorter than 32 bytes at startup. [originTokenTtl] is kept short (a replayed token dies with it)
+     * but comfortably above client→server latency; the widget self-censors tokens older than ~90s.
      */
     data class Consent(
         val idempotencyRetention: Duration = Duration.ofDays(DEFAULT_IDEMPOTENCY_RETENTION_DAYS),
         val idempotencyPruneBatchSize: Int = DEFAULT_IDEMPOTENCY_PRUNE_BATCH_SIZE,
+        val originTokenSecret: String = "",
+        val originTokenTtl: Duration = Duration.ofMinutes(DEFAULT_ORIGIN_TOKEN_TTL_MINUTES),
     ) {
         init {
             // A zero/negative window makes cutoff >= now, so the reaper would delete still-active,
@@ -111,6 +124,12 @@ data class ComplyrProperties(
             require(idempotencyPruneBatchSize > 0) {
                 "complyr.consent.idempotency-prune-batch-size must be positive (was $idempotencyPruneBatchSize)"
             }
+            // A zero/negative TTL would mint already-expired tokens, rejecting every token-bearing
+            // (i.e. every current-widget) consent post. Refuse it at startup. Secret length is
+            // validated by the ConsentOriginToken bean, not here, so the empty test default passes.
+            require(!originTokenTtl.isZero && !originTokenTtl.isNegative) {
+                "complyr.consent.origin-token-ttl must be a positive duration (was $originTokenTtl)"
+            }
         }
 
         companion object {
@@ -119,6 +138,10 @@ data class ComplyrProperties(
             // Rows per prune transaction. Large enough that steady-state churn drains in one batch,
             // small enough that a backlog stays chunked into short, vacuum-friendly transactions.
             const val DEFAULT_IDEMPOTENCY_PRUNE_BATCH_SIZE = 10_000
+
+            // Short enough that a captured payload's token dies quickly, long enough to survive
+            // normal client→server latency and modest clock skew (widget attaches only if <~90s old).
+            const val DEFAULT_ORIGIN_TOKEN_TTL_MINUTES = 2L
         }
     }
 

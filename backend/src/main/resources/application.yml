@@ -54,6 +54,13 @@ complyr:
     idempotency-retention: ${CONSENT_IDEMPOTENCY_RETENTION:14d}
     # Reaper schedule (Spring cron, server zone). Default 03:30 daily is also baked into the job.
     idempotency-prune-cron: ${CONSENT_IDEMPOTENCY_PRUNE_CRON:0 30 3 * * *}
+    # HMAC secret for the stateless consent-origin token (ADR-13). No default here on purpose:
+    # dev/prd fail fast at startup if unset (dev-only fallback lives in application-local.yml,
+    # tests set it in test resources). Must be >= 32 bytes — validated by the ConsentOriginToken bean.
+    origin-token-secret: ${CONSENT_ORIGIN_TOKEN_SECRET}
+    # How long a minted origin token stays valid. Short (bounds replay) but above client→server
+    # latency; the widget self-censors tokens older than ~90s to stay clear of this ceiling.
+    origin-token-ttl: ${CONSENT_ORIGIN_TOKEN_TTL:2m}
   scan:
     # How often a scanner worker polls the queue (only the `scanner` profile runs the poller).
     poll-interval-millis: ${SCAN_POLL_INTERVAL_MS:5000}

@@ -8,6 +8,9 @@ complexity:
     ignoreDataClasses: true
     # Constructor injection only (CLAUDE.md): DI constructors legitimately reach 7 collaborators.
     constructorThreshold: 8
+    # Test request-builder helpers expose every field as an optional named arg so each case sets
+    # only what it exercises; that's a readability win, not a design smell (mirrors LongMethod below).
+    excludes: ['**/src/test/**']
   LongMethod:
     # Full-wire integration tests read best as one linear scenario.
     excludes: ['**/src/test/**']

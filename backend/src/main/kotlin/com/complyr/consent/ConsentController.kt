@@ -32,6 +32,9 @@ class ConsentController(
             ConsentRequestMeta(
                 clientIp = httpRequest.remoteAddr,
                 userAgent = httpRequest.getHeader(HttpHeaders.USER_AGENT),
+                // Verified against the origin bound into the token (when one is present); the browser
+                // sets this and can't forge it cross-origin. Null for same-origin / non-browser callers.
+                origin = httpRequest.getHeader(HttpHeaders.ORIGIN),
             )
         consentService.record(request, meta)
         return ApiResponse.success(ConsentAcceptedResponse())

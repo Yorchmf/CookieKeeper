@@ -13,6 +13,7 @@
 import { API_BASE } from './constants';
 import type { ConsentDecision } from './consent-mode';
 import { warn } from './debug';
+import { freshOriginToken } from './origin-token';
 
 export interface ConsentEventPayload {
   siteKey: string;
@@ -97,12 +98,25 @@ export function flushPendingEvents(): void {
 /**
  * POST an entry's payload; re-queue the entry — preserving its original
  * `enqueuedAt` — on a rejected request or non-2xx response.
+ *
+ * The origin token (ADR-13) is read fresh here and attached to the body only
+ * when present, NEVER stored in the queued entry: a token lives ~2 min but a
+ * retry can replay days later. A retry therefore goes out tokenless (the backend
+ * still records it), instead of carrying an expired token that would be rejected
+ * — losing audit evidence is worse than the bounded replay window the token
+ * closes. On the first live send freshOriginToken() returns the just-fetched
+ * token; flushPendingEvents() runs at init before any fetch, so retries are
+ * naturally tokenless.
  */
 function send(entry: PendingEntry): void {
+  const token = freshOriginToken();
+  const body = token
+    ? { ...entry.payload, originToken: token }
+    : entry.payload;
   void fetch(endpoint(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(entry.payload),
+    body: JSON.stringify(body),
     keepalive: true,
   })
     .then((response) => {

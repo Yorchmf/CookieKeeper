@@ -88,7 +88,9 @@ class RateLimitFilter(
     private fun tierFor(uri: String): Tier? =
         when {
             uri in AUTH_PATHS -> Tier.AUTH
-            uri == CONSENT_PATH -> Tier.CONSENT
+            // Consent ingestion and its origin-token mint share the CONSENT tier: minting is the
+            // per-page-load precursor to a consent post, so one generous per-IP budget covers both.
+            uri == CONSENT_PATH || uri.startsWith("$CONSENT_TOKEN_PATH/") -> Tier.CONSENT
             // The scan-spawning POST and the email-writing report POST share the tier; the polled
             // teaser GET (`/api/v1/public-scan/{token}`) is deliberately NOT throttled here — it is
             // read-only, gated by an unguessable token, and hit repeatedly while the caller polls, so
@@ -148,6 +150,7 @@ class RateLimitFilter(
                 "/api/v1/auth/reset-password",
             )
         const val CONSENT_PATH = "/api/v1/consent"
+        const val CONSENT_TOKEN_PATH = "/api/v1/consent-token"
         const val PUBLIC_SCAN_PATH = "/api/v1/public-scan"
         const val MAX_TRACKED_CLIENTS = 10_000
     }

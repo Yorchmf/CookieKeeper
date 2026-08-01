@@ -15,6 +15,7 @@ import io.mockk.verify
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.time.ZoneOffset
 import java.util.UUID
@@ -30,6 +31,13 @@ class ConsentServiceTest {
     private val consentIdempotencyRepository = mockk<ConsentIdempotencyRepository>(relaxed = true)
     private val bannerConfigService = mockk<BannerConfigService>()
     private val ipHasher = IpHasher(Clock.fixed(now, ZoneOffset.UTC))
+    private val fixedClock = Clock.fixed(now, ZoneOffset.UTC)
+    private val originToken =
+        ConsentOriginToken(
+            secret = "test-only-consent-origin-token-secret-0123456789",
+            ttl = Duration.ofMinutes(2),
+            clock = fixedClock,
+        )
     private val service =
         ConsentService(
             siteRepository,
@@ -37,7 +45,8 @@ class ConsentServiceTest {
             consentIdempotencyRepository,
             bannerConfigService,
             ipHasher,
-            Clock.fixed(now, ZoneOffset.UTC),
+            originToken,
+            fixedClock,
         )
 
     private val siteKey = "pk_live_site_key"
@@ -49,13 +58,23 @@ class ConsentServiceTest {
         vid: String? = UUID.randomUUID().toString(),
         lang: String? = "de",
         eventKey: String? = null,
+        originToken: String? = null,
     ): ConsentEventRequest =
-        ConsentEventRequest(siteKey = siteKey, action = action, categories = categories, lang = lang, vid = vid, eventKey = eventKey)
+        ConsentEventRequest(
+            siteKey = siteKey,
+            action = action,
+            categories = categories,
+            lang = lang,
+            vid = vid,
+            eventKey = eventKey,
+            originToken = originToken,
+        )
 
     private fun meta(
         ip: String? = "203.0.113.7",
         ua: String? = "Mozilla/5.0",
-    ): ConsentRequestMeta = ConsentRequestMeta(clientIp = ip, userAgent = ua)
+        origin: String? = null,
+    ): ConsentRequestMeta = ConsentRequestMeta(clientIp = ip, userAgent = ua, origin = origin)
 
     private fun stubActiveSite() {
         every { siteRepository.findBySiteKeyAndStatus(siteKey, SiteStatus.ACTIVE) } returns site
@@ -207,6 +226,62 @@ class ConsentServiceTest {
         // No dedupe attempt for a missing/garbled key, but the event is never dropped.
         verify(exactly = 0) { consentIdempotencyRepository.claim(any()) }
         verify(exactly = 2) { consentEventRepository.save(any()) }
+    }
+
+    @Test
+    fun `a valid origin token whose origin matches the request records the event`() {
+        stubActiveSite()
+        val origin = "https://example.com"
+        val token = originToken.mint(siteKey, origin).token
+
+        service.record(request(originToken = token), meta(origin = origin))
+
+        verify(exactly = 1) { consentEventRepository.save(any()) }
+    }
+
+    @Test
+    fun `a present but invalid origin token is rejected before any write`() {
+        stubActiveSite()
+
+        // A garbage token is present, so it must be enforced (unlike an absent one).
+        assertThrows<InvalidConsentTokenException> {
+            service.record(request(originToken = "not.a.valid.token"), meta(origin = "https://example.com"))
+        }
+        verify(exactly = 0) { consentEventRepository.save(any()) }
+    }
+
+    @Test
+    fun `an origin token minted for another origin is rejected`() {
+        stubActiveSite()
+        // Token bound to the real page origin, but the consent POST arrives with a different Origin —
+        // the replay-from-elsewhere case the token exists to stop.
+        val token = originToken.mint(siteKey, "https://example.com").token
+
+        assertThrows<InvalidConsentTokenException> {
+            service.record(request(originToken = token), meta(origin = "https://evil.example"))
+        }
+        verify(exactly = 0) { consentEventRepository.save(any()) }
+    }
+
+    @Test
+    fun `a token minted for a different site key is rejected`() {
+        stubActiveSite()
+        val token = originToken.mint("pk_live_other_site", "https://example.com").token
+
+        assertThrows<InvalidConsentTokenException> {
+            service.record(request(originToken = token), meta(origin = "https://example.com"))
+        }
+        verify(exactly = 0) { consentEventRepository.save(any()) }
+    }
+
+    @Test
+    fun `a tokenless request is still recorded so no audit evidence is ever lost`() {
+        stubActiveSite()
+
+        // No token and no origin — an old widget, a privacy browser, or a delayed retry.
+        service.record(request(originToken = null), meta(origin = null))
+
+        verify(exactly = 1) { consentEventRepository.save(any()) }
     }
 
     @Test

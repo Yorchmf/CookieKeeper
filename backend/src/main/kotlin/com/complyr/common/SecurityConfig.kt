@@ -59,6 +59,10 @@ class SecurityConfig(
                     .permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/v1/consent")
                     .permitAll()
+                    // Stateless origin-token mint for the consent path (ADR-13). Unauthenticated and
+                    // CORS-open like consent; rate-limited on the CONSENT tier by RateLimitFilter.
+                    .requestMatchers(HttpMethod.GET, "/api/v1/consent-token/*")
+                    .permitAll()
                     // Anonymous marketing-funnel free scan (docs ADR-12). Abuse controls (per-IP
                     // rate-limit tier, honeypot, concurrent-scan cap) live in the RateLimitFilter and
                     // PublicScanService. The result is read by its opaque token only: the teaser GET

@@ -4,6 +4,10 @@ complyr:
     # Dev-only fallback (>= 32 chars) so `bootRun`/compose work out of the box.
     # dev/prd have NO fallback and fail fast when JWT_SECRET is unset.
     jwt-secret: ${JWT_SECRET:local-dev-only-jwt-secret-do-not-use-in-prd-0123456789}
+  consent:
+    # Dev-only fallback (>= 32 bytes) for the consent-origin token secret, same rationale as
+    # jwt-secret above: dev/prd fail fast when CONSENT_ORIGIN_TOKEN_SECRET is unset.
+    origin-token-secret: ${CONSENT_ORIGIN_TOKEN_SECRET:local-dev-only-consent-origin-token-secret-0123456789}
   # Local-only wide-open CORS so the Vite dev harness (localhost:5173) can call the API
   # cross-origin. dev/prd omit this block and fall back to the credential-less, all-origins
   # defaults in ComplyrProperties.Cors. allow-credentials stays false (never send cookies).

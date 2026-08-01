@@ -35,10 +35,27 @@ class InvalidConsentPayloadException(
     message: String,
 ) : ApiException(HttpStatus.BAD_REQUEST, code = "INVALID_CONSENT_PAYLOAD", message = message)
 
+/**
+ * A consent request carried an origin token that was malformed, expired, signed for a different site
+ * key, or minted for a different origin — 400. Only ever thrown when a token is PRESENT: a tokenless
+ * request is always recorded, so this can never drop legitimate audit evidence (see [ConsentOriginToken]).
+ */
+class InvalidConsentTokenException :
+    ApiException(HttpStatus.BAD_REQUEST, code = "INVALID_CONSENT_TOKEN", message = "Invalid or expired consent token")
+
+/**
+ * The token-mint endpoint received a site-key path segment longer than any real key — 400, nothing is
+ * signed. Distinct from [InvalidConsentTokenException] (which is a consent-path concept): the mint path
+ * issues tokens and receives none, so a bad *request* here is not a bad *token*.
+ */
+class MalformedSiteKeyException : ApiException(HttpStatus.BAD_REQUEST, code = "INVALID_SITE_KEY", message = "Malformed site key")
+
 /** Request-scoped network metadata, kept out of the DTO so it can never come from the request body. */
 data class ConsentRequestMeta(
     val clientIp: String?,
     val userAgent: String?,
+    /** The request's `Origin` header, verified against a present origin token; null when absent. */
+    val origin: String? = null,
 )
 
 /**
@@ -56,6 +73,7 @@ class ConsentService(
     private val consentIdempotencyRepository: ConsentIdempotencyRepository,
     private val bannerConfigService: BannerConfigService,
     private val ipHasher: IpHasher,
+    private val consentOriginToken: ConsentOriginToken,
     private val clock: Clock,
 ) {
     @Transactional
@@ -63,6 +81,8 @@ class ConsentService(
         request: ConsentEventRequest,
         meta: ConsentRequestMeta,
     ) {
+        verifyOriginToken(request, meta)
+
         val site =
             siteRepository.findBySiteKeyAndStatus(request.siteKey, SiteStatus.ACTIVE)
                 ?: throw UnknownSiteException()
@@ -95,6 +115,23 @@ class ConsentService(
                 createdAt = clock.instant(),
             ),
         )
+    }
+
+    /**
+     * Optional anti-replay control: enforced only when a NON-BLANK token is present, so a tokenless
+     * post (old widget, privacy browser, delayed localStorage retry) — or a blank/whitespace token a
+     * proxy or serializer might emit — still records. Losing audit evidence is worse than the residual
+     * that an attacker can mint-then-forge within the TTL. Throws only for a present, malformed token.
+     */
+    private fun verifyOriginToken(
+        request: ConsentEventRequest,
+        meta: ConsentRequestMeta,
+    ) {
+        request.originToken?.takeIf { it.isNotBlank() }?.let { token ->
+            if (!consentOriginToken.isValid(token, request.siteKey, meta.origin)) {
+                throw InvalidConsentTokenException()
+            }
+        }
     }
 
     /**

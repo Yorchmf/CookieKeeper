@@ -35,6 +35,13 @@ data class ConsentEventRequest(
      */
     @field:Size(max = MAX_EVENT_KEY_LENGTH)
     val eventKey: String? = null,
+    /**
+     * Optional HMAC origin token from `GET /api/v1/consent-token/{siteKey}` (see
+     * [com.complyr.consent.ConsentOriginToken]). Absent → still recorded (old widgets, privacy
+     * browsers, delayed retries must never lose audit evidence); present-but-invalid → rejected 400.
+     */
+    @field:Size(max = MAX_ORIGIN_TOKEN_LENGTH)
+    val originToken: String? = null,
 ) {
     companion object {
         const val MAX_SITE_KEY_LENGTH = 64
@@ -44,6 +51,10 @@ data class ConsentEventRequest(
         const val MAX_LANG_LENGTH = 12
         const val MAX_VID_LENGTH = 36
         const val MAX_EVENT_KEY_LENGTH = 36
+
+        // Comfortably covers payload(base64: 64-char key + 13-digit expiry + ~253-char origin) + '.' +
+        // 43-char signature. A longer value can never be one of our tokens, so reject it at the boundary.
+        const val MAX_ORIGIN_TOKEN_LENGTH = 512
     }
 }
 

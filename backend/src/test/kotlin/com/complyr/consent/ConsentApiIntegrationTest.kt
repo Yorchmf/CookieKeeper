@@ -3,6 +3,7 @@ package com.complyr.consent
 import com.complyr.TestcontainersConfiguration
 import com.complyr.auth.RecordingEmailConfig
 import com.complyr.auth.RecordingEmailSender
+import com.complyr.consent.dto.ConsentEventRequest
 import jakarta.servlet.http.Cookie
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -17,6 +18,7 @@ import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.transaction.PlatformTransactionManager
@@ -331,5 +333,144 @@ class ConsentApiIntegrationTest {
                     .content("""{"action":"accept_all","categories":{"necessary":true}}"""),
             ).andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.success").value(false))
+    }
+
+    /** Mints an origin token for [siteKey] bound to [origin] via the public mint endpoint. */
+    private fun mintToken(
+        siteKey: String,
+        origin: String,
+    ): String {
+        val minted =
+            mockMvc
+                .perform(get("/api/v1/consent-token/{siteKey}", siteKey).header(HttpHeaders.ORIGIN, origin))
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.success").value(true))
+                // A token must never be cached: it is single-origin, short-lived, and per page load.
+                .andExpect(header().string(HttpHeaders.CACHE_CONTROL, org.hamcrest.Matchers.containsString("no-store")))
+                .andReturn()
+        return objectMapper
+            .readTree(minted.response.contentAsString)
+            .path("data")
+            .path("token")
+            .asString()
+    }
+
+    @Test
+    fun `a consent post carrying a freshly minted origin token is accepted`() {
+        val siteKey = createSiteKey(registeredUserCookie())
+        val origin = "https://shop.example.com"
+        val vid = UUID.randomUUID()
+        val token = mintToken(siteKey, origin)
+
+        mockMvc
+            .perform(
+                post("/api/v1/consent")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header(HttpHeaders.ORIGIN, origin)
+                    .content(
+                        objectMapper.writeValueAsString(
+                            mapOf(
+                                "siteKey" to siteKey,
+                                "action" to "accept_all",
+                                "categories" to mapOf("necessary" to true),
+                                "vid" to vid.toString(),
+                                "originToken" to token,
+                            ),
+                        ),
+                    ),
+            ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.recorded").value(true))
+
+        assertEquals(1, consentEventRepository.findByVisitorId(vid).size, "a token-bearing post records normally")
+    }
+
+    @Test
+    fun `a consent post whose origin token was minted for another origin is rejected and writes nothing`() {
+        val siteKey = createSiteKey(registeredUserCookie())
+        val vid = UUID.randomUUID()
+        // Token minted for the real page origin, but the consent POST arrives from a different one —
+        // the cross-origin replay the token exists to stop.
+        val token = mintToken(siteKey, "https://shop.example.com")
+
+        mockMvc
+            .perform(
+                post("/api/v1/consent")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header(HttpHeaders.ORIGIN, "https://evil.example")
+                    .content(
+                        objectMapper.writeValueAsString(
+                            mapOf(
+                                "siteKey" to siteKey,
+                                "action" to "accept_all",
+                                "categories" to mapOf("necessary" to true),
+                                "vid" to vid.toString(),
+                                "originToken" to token,
+                            ),
+                        ),
+                    ),
+            ).andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.error.code").value("INVALID_CONSENT_TOKEN"))
+
+        assertTrue(consentEventRepository.findByVisitorId(vid).isEmpty(), "a rejected token writes no audit row")
+    }
+
+    @Test
+    fun `a present but malformed origin token is a 400 while a tokenless post still records`() {
+        val siteKey = createSiteKey(registeredUserCookie())
+        val rejectedVid = UUID.randomUUID()
+        val acceptedVid = UUID.randomUUID()
+
+        // Present-but-garbage token → rejected.
+        mockMvc
+            .perform(
+                post("/api/v1/consent")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        objectMapper.writeValueAsString(
+                            mapOf(
+                                "siteKey" to siteKey,
+                                "action" to "accept_all",
+                                "categories" to mapOf("necessary" to true),
+                                "vid" to rejectedVid.toString(),
+                                "originToken" to "not.a.valid.token",
+                            ),
+                        ),
+                    ),
+            ).andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.error.code").value("INVALID_CONSENT_TOKEN"))
+
+        // The very same site still records a tokenless post — the token is optional, so an old widget
+        // or a delayed retry never loses audit evidence.
+        mockMvc
+            .perform(
+                post("/api/v1/consent")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        objectMapper.writeValueAsString(
+                            mapOf(
+                                "siteKey" to siteKey,
+                                "action" to "accept_all",
+                                "categories" to mapOf("necessary" to true),
+                                "vid" to acceptedVid.toString(),
+                            ),
+                        ),
+                    ),
+            ).andExpect(status().isOk)
+
+        assertTrue(consentEventRepository.findByVisitorId(rejectedVid).isEmpty(), "the bad-token post wrote nothing")
+        assertEquals(1, consentEventRepository.findByVisitorId(acceptedVid).size, "a tokenless post is still recorded")
+    }
+
+    @Test
+    fun `a mint request with an over-long site key is a 400 and signs nothing`() {
+        // The path segment can't match any real key, so the mint endpoint rejects it as a malformed
+        // request (INVALID_SITE_KEY) rather than signing an arbitrarily long payload.
+        val overLongKey = "p".repeat(ConsentEventRequest.MAX_SITE_KEY_LENGTH + 1)
+
+        mockMvc
+            .perform(get("/api/v1/consent-token/{siteKey}", overLongKey).header(HttpHeaders.ORIGIN, "https://shop.example.com"))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.code").value("INVALID_SITE_KEY"))
     }
 }

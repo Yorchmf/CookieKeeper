@@ -6,6 +6,7 @@ import {
   type ConsentEventPayload,
   type PendingEntry,
 } from '../src/api';
+import { clearOriginToken, fetchOriginToken } from '../src/origin-token';
 
 const PENDING_KEY = 'cmplyr_pending';
 
@@ -35,11 +36,14 @@ function seedPending(entryPayload: ConsentEventPayload, ageMs = 0): void {
 describe('consent event durability', () => {
   beforeEach(() => {
     localStorage.clear();
+    // No origin token held unless a test explicitly fetches one.
+    clearOriginToken();
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+    clearOriginToken();
   });
 
   test('queues the event for retry when the POST rejects', async () => {
@@ -191,5 +195,53 @@ describe('consent event durability', () => {
     expect(fetchMock).not.toHaveBeenCalled();
     // The un-replayable entry is cleared from storage, not left to linger.
     expect(readPending()).toHaveLength(0);
+  });
+
+  test('attaches a freshly-held origin token to the live consent POST', async () => {
+    // A page that fetched a token holds it; the very next live send rides it.
+    const tokenEnvelope = JSON.stringify({
+      success: true,
+      data: { token: 'payload.signature' },
+      error: null,
+    });
+    const fetchMock = vi.fn((url: string, _init?: RequestInit) =>
+      url.includes('/consent-token/')
+        ? Promise.resolve(
+            new Response(tokenEnvelope, {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            }),
+          )
+        : Promise.resolve(new Response('', { status: 204 })),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await fetchOriginToken(payload.siteKey);
+    sendConsentEvent(payload);
+    await flushMicrotasks();
+
+    const postCall = fetchMock.mock.calls.find((c) =>
+      String(c[0]).endsWith('/api/v1/consent'),
+    );
+    const body = JSON.parse(String(postCall![1]!.body));
+    expect(body.originToken).toBe('payload.signature');
+    // The token is a transport-only concession; it never enters the persisted payload.
+    expect(readPending()).toHaveLength(0);
+  });
+
+  test('replays a queued event tokenless (no stale token on retries)', async () => {
+    // Init order in the real widget: flushPendingEvents() runs before any token
+    // is fetched, so a retry carries no token and the backend records it anyway.
+    seedPending(payload);
+    const fetchMock = vi.fn((_url: string, _init?: RequestInit) =>
+      Promise.resolve(new Response('', { status: 204 })),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    flushPendingEvents();
+    await flushMicrotasks();
+
+    const body = JSON.parse(String(fetchMock.mock.calls[0]![1]!.body));
+    expect(body).not.toHaveProperty('originToken');
   });
 });

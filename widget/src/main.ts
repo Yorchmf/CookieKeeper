@@ -19,6 +19,7 @@ import {
   type ConsentDecision,
 } from './consent-mode';
 import { fetchConfig, resolveTexts, type WidgetConfig } from './config';
+import { fetchOriginToken } from './origin-token';
 import {
   isPreferencesOpen,
   removePreferences,
@@ -115,6 +116,12 @@ async function loadAndShowBanner(): Promise<void> {
   // Never re-render the banner underneath an open preferences modal — that
   // would mount an interactive surface behind the inert background barrier.
   if (isPreferencesOpen()) return;
+
+  // Mint an origin token (ADR-13) in the background while the banner loads, so a
+  // fresh one is on hand by the time the visitor clicks. Fire-and-forget: it
+  // never blocks the banner and never throws; if it doesn't arrive the consent
+  // POST simply goes out tokenless (and still records).
+  void fetchOriginToken(siteKey);
 
   const config = await fetchConfig(siteKey);
   const lang = navigator.language || config.defaultLanguage;
