@@ -13,6 +13,7 @@ data class ComplyrProperties(
     val cors: Cors = Cors(),
     val consent: Consent = Consent(),
     val scan: Scan = Scan(),
+    val billing: Billing = Billing(),
     val appBaseUrl: String,
     val cdnBaseUrl: String,
     val mailFrom: String,
@@ -255,6 +256,39 @@ data class ComplyrProperties(
             // cookies bounds the transaction's row churn while still clearing a normal day's expiries
             // in a single batch.
             const val DEFAULT_PUBLIC_SCAN_PRUNE_BATCH_SIZE = 500
+        }
+    }
+
+    /**
+     * Billing / Stripe tuning (docs/ARCHITECTURE.md §10). [trialPeriod] is the no-card trial window,
+     * measured from `users.created_at` — the trial is derived, not a subscription row, so signup stays
+     * untouched (see [com.complyr.billing.PlanResolver]). [trialConsentEventCap] bounds consent
+     * ingestion during that trial so it can't be used as unbounded free production capacity; it caps
+     * INGESTION only and never blocks recording an already-accepted event (CLAUDE.md constraint #3).
+     *
+     * The Stripe secret key, webhook signing secret, and per-plan price ids are bound in Slice 2/3
+     * when [com.complyr.billing.BillingService] and the webhook handler land; keeping them out of this
+     * slice avoids requiring Stripe config just to construct the properties for the data-model tests.
+     */
+    data class Billing(
+        val trialPeriod: Duration = Duration.ofDays(DEFAULT_TRIAL_DAYS),
+        val trialConsentEventCap: Long = DEFAULT_TRIAL_CONSENT_EVENT_CAP,
+    ) {
+        init {
+            require(!trialPeriod.isZero && !trialPeriod.isNegative) {
+                "complyr.billing.trial-period must be a positive duration (was $trialPeriod)"
+            }
+            require(trialConsentEventCap > 0) {
+                "complyr.billing.trial-consent-event-cap must be positive (was $trialConsentEventCap)"
+            }
+        }
+
+        companion object {
+            const val DEFAULT_TRIAL_DAYS = 14L
+
+            // Enough headroom for a genuine evaluation on a small site, low enough that running
+            // production traffic through the free trial hits the cap and prompts an upgrade.
+            const val DEFAULT_TRIAL_CONSENT_EVENT_CAP = 1_000L
         }
     }
 }
