@@ -1,6 +1,12 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  skipToken,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   generatePolicy,
   getCurrentPolicy,
@@ -26,8 +32,10 @@ export function usePolicy(siteId: string) {
 export function usePublicPolicy(publicId: string | undefined, lang?: string) {
   return useQuery({
     queryKey: [...POLICY_QUERY_KEY, "public", publicId ?? null, lang ?? null],
-    queryFn: () => getPublicPolicy(publicId as string, lang),
-    enabled: Boolean(publicId),
+    // skipToken keeps the query idle (no cast) until an id exists; keepPreviousData holds the last
+    // policy on screen while a language switch refetches, so the language control never unmounts.
+    queryFn: publicId ? () => getPublicPolicy(publicId, lang) : skipToken,
+    placeholderData: keepPreviousData,
   });
 }
 

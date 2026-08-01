@@ -37,6 +37,11 @@ export function PolicyForm({
   const [address, setAddress] = useState("");
   const [errors, setErrors] = useState<FieldErrors>({});
 
+  const companyId = `${fieldId}-company`;
+  const emailId = `${fieldId}-email`;
+  const websiteId = `${fieldId}-website`;
+  const addressId = `${fieldId}-address`;
+
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextErrors: FieldErrors = {};
@@ -48,6 +53,9 @@ export function PolicyForm({
     }
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
+      // Move focus to the first field in error so keyboard/SR users land on what to fix.
+      const firstInvalidId = nextErrors.companyName ? companyId : emailId;
+      document.getElementById(firstInvalidId)?.focus();
       return;
     }
     onSubmit({
@@ -58,21 +66,22 @@ export function PolicyForm({
     });
   };
 
-  const companyId = `${fieldId}-company`;
-  const emailId = `${fieldId}-email`;
-  const websiteId = `${fieldId}-website`;
-  const addressId = `${fieldId}-address`;
-
   return (
     <form className="flex flex-col gap-5" onSubmit={handleSubmit} noValidate>
       <div className="flex flex-col gap-2">
-        <Label htmlFor={companyId}>{t("companyName")}</Label>
+        <Label htmlFor={companyId}>
+          {t("companyName")}
+          <span aria-hidden="true" className="text-destructive">
+            *
+          </span>
+        </Label>
         <Input
           id={companyId}
           value={companyName}
           onChange={(event) => setCompanyName(event.target.value)}
           placeholder={t("companyNamePlaceholder")}
           maxLength={200}
+          aria-required="true"
           aria-invalid={errors.companyName ? "true" : undefined}
           aria-describedby={errors.companyName ? `${companyId}-error` : undefined}
         />
@@ -84,7 +93,12 @@ export function PolicyForm({
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor={emailId}>{t("contactEmail")}</Label>
+        <Label htmlFor={emailId}>
+          {t("contactEmail")}
+          <span aria-hidden="true" className="text-destructive">
+            *
+          </span>
+        </Label>
         <Input
           id={emailId}
           type="email"
@@ -92,6 +106,7 @@ export function PolicyForm({
           onChange={(event) => setContactEmail(event.target.value)}
           placeholder={t("contactEmailPlaceholder")}
           maxLength={254}
+          aria-required="true"
           aria-invalid={errors.contactEmail ? "true" : undefined}
           aria-describedby={errors.contactEmail ? `${emailId}-error` : undefined}
         />

@@ -99,12 +99,12 @@ export function PolicyManager({ siteId }: { siteId: string }) {
 
         {current ? (
           <>
-            <PublishedCard
-              current={current}
-              selectedLang={effectiveLang}
+            <PublishedCard current={current} selectedLang={effectiveLang} />
+            <PreviewCard
+              publicId={current.publicId}
+              lang={effectiveLang}
               onSelectLang={setSelectedLang}
             />
-            <PreviewCard publicId={current.publicId} lang={effectiveLang} />
           </>
         ) : (
           <Card>
@@ -123,11 +123,9 @@ export function PolicyManager({ siteId }: { siteId: string }) {
 function PublishedCard({
   current,
   selectedLang,
-  onSelectLang,
 }: {
   current: PolicyCurrent;
   selectedLang: string | undefined;
-  onSelectLang: (lang: string) => void;
 }) {
   const t = useTranslations("policy.published");
   const format = useFormatter();
@@ -151,14 +149,6 @@ function PublishedCard({
               <Badge
                 key={lang}
                 variant={lang === selectedLang ? "default" : "outline"}
-                render={
-                  <button
-                    type="button"
-                    aria-pressed={lang === selectedLang}
-                    onClick={() => onSelectLang(lang)}
-                    className="cursor-pointer transition-colors"
-                  />
-                }
               >
                 {lang.toUpperCase()}
               </Badge>
@@ -206,14 +196,14 @@ function PublishedCard({
 function PreviewCard({
   publicId,
   lang,
+  onSelectLang,
 }: {
   publicId: string;
   lang: string | undefined;
+  onSelectLang: (lang: string) => void;
 }) {
   const t = useTranslations("policy");
-  const [previewLang, setPreviewLang] = useState<string | undefined>(undefined);
-  const activeLang = previewLang ?? lang;
-  const preview = usePublicPolicy(publicId, activeLang);
+  const preview = usePublicPolicy(publicId, lang);
 
   return (
     <Card>
@@ -234,9 +224,12 @@ function PreviewCard({
               label={t("preview.languageLabel")}
               languages={preview.data.availableLanguages}
               current={preview.data.language}
-              onSelect={setPreviewLang}
+              onSelect={onSelectLang}
             />
-            <div className="max-h-96 overflow-auto rounded-lg border border-border bg-background p-6">
+            <div
+              lang={preview.data.language}
+              className="max-h-96 overflow-auto rounded-lg border border-border bg-background p-6"
+            >
               <PolicyHtml html={preview.data.html} />
             </div>
             <div className="flex flex-col gap-2">

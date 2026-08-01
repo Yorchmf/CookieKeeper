@@ -45,21 +45,24 @@ export function CopyButton({
   };
 
   return (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      onClick={() => void handleCopy()}
-    >
-      {isCopied ? (
-        <CheckIcon aria-hidden="true" />
-      ) : (
-        <CopyIcon aria-hidden="true" />
-      )}
-      {isCopied ? copiedLabel : label}
-      <span role="status" className="sr-only">
+    <span className="inline-flex">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => void handleCopy()}
+      >
+        {isCopied ? (
+          <CheckIcon aria-hidden="true" />
+        ) : (
+          <CopyIcon aria-hidden="true" />
+        )}
+        {isCopied ? copiedLabel : label}
+      </Button>
+      {/* Live region kept OUTSIDE the button so it isn't folded into the button's accessible name. */}
+      <span role="status" aria-live="polite" className="sr-only">
         {isCopied ? copiedLabel : ""}
       </span>
-    </Button>
+    </span>
   );
 }

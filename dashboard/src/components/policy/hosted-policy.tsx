@@ -48,7 +48,7 @@ export function HostedPolicy({ publicId }: { publicId: string }) {
             current={policy.data.language}
             onSelect={handleSelectLang}
           />
-          <article>
+          <article lang={policy.data.language}>
             <PolicyHtml html={policy.data.html} />
           </article>
         </>
