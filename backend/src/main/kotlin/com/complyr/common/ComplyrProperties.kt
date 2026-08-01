@@ -266,13 +266,31 @@ data class ComplyrProperties(
      * ingestion during that trial so it can't be used as unbounded free production capacity; it caps
      * INGESTION only and never blocks recording an already-accepted event (CLAUDE.md constraint #3).
      *
-     * The Stripe secret key, webhook signing secret, and per-plan price ids are bound in Slice 2/3
-     * when [com.complyr.billing.BillingService] and the webhook handler land; keeping them out of this
-     * slice avoids requiring Stripe config just to construct the properties for the data-model tests.
+     * [stripeSecretKey] and the per-plan [priceIds] are the environment-specific Stripe credentials
+     * (see [com.complyr.billing.StripeConfig] / [com.complyr.billing.BillingService]). They are bound
+     * from env vars with NO default in application.yml, so dev/prd fail fast at startup if unset — and
+     * crucially each environment supplies its OWN values: local/dev use Stripe TEST-mode keys+prices
+     * (`sk_test_…`, test-mode `price_…`), prd uses LIVE-mode ones (`sk_live_…`, live `price_…`). A
+     * TEST-mode price id is invalid against a live key and vice versa, so they must never be shared
+     * across environments. The empty defaults below exist only so the no-arg `Billing()` used by the
+     * data-model unit tests still constructs; a real secret/price is required to actually reach Stripe.
+     * The webhook signing secret is bound in Slice 3 when the webhook handler lands.
+     *
+     * [automaticTax] toggles Stripe Tax on Checkout: on in prd (Stripe Tax configured), off-able per
+     * environment where Tax isn't set up (a Checkout with automatic_tax against a Tax-less account
+     * errors), so it is env-overridable rather than hard-coded on.
      */
     data class Billing(
         val trialPeriod: Duration = Duration.ofDays(DEFAULT_TRIAL_DAYS),
         val trialConsentEventCap: Long = DEFAULT_TRIAL_CONSENT_EVENT_CAP,
+        val stripeSecretKey: String = "",
+        val priceIds: PriceIds = PriceIds(),
+        val automaticTax: Boolean = true,
+        // Dashboard-relative return paths Stripe redirects back to after Checkout / Portal. Combined
+        // with `complyr.app-base-url` into absolute URLs by [com.complyr.billing.BillingService].
+        val checkoutSuccessPath: String = DEFAULT_CHECKOUT_SUCCESS_PATH,
+        val checkoutCancelPath: String = DEFAULT_CHECKOUT_CANCEL_PATH,
+        val portalReturnPath: String = DEFAULT_PORTAL_RETURN_PATH,
     ) {
         init {
             require(!trialPeriod.isZero && !trialPeriod.isNegative) {
@@ -283,12 +301,27 @@ data class ComplyrProperties(
             }
         }
 
+        /**
+         * Stripe price id per plan. Env-specific (test-mode vs live-mode); see [Billing]. The
+         * plan→price mapping lives in [com.complyr.billing.BillingService] so this config-binding
+         * layer stays free of any dependency on the billing domain's `Plan` type.
+         */
+        data class PriceIds(
+            val starter: String = "",
+            val pro: String = "",
+            val business: String = "",
+        )
+
         companion object {
             const val DEFAULT_TRIAL_DAYS = 14L
 
             // Enough headroom for a genuine evaluation on a small site, low enough that running
             // production traffic through the free trial hits the cap and prompts an upgrade.
             const val DEFAULT_TRIAL_CONSENT_EVENT_CAP = 1_000L
+
+            const val DEFAULT_CHECKOUT_SUCCESS_PATH = "/billing?checkout=success"
+            const val DEFAULT_CHECKOUT_CANCEL_PATH = "/billing?checkout=cancel"
+            const val DEFAULT_PORTAL_RETURN_PATH = "/billing"
         }
     }
 }

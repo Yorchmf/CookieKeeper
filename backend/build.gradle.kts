@@ -36,6 +36,7 @@ dependencies {
     // Dockerfile.scanner's mcr.microsoft.com/playwright/java:v1.61.0-noble base image — the library
     // and the bundled Chromium must be the same Playwright version.
     implementation("com.microsoft.playwright:playwright:1.61.0")
+    implementation("com.stripe:stripe-java:33.2.0")
     implementation("org.flywaydb:flyway-database-postgresql")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("tools.jackson.module:jackson-module-kotlin")
