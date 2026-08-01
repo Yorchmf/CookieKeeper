@@ -8,6 +8,8 @@ import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.annotations.UuidGenerator
 import org.hibernate.type.SqlTypes
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 import java.time.Instant
 import java.util.UUID
 
@@ -42,4 +44,21 @@ data class BannerConfigEntity(
 interface BannerConfigRepository : JpaRepository<BannerConfigEntity, UUID> {
     /** The current published config for a site — highest version with a non-null `published_at`. */
     fun findFirstBySiteIdAndPublishedAtIsNotNullOrderByVersionDesc(siteId: UUID): BannerConfigEntity?
+
+    /** Highest version row for a site (published or not) — the basis for the next version number. */
+    fun findFirstBySiteIdOrderByVersionDesc(siteId: UUID): BannerConfigEntity?
+
+    /**
+     * Transaction-scoped Postgres advisory lock keyed on a site, taken before publishing a new version
+     * so two concurrent saves for one site serialize instead of both computing the same next version and
+     * colliding on `uq_banner_configs_site_version` (a raw 500). Released at commit/rollback; the wrapping
+     * `SELECT count(*)` just gives the native query a mappable non-void result (mirrors PolicyRepository).
+     */
+    @Query(
+        value = "SELECT count(*) FROM (SELECT pg_advisory_xact_lock(:key)) AS _lock",
+        nativeQuery = true,
+    )
+    fun acquireSitePublishLock(
+        @Param("key") key: Long,
+    ): Long
 }

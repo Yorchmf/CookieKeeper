@@ -200,7 +200,10 @@
       "archivedToast": "Website archiviert",
       "policyTitle": "Cookie-Richtlinie",
       "policyDescription": "Erstellen und veröffentlichen Sie eine DSGVO-Cookie-Richtlinie für diese Website.",
-      "policyCta": "Richtlinie verwalten"
+      "policyCta": "Richtlinie verwalten",
+      "bannerTitle": "Einwilligungsbanner",
+      "bannerDescription": "Passen Sie Aussehen, Text und Kategorien Ihres Cookie-Banners an.",
+      "bannerCta": "Banner anpassen"
     }
   },
   "dashboard": {
@@ -325,6 +328,77 @@
         "title": "Etwas ist schiefgelaufen",
         "description": "Diese Cookie-Richtlinie konnte nicht geladen werden. Bitte versuchen Sie es später erneut."
       }
+    }
+  },
+  "banner": {
+    "title": "Einwilligungsbanner",
+    "subtitle": "Passen Sie an, wie Ihr Cookie-Banner aussieht und klingt. Beim Speichern wird sofort eine neue Version veröffentlicht, die Ihr Widget ausliefert.",
+    "loadError": "Ihre Banner-Konfiguration konnte nicht geladen werden. Bitte versuchen Sie es erneut.",
+    "version": "Version {version}",
+    "unsaved": "Sie haben ungespeicherte Änderungen.",
+    "save": "Speichern & veröffentlichen",
+    "saving": "Wird veröffentlicht…",
+    "saved": "Ihr Banner wurde veröffentlicht",
+    "saveError": "Ihr Banner konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.",
+    "reset": "Änderungen verwerfen",
+    "empty": {
+      "title": "Noch kein Banner",
+      "description": "Für diese Website gibt es keine anpassbare Banner-Konfiguration."
+    },
+    "position": {
+      "label": "Position",
+      "description": "Wo das Banner auf der Seite erscheint.",
+      "bottom": "Unten",
+      "top": "Oben",
+      "center": "Mitte"
+    },
+    "theme": {
+      "label": "Farben",
+      "description": "Passen Sie das Banner an Ihre Marke an.",
+      "primaryColor": "Schaltflächen",
+      "background": "Hintergrund",
+      "textColor": "Text"
+    },
+    "categories": {
+      "label": "Cookie-Kategorien",
+      "description": "Wählen Sie, welche Kategorien Besucher steuern können. Unbedingt erforderliche Cookies sind immer aktiv und können nicht deaktiviert werden.",
+      "always": "Immer aktiv",
+      "names": {
+        "necessary": "Unbedingt erforderlich",
+        "preferences": "Präferenzen",
+        "statistics": "Statistiken",
+        "marketing": "Marketing"
+      }
+    },
+    "languages": {
+      "label": "Sprachen",
+      "description": "Die Sprachen, in denen Ihr Banner angeboten wird. Besucher sehen ihre Browsersprache, sofern verfügbar.",
+      "defaultLabel": "Standardsprache",
+      "defaultHint": "Wird angezeigt, wenn die Browsersprache eines Besuchers nicht angeboten wird.",
+      "names": {
+        "en": "Englisch",
+        "de": "Deutsch",
+        "fr": "Französisch",
+        "es": "Spanisch",
+        "it": "Italienisch"
+      }
+    },
+    "texts": {
+      "label": "Bannertext",
+      "description": "Der für Besucher angezeigte Text, je Sprache.",
+      "languageNav": "Zu bearbeitende Sprache",
+      "incomplete": "Füllen Sie vor dem Veröffentlichen jedes Feld für jede Sprache aus.",
+      "title": "Überschrift",
+      "body": "Beschreibung",
+      "acceptAll": "Schaltfläche „Alle akzeptieren“",
+      "rejectAll": "Schaltfläche „Alle ablehnen“",
+      "save": "Schaltfläche „Speichern“",
+      "preferences": "Schaltfläche „Einstellungen“",
+      "blank": "Dieses Feld darf nicht leer sein."
+    },
+    "preview": {
+      "label": "Live-Vorschau",
+      "description": "So sieht Ihr Banner mit den aktuellen Einstellungen aus."
     }
   }
 }

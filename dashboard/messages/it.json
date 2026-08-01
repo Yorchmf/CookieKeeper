@@ -200,7 +200,10 @@
       "archivedToast": "Sito archiviato",
       "policyTitle": "Informativa sui cookie",
       "policyDescription": "Genera e pubblica un'informativa sui cookie conforme al GDPR per questo sito.",
-      "policyCta": "Gestisci informativa"
+      "policyCta": "Gestisci informativa",
+      "bannerTitle": "Banner di consenso",
+      "bannerDescription": "Personalizza l'aspetto, il testo e le categorie del tuo banner dei cookie.",
+      "bannerCta": "Personalizza banner"
     }
   },
   "dashboard": {
@@ -325,6 +328,77 @@
         "title": "Qualcosa è andato storto",
         "description": "Impossibile caricare questa informativa sui cookie. Riprova più tardi."
       }
+    }
+  },
+  "banner": {
+    "title": "Banner di consenso",
+    "subtitle": "Personalizza l'aspetto e il testo del tuo banner dei cookie. Il salvataggio pubblica subito una nuova versione servita dal tuo widget.",
+    "loadError": "Impossibile caricare la configurazione del banner. Riprova.",
+    "version": "Versione {version}",
+    "unsaved": "Hai modifiche non salvate.",
+    "save": "Salva e pubblica",
+    "saving": "Pubblicazione…",
+    "saved": "Il tuo banner è stato pubblicato",
+    "saveError": "Impossibile salvare il tuo banner. Riprova.",
+    "reset": "Annulla modifiche",
+    "empty": {
+      "title": "Ancora nessun banner",
+      "description": "Questo sito non ha una configurazione del banner da personalizzare."
+    },
+    "position": {
+      "label": "Posizione",
+      "description": "Dove appare il banner nella pagina.",
+      "bottom": "In basso",
+      "top": "In alto",
+      "center": "Al centro"
+    },
+    "theme": {
+      "label": "Colori",
+      "description": "Adatta il banner al tuo marchio.",
+      "primaryColor": "Pulsanti",
+      "background": "Sfondo",
+      "textColor": "Testo"
+    },
+    "categories": {
+      "label": "Categorie di cookie",
+      "description": "Scegli quali categorie i visitatori possono controllare. I cookie strettamente necessari sono sempre attivi e non possono essere disattivati.",
+      "always": "Sempre attivo",
+      "names": {
+        "necessary": "Strettamente necessari",
+        "preferences": "Preferenze",
+        "statistics": "Statistiche",
+        "marketing": "Marketing"
+      }
+    },
+    "languages": {
+      "label": "Lingue",
+      "description": "Le lingue in cui è offerto il tuo banner. I visitatori vedono la lingua del proprio browser quando disponibile.",
+      "defaultLabel": "Lingua predefinita",
+      "defaultHint": "Mostrata quando la lingua del browser di un visitatore non è offerta.",
+      "names": {
+        "en": "Inglese",
+        "de": "Tedesco",
+        "fr": "Francese",
+        "es": "Spagnolo",
+        "it": "Italiano"
+      }
+    },
+    "texts": {
+      "label": "Testo del banner",
+      "description": "Il testo mostrato ai visitatori, per lingua.",
+      "languageNav": "Lingua da modificare",
+      "incomplete": "Compila ogni campo per ciascuna lingua prima di pubblicare.",
+      "title": "Titolo",
+      "body": "Descrizione",
+      "acceptAll": "Pulsante «Accetta tutto»",
+      "rejectAll": "Pulsante «Rifiuta tutto»",
+      "save": "Pulsante «Salva»",
+      "preferences": "Pulsante «Preferenze»",
+      "blank": "Questo campo non può essere vuoto."
+    },
+    "preview": {
+      "label": "Anteprima dal vivo",
+      "description": "L'aspetto del tuo banner con le impostazioni attuali."
     }
   }
 }

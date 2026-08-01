@@ -200,7 +200,10 @@
       "archivedToast": "Sitio archivado",
       "policyTitle": "Política de cookies",
       "policyDescription": "Genera y publica una política de cookies conforme al RGPD para este sitio.",
-      "policyCta": "Gestionar política"
+      "policyCta": "Gestionar política",
+      "bannerTitle": "Banner de consentimiento",
+      "bannerDescription": "Personalice el aspecto, el texto y las categorías de su banner de cookies.",
+      "bannerCta": "Personalizar banner"
     }
   },
   "dashboard": {
@@ -325,6 +328,77 @@
         "title": "Algo salió mal",
         "description": "No se pudo cargar esta política de cookies. Inténtalo de nuevo más tarde."
       }
+    }
+  },
+  "banner": {
+    "title": "Banner de consentimiento",
+    "subtitle": "Personalice el aspecto y el texto de su banner de cookies. Al guardar se publica de inmediato una nueva versión que sirve su widget.",
+    "loadError": "No se pudo cargar la configuración de su banner. Inténtelo de nuevo.",
+    "version": "Versión {version}",
+    "unsaved": "Tiene cambios sin guardar.",
+    "save": "Guardar y publicar",
+    "saving": "Publicando…",
+    "saved": "Su banner se ha publicado",
+    "saveError": "No se pudo guardar su banner. Inténtelo de nuevo.",
+    "reset": "Descartar cambios",
+    "empty": {
+      "title": "Aún no hay banner",
+      "description": "Este sitio no tiene una configuración de banner que personalizar."
+    },
+    "position": {
+      "label": "Posición",
+      "description": "Dónde aparece el banner en la página.",
+      "bottom": "Abajo",
+      "top": "Arriba",
+      "center": "Centro"
+    },
+    "theme": {
+      "label": "Colores",
+      "description": "Adapte el banner a su marca.",
+      "primaryColor": "Botones",
+      "background": "Fondo",
+      "textColor": "Texto"
+    },
+    "categories": {
+      "label": "Categorías de cookies",
+      "description": "Elija qué categorías pueden controlar los visitantes. Las cookies estrictamente necesarias están siempre activas y no se pueden desactivar.",
+      "always": "Siempre activo",
+      "names": {
+        "necessary": "Estrictamente necesarias",
+        "preferences": "Preferencias",
+        "statistics": "Estadísticas",
+        "marketing": "Marketing"
+      }
+    },
+    "languages": {
+      "label": "Idiomas",
+      "description": "Los idiomas en los que se ofrece su banner. Los visitantes ven el idioma de su navegador cuando está disponible.",
+      "defaultLabel": "Idioma predeterminado",
+      "defaultHint": "Se muestra cuando el idioma del navegador de un visitante no se ofrece.",
+      "names": {
+        "en": "Inglés",
+        "de": "Alemán",
+        "fr": "Francés",
+        "es": "Español",
+        "it": "Italiano"
+      }
+    },
+    "texts": {
+      "label": "Texto del banner",
+      "description": "El texto que se muestra a los visitantes, por idioma.",
+      "languageNav": "Idioma para editar",
+      "incomplete": "Complete todos los campos de cada idioma antes de publicar.",
+      "title": "Título",
+      "body": "Descripción",
+      "acceptAll": "Botón «Aceptar todo»",
+      "rejectAll": "Botón «Rechazar todo»",
+      "save": "Botón «Guardar»",
+      "preferences": "Botón «Preferencias»",
+      "blank": "Este campo no puede estar vacío."
+    },
+    "preview": {
+      "label": "Vista previa en vivo",
+      "description": "El aspecto de su banner con la configuración actual."
     }
   }
 }

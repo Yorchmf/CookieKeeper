@@ -1,6 +1,10 @@
 package com.complyr.banner
 
+import com.complyr.banner.dto.BannerConfigResponse
+import com.complyr.banner.dto.BannerConfigUpdateRequest
 import com.complyr.banner.dto.WidgetConfigResponse
+import com.complyr.site.SiteEntity
+import com.complyr.site.SiteNotFoundException
 import com.complyr.site.SiteRepository
 import com.complyr.site.SiteStatus
 import org.springframework.stereotype.Service
@@ -36,6 +40,58 @@ class BannerConfigService(
     /** The config the widget currently serves for a site, or null if none is published. */
     fun currentPublished(siteId: UUID): BannerConfigEntity? =
         bannerConfigRepository.findFirstBySiteIdAndPublishedAtIsNotNullOrderByVersionDesc(siteId)
+
+    /**
+     * Authenticated read for the dashboard customizer: the owning user's current published config.
+     * Scoped by `(siteId, userId)` so a foreign site id is a 404, indistinguishable from a real miss.
+     */
+    @Transactional(readOnly = true)
+    fun getForOwner(
+        userId: UUID,
+        siteId: UUID,
+    ): BannerConfigResponse {
+        val site = requireOwnedSite(userId, siteId)
+        val config = currentPublished(site.id) ?: throw BannerConfigNotFoundException()
+        return BannerConfigResponse.from(config)
+    }
+
+    /**
+     * Publishes a new banner version from the dashboard customizer. The request is validated and
+     * normalized ([BannerConfigValidator]) before persistence — the document is served verbatim to
+     * visitors. Appends a NEW version (configs are never overwritten); an advisory lock serializes
+     * concurrent publishes for the same site so they can't collide on the version unique constraint.
+     */
+    @Transactional
+    fun update(
+        userId: UUID,
+        siteId: UUID,
+        request: BannerConfigUpdateRequest,
+    ): BannerConfigResponse {
+        val site = requireOwnedSite(userId, siteId)
+        val document = BannerConfigValidator.validate(request)
+        bannerConfigRepository.acquireSitePublishLock(advisoryLockKey(site.id))
+        val saved =
+            bannerConfigRepository.save(
+                BannerConfigEntity(
+                    siteId = site.id,
+                    version = nextVersion(site.id),
+                    config = document,
+                    publishedAt = clock.instant(),
+                ),
+            )
+        return BannerConfigResponse.from(saved)
+    }
+
+    private fun requireOwnedSite(
+        userId: UUID,
+        siteId: UUID,
+    ): SiteEntity = siteRepository.findByIdAndUserId(siteId, userId) ?: throw SiteNotFoundException()
+
+    private fun nextVersion(siteId: UUID): Int = (bannerConfigRepository.findFirstBySiteIdOrderByVersionDesc(siteId)?.version ?: 0) + 1
+
+    // Fold the 128-bit site id into the 64-bit key pg_advisory_xact_lock takes (mirrors PolicyService); a
+    // rare collision only briefly serializes two unrelated sites' publishes, which is harmless.
+    private fun advisoryLockKey(siteId: UUID): Long = siteId.mostSignificantBits xor siteId.leastSignificantBits
 
     /**
      * Public widget-config read: resolves an active site by its public key and returns the

@@ -118,6 +118,21 @@ export function SiteDetail({ siteId }: { siteId: string }) {
 
         <Card>
           <CardHeader>
+            <CardTitle>{t("detail.bannerTitle")}</CardTitle>
+            <CardDescription>{t("detail.bannerDescription")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="outline"
+              render={<Link href={`/sites/${siteId}/banner`} />}
+            >
+              {t("detail.bannerCta")}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle>{t("detail.policyTitle")}</CardTitle>
             <CardDescription>{t("detail.policyDescription")}</CardDescription>
           </CardHeader>

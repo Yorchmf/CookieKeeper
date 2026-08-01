@@ -200,7 +200,10 @@
       "archivedToast": "Site archivé",
       "policyTitle": "Politique de cookies",
       "policyDescription": "Générez et publiez une politique de cookies conforme au RGPD pour ce site.",
-      "policyCta": "Gérer la politique"
+      "policyCta": "Gérer la politique",
+      "bannerTitle": "Bandeau de consentement",
+      "bannerDescription": "Personnalisez l'apparence, le texte et les catégories de votre bandeau de cookies.",
+      "bannerCta": "Personnaliser le bandeau"
     }
   },
   "dashboard": {
@@ -325,6 +328,77 @@
         "title": "Une erreur est survenue",
         "description": "Cette politique de cookies n'a pas pu être chargée. Veuillez réessayer plus tard."
       }
+    }
+  },
+  "banner": {
+    "title": "Bandeau de consentement",
+    "subtitle": "Personnalisez l'apparence et le texte de votre bandeau de cookies. L'enregistrement publie immédiatement une nouvelle version servie par votre widget.",
+    "loadError": "Votre configuration de bandeau n'a pas pu être chargée. Veuillez réessayer.",
+    "version": "Version {version}",
+    "unsaved": "Vous avez des modifications non enregistrées.",
+    "save": "Enregistrer et publier",
+    "saving": "Publication…",
+    "saved": "Votre bandeau a été publié",
+    "saveError": "Votre bandeau n'a pas pu être enregistré. Veuillez réessayer.",
+    "reset": "Annuler les modifications",
+    "empty": {
+      "title": "Aucun bandeau pour l'instant",
+      "description": "Ce site n'a aucune configuration de bandeau à personnaliser."
+    },
+    "position": {
+      "label": "Position",
+      "description": "Où le bandeau apparaît sur la page.",
+      "bottom": "Bas",
+      "top": "Haut",
+      "center": "Centre"
+    },
+    "theme": {
+      "label": "Couleurs",
+      "description": "Adaptez le bandeau à votre marque.",
+      "primaryColor": "Boutons",
+      "background": "Arrière-plan",
+      "textColor": "Texte"
+    },
+    "categories": {
+      "label": "Catégories de cookies",
+      "description": "Choisissez les catégories que les visiteurs peuvent contrôler. Les cookies strictement nécessaires sont toujours actifs et ne peuvent pas être désactivés.",
+      "always": "Toujours actif",
+      "names": {
+        "necessary": "Strictement nécessaires",
+        "preferences": "Préférences",
+        "statistics": "Statistiques",
+        "marketing": "Marketing"
+      }
+    },
+    "languages": {
+      "label": "Langues",
+      "description": "Les langues dans lesquelles votre bandeau est proposé. Les visiteurs voient la langue de leur navigateur lorsqu'elle est disponible.",
+      "defaultLabel": "Langue par défaut",
+      "defaultHint": "Affichée lorsque la langue du navigateur d'un visiteur n'est pas proposée.",
+      "names": {
+        "en": "Anglais",
+        "de": "Allemand",
+        "fr": "Français",
+        "es": "Espagnol",
+        "it": "Italien"
+      }
+    },
+    "texts": {
+      "label": "Texte du bandeau",
+      "description": "Le texte affiché aux visiteurs, par langue.",
+      "languageNav": "Langue à modifier",
+      "incomplete": "Remplissez chaque champ pour chaque langue avant de publier.",
+      "title": "Titre",
+      "body": "Description",
+      "acceptAll": "Bouton « Tout accepter »",
+      "rejectAll": "Bouton « Tout refuser »",
+      "save": "Bouton « Enregistrer »",
+      "preferences": "Bouton « Préférences »",
+      "blank": "Ce champ ne peut pas être vide."
+    },
+    "preview": {
+      "label": "Aperçu en direct",
+      "description": "L'apparence de votre bandeau avec les paramètres actuels."
     }
   }
 }

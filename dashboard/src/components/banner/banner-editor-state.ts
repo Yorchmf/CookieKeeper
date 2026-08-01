@@ -1,0 +1,100 @@
+/**
+ * Editor state for the banner customizer, kept separate from the React tree so the
+ * config → editable-state → update-request transforms are unit-testable and the component stays thin.
+ *
+ * The state holds a text bundle for ALL supported languages (not just the offered ones) so toggling a
+ * language off and back on never loses the customer's wording. Only offered-language texts are sent.
+ */
+import {
+  BANNER_POSITIONS,
+  CATEGORY_KEYS,
+  SUPPORTED_LANGUAGES,
+  type BannerConfig,
+  type BannerConfigUpdateInput,
+  type BannerPosition,
+  type BannerTexts,
+  type BannerTheme,
+  type CategoryKey,
+  type SupportedLanguage,
+} from "@/lib/api/banner";
+
+export interface BannerEditorState {
+  position: BannerPosition;
+  theme: BannerTheme;
+  /** Category keys offered on the banner, in taxonomy order; `necessary` is always present. */
+  offeredCategories: CategoryKey[];
+  /** Offered languages, in taxonomy order. */
+  languages: SupportedLanguage[];
+  defaultLanguage: SupportedLanguage;
+  /** Text bundle per supported language (kept for all languages so toggling is non-destructive). */
+  texts: Record<string, BannerTexts>;
+}
+
+/** Narrows an untrusted position code to the allow-list, falling back to the default slot. */
+export function asPosition(value: string): BannerPosition {
+  return BANNER_POSITIONS.find((p) => p === value) ?? "bottom";
+}
+
+/** Narrows an untrusted language code to a supported locale, falling back to English. */
+export function asLanguage(value: string): SupportedLanguage {
+  return SUPPORTED_LANGUAGES.find((l) => l === value) ?? "en";
+}
+
+const BLANK_TEXTS: BannerTexts = {
+  title: "",
+  description: "",
+  acceptAll: "",
+  rejectAll: "",
+  save: "",
+  preferences: "",
+};
+
+/** Derives editable state from a published config, seeding missing-language texts from the default. */
+export function toEditorState(config: BannerConfig): BannerEditorState {
+  const doc = config.config;
+  const fallback = doc.texts[doc.defaultLanguage] ?? BLANK_TEXTS;
+  const texts = Object.fromEntries(
+    SUPPORTED_LANGUAGES.map((lang) => [lang, { ...(doc.texts[lang] ?? fallback) }]),
+  );
+  return {
+    position: asPosition(doc.position),
+    theme: { ...doc.theme },
+    offeredCategories: orderByTaxonomy(
+      doc.categories.map((c) => c.key),
+      CATEGORY_KEYS,
+    ),
+    languages: orderByTaxonomy(doc.languages, SUPPORTED_LANGUAGES),
+    defaultLanguage: asLanguage(doc.defaultLanguage),
+    texts,
+  };
+}
+
+/** Serializes editor state into the publish request, sending texts only for offered languages. */
+export function toUpdateInput(state: BannerEditorState): BannerConfigUpdateInput {
+  return {
+    position: state.position,
+    theme: state.theme,
+    categories: state.offeredCategories.map((key) => ({ key })),
+    languages: state.languages,
+    defaultLanguage: state.defaultLanguage,
+    texts: Object.fromEntries(
+      state.languages.map((lang) => [lang, state.texts[lang]]),
+    ),
+  };
+}
+
+/** Whether the editor holds unsaved edits relative to the published config. */
+export function isDirty(state: BannerEditorState, config: BannerConfig): boolean {
+  return (
+    JSON.stringify(toUpdateInput(state)) !==
+    JSON.stringify(toUpdateInput(toEditorState(config)))
+  );
+}
+
+function orderByTaxonomy<T extends string>(
+  keys: string[],
+  order: readonly T[],
+): T[] {
+  const wanted = new Set(keys);
+  return order.filter((key) => wanted.has(key));
+}

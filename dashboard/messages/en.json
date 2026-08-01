@@ -200,7 +200,10 @@
       "archivedToast": "Site archived",
       "policyTitle": "Cookie policy",
       "policyDescription": "Generate and publish a GDPR cookie policy for this site.",
-      "policyCta": "Manage policy"
+      "policyCta": "Manage policy",
+      "bannerTitle": "Consent banner",
+      "bannerDescription": "Customize the look, wording, and categories of your cookie banner.",
+      "bannerCta": "Customize banner"
     }
   },
   "dashboard": {
@@ -325,6 +328,77 @@
         "title": "Something went wrong",
         "description": "This cookie policy could not be loaded. Please try again later."
       }
+    }
+  },
+  "banner": {
+    "title": "Consent banner",
+    "subtitle": "Customize how your cookie banner looks and reads. Saving publishes a new version your widget serves immediately.",
+    "loadError": "Your banner configuration could not be loaded. Please try again.",
+    "version": "Version {version}",
+    "unsaved": "You have unsaved changes.",
+    "save": "Save & publish",
+    "saving": "Publishing…",
+    "saved": "Your banner has been published",
+    "saveError": "Your banner could not be saved. Please try again.",
+    "reset": "Discard changes",
+    "empty": {
+      "title": "No banner yet",
+      "description": "This site has no banner configuration to customize."
+    },
+    "position": {
+      "label": "Position",
+      "description": "Where the banner appears on the page.",
+      "bottom": "Bottom",
+      "top": "Top",
+      "center": "Center"
+    },
+    "theme": {
+      "label": "Colors",
+      "description": "Match the banner to your brand.",
+      "primaryColor": "Buttons",
+      "background": "Background",
+      "textColor": "Text"
+    },
+    "categories": {
+      "label": "Cookie categories",
+      "description": "Choose which categories visitors can control. Strictly necessary cookies are always active and cannot be switched off.",
+      "always": "Always on",
+      "names": {
+        "necessary": "Strictly necessary",
+        "preferences": "Preferences",
+        "statistics": "Statistics",
+        "marketing": "Marketing"
+      }
+    },
+    "languages": {
+      "label": "Languages",
+      "description": "The languages your banner is offered in. Visitors see their browser language when it's available.",
+      "defaultLabel": "Default language",
+      "defaultHint": "Shown when a visitor's browser language isn't offered.",
+      "names": {
+        "en": "English",
+        "de": "German",
+        "fr": "French",
+        "es": "Spanish",
+        "it": "Italian"
+      }
+    },
+    "texts": {
+      "label": "Banner text",
+      "description": "The wording shown to visitors, per language.",
+      "languageNav": "Language to edit",
+      "incomplete": "Fill in every field for each language before publishing.",
+      "title": "Heading",
+      "body": "Description",
+      "acceptAll": "Accept-all button",
+      "rejectAll": "Reject-all button",
+      "save": "Save button",
+      "preferences": "Preferences button",
+      "blank": "This field can't be empty."
+    },
+    "preview": {
+      "label": "Live preview",
+      "description": "How your banner looks with the current settings."
     }
   }
 }
