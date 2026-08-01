@@ -31,6 +31,7 @@ class FlywayMigrationIntegrationTest {
         assertTrue("1" in appliedVersions, "V1__baseline should be applied")
         assertTrue("2" in appliedVersions, "V2__auth_tokens_and_site_lifecycle should be applied")
         assertTrue("8" in appliedVersions, "V8__cookie_signatures should be applied")
+        assertTrue("9" in appliedVersions, "V9__public_scans should be applied")
     }
 
     @Test
@@ -50,6 +51,8 @@ class FlywayMigrationIntegrationTest {
                 "jobs",
                 "auth_tokens",
                 "cookie_signatures",
+                "public_scans",
+                "public_scan_cookies",
             )
 
         val actualTables =
