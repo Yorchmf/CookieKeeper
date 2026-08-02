@@ -400,5 +400,75 @@
       "label": "Aperçu en direct",
       "description": "L'apparence de votre bandeau avec les paramètres actuels."
     }
+  },
+  "billing": {
+    "title": "Facturation",
+    "subtitle": "Gérez votre forfait, votre utilisation et votre abonnement.",
+    "loadError": "Impossible de charger vos informations de facturation. Veuillez réessayer.",
+    "state": {
+      "trial": "Essai",
+      "subscribed": "Actif",
+      "expired": "Expiré"
+    },
+    "current": {
+      "title": "Votre forfait",
+      "onPlan": "Vous êtes sur le forfait {plan}."
+    },
+    "trial": {
+      "daysLeft": "{days, plural, =0 {L'essai se termine aujourd'hui} one {# jour restant dans votre essai} other {# jours restants dans votre essai}}",
+      "endsOn": "Votre essai se termine le {date}."
+    },
+    "expired": {
+      "description": "Votre essai est terminé. Abonnez-vous pour ajouter des sites et lancer des analyses."
+    },
+    "usage": {
+      "sitesLabel": "Sites",
+      "sites": "{used} sur {max} sites actifs"
+    },
+    "manage": {
+      "button": "Gérer l'abonnement",
+      "error": "Impossible d'ouvrir le portail de facturation. Veuillez réessayer."
+    },
+    "plans": {
+      "title": "Forfaits",
+      "description": "Améliorez à tout moment. Prix hors TVA.",
+      "perMonth": "par mois",
+      "popular": "Le plus populaire",
+      "current": "Forfait actuel",
+      "choose": "Choisir {plan}",
+      "starter": {
+        "name": "Starter",
+        "price": "€9",
+        "features": [
+          "1 site",
+          "Analyses mensuelles des cookies",
+          "Conservation des consentements 12 mois"
+        ]
+      },
+      "pro": {
+        "name": "Pro",
+        "price": "€19",
+        "features": [
+          "3 sites",
+          "Analyses hebdomadaires + à la demande",
+          "Conservation des consentements 3 ans",
+          "Retirer la marque Complyr"
+        ]
+      },
+      "business": {
+        "name": "Business",
+        "price": "€29",
+        "features": [
+          "10 sites",
+          "Tout de Pro",
+          "Analyses prioritaires",
+          "API d'export CSV"
+        ]
+      },
+      "redirecting": "Redirection…"
+    },
+    "checkout": {
+      "error": "Impossible de démarrer le paiement. Veuillez réessayer."
+    }
   }
 }

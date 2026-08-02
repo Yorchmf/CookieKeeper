@@ -400,5 +400,75 @@
       "label": "Live-Vorschau",
       "description": "So sieht Ihr Banner mit den aktuellen Einstellungen aus."
     }
+  },
+  "billing": {
+    "title": "Abrechnung",
+    "subtitle": "Verwalten Sie Ihren Tarif, Ihre Nutzung und Ihr Abonnement.",
+    "loadError": "Ihre Abrechnungsdaten konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
+    "state": {
+      "trial": "Testphase",
+      "subscribed": "Aktiv",
+      "expired": "Abgelaufen"
+    },
+    "current": {
+      "title": "Ihr Tarif",
+      "onPlan": "Sie nutzen den Tarif {plan}."
+    },
+    "trial": {
+      "daysLeft": "{days, plural, =0 {Testphase endet heute} one {# Tag in Ihrer Testphase verbleibend} other {# Tage in Ihrer Testphase verbleibend}}",
+      "endsOn": "Ihre Testphase endet am {date}."
+    },
+    "expired": {
+      "description": "Ihre Testphase ist abgelaufen. Abonnieren Sie, um wieder Websites hinzuzufügen und Scans durchzuführen."
+    },
+    "usage": {
+      "sitesLabel": "Websites",
+      "sites": "{used} von {max} aktiven Websites"
+    },
+    "manage": {
+      "button": "Abonnement verwalten",
+      "error": "Das Abrechnungsportal konnte nicht geöffnet werden. Bitte versuchen Sie es erneut."
+    },
+    "plans": {
+      "title": "Tarife",
+      "description": "Jederzeit upgraden. Preise zzgl. MwSt.",
+      "perMonth": "pro Monat",
+      "popular": "Am beliebtesten",
+      "current": "Aktueller Tarif",
+      "choose": "{plan} wählen",
+      "starter": {
+        "name": "Starter",
+        "price": "€9",
+        "features": [
+          "1 Website",
+          "Monatliche Cookie-Scans",
+          "12 Monate Einwilligungsspeicherung"
+        ]
+      },
+      "pro": {
+        "name": "Pro",
+        "price": "€19",
+        "features": [
+          "3 Websites",
+          "Wöchentliche + On-Demand-Scans",
+          "3 Jahre Einwilligungsspeicherung",
+          "Complyr-Branding entfernen"
+        ]
+      },
+      "business": {
+        "name": "Business",
+        "price": "€29",
+        "features": [
+          "10 Websites",
+          "Alles aus Pro",
+          "Priorisierte Scans",
+          "CSV-Export-API"
+        ]
+      },
+      "redirecting": "Weiterleitung…"
+    },
+    "checkout": {
+      "error": "Der Bezahlvorgang konnte nicht gestartet werden. Bitte versuchen Sie es erneut."
+    }
   }
 }

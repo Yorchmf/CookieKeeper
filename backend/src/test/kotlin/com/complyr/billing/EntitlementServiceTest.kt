@@ -112,6 +112,18 @@ class EntitlementServiceTest {
     }
 
     @Test
+    fun `summarize pairs the resolved entitlement with the active-site count`() {
+        stubUser(createdAt = now)
+        every { subscriptionRepository.findByUserId(userId) } returns subscription(Plan.PRO)
+        every { siteRepository.countByUserIdAndStatus(userId, SiteStatus.ACTIVE) } returns 2
+
+        val summary = service.summarize(userId)
+
+        assertIs<AccountEntitlement.Subscribed>(summary.entitlement)
+        assertEquals(2, summary.activeSites, "usage count is surfaced alongside the entitlement")
+    }
+
+    @Test
     fun `requireCanAddSite allows a create below the plan cap`() {
         stubUser(createdAt = now)
         every { subscriptionRepository.findByUserId(userId) } returns subscription(Plan.PRO) // cap 3

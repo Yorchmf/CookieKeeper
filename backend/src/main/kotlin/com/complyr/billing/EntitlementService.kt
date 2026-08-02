@@ -36,6 +36,17 @@ class EntitlementService(
     }
 
     /**
+     * [resolve] plus current usage counters, for the dashboard billing read. Read-only, so no lock is
+     * taken (unlike [requireCanAddSite]); a slightly-stale active-site count in a display-only summary
+     * is harmless.
+     */
+    fun summarize(userId: UUID): EntitlementSummary =
+        EntitlementSummary(
+            entitlement = resolve(userId),
+            activeSites = siteRepository.countByUserIdAndStatus(userId, SiteStatus.ACTIVE),
+        )
+
+    /**
      * Guard the site-create path against the plan's site cap. Throws [SiteLimitReachedException] once
      * the account already has at least [Entitlements.maxSites] ACTIVE sites — which also freezes new
      * sites for an Expired account (cap 0).
@@ -57,3 +68,9 @@ class EntitlementService(
     // a rare collision with another key space only causes harmless extra serialization, never a miss.
     private fun advisoryLockKey(userId: UUID): Long = userId.mostSignificantBits xor userId.leastSignificantBits
 }
+
+/** An account's [AccountEntitlement] paired with its current usage counters (see [EntitlementService.summarize]). */
+data class EntitlementSummary(
+    val entitlement: AccountEntitlement,
+    val activeSites: Long,
+)

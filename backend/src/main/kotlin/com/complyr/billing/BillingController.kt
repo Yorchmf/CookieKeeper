@@ -2,10 +2,12 @@ package com.complyr.billing
 
 import com.complyr.billing.dto.CheckoutSessionRequest
 import com.complyr.billing.dto.CheckoutSessionResponse
+import com.complyr.billing.dto.EntitlementResponse
 import com.complyr.billing.dto.PortalSessionResponse
 import com.complyr.common.ApiResponse
 import com.complyr.common.CurrentUser
 import jakarta.validation.Valid
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -21,7 +23,13 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/api/v1/billing")
 class BillingController(
     private val billingService: BillingService,
+    private val entitlementService: EntitlementService,
 ) {
+    /** The current account's billing state + usage, for the dashboard billing page. */
+    @GetMapping("/entitlement")
+    fun entitlement(): ApiResponse<EntitlementResponse> =
+        ApiResponse.success(EntitlementResponse.from(entitlementService.summarize(CurrentUser.id())))
+
     @PostMapping("/checkout-session")
     fun checkoutSession(
         @Valid @RequestBody request: CheckoutSessionRequest,

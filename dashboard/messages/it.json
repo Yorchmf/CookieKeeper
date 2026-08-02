@@ -400,5 +400,75 @@
       "label": "Anteprima dal vivo",
       "description": "L'aspetto del tuo banner con le impostazioni attuali."
     }
+  },
+  "billing": {
+    "title": "Fatturazione",
+    "subtitle": "Gestisci il tuo piano, l'utilizzo e l'abbonamento.",
+    "loadError": "Impossibile caricare i dati di fatturazione. Riprova.",
+    "state": {
+      "trial": "Prova",
+      "subscribed": "Attivo",
+      "expired": "Scaduto"
+    },
+    "current": {
+      "title": "Il tuo piano",
+      "onPlan": "Hai il piano {plan}."
+    },
+    "trial": {
+      "daysLeft": "{days, plural, =0 {La prova termina oggi} one {# giorno rimanente nella prova} other {# giorni rimanenti nella prova}}",
+      "endsOn": "La tua prova termina il {date}."
+    },
+    "expired": {
+      "description": "La tua prova è terminata. Abbonati per aggiungere di nuovo siti ed eseguire scansioni."
+    },
+    "usage": {
+      "sitesLabel": "Siti",
+      "sites": "{used} di {max} siti attivi"
+    },
+    "manage": {
+      "button": "Gestisci abbonamento",
+      "error": "Impossibile aprire il portale di fatturazione. Riprova."
+    },
+    "plans": {
+      "title": "Piani",
+      "description": "Effettua l'upgrade quando vuoi. Prezzi IVA esclusa.",
+      "perMonth": "al mese",
+      "popular": "Più popolare",
+      "current": "Piano attuale",
+      "choose": "Scegli {plan}",
+      "starter": {
+        "name": "Starter",
+        "price": "€9",
+        "features": [
+          "1 sito",
+          "Scansioni mensili dei cookie",
+          "Conservazione dei consensi 12 mesi"
+        ]
+      },
+      "pro": {
+        "name": "Pro",
+        "price": "€19",
+        "features": [
+          "3 siti",
+          "Scansioni settimanali + on demand",
+          "Conservazione dei consensi 3 anni",
+          "Rimuovi il branding Complyr"
+        ]
+      },
+      "business": {
+        "name": "Business",
+        "price": "€29",
+        "features": [
+          "10 siti",
+          "Tutto di Pro",
+          "Scansioni prioritarie",
+          "API di esportazione CSV"
+        ]
+      },
+      "redirecting": "Reindirizzamento…"
+    },
+    "checkout": {
+      "error": "Impossibile avviare il pagamento. Riprova."
+    }
   }
 }

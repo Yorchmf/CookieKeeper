@@ -400,5 +400,75 @@
       "label": "Live preview",
       "description": "How your banner looks with the current settings."
     }
+  },
+  "billing": {
+    "title": "Billing",
+    "subtitle": "Manage your plan, usage, and subscription.",
+    "loadError": "We couldn't load your billing details. Please try again.",
+    "state": {
+      "trial": "Trial",
+      "subscribed": "Active",
+      "expired": "Expired"
+    },
+    "current": {
+      "title": "Your plan",
+      "onPlan": "You're on the {plan} plan."
+    },
+    "trial": {
+      "daysLeft": "{days, plural, =0 {Trial ends today} one {# day left in your trial} other {# days left in your trial}}",
+      "endsOn": "Your trial ends on {date}."
+    },
+    "expired": {
+      "description": "Your trial has ended. Subscribe to add sites and run scans again."
+    },
+    "usage": {
+      "sitesLabel": "Sites",
+      "sites": "{used} of {max} active sites"
+    },
+    "manage": {
+      "button": "Manage subscription",
+      "error": "We couldn't open the billing portal. Please try again."
+    },
+    "plans": {
+      "title": "Plans",
+      "description": "Upgrade any time. Prices exclude VAT.",
+      "perMonth": "per month",
+      "popular": "Most popular",
+      "current": "Current plan",
+      "choose": "Choose {plan}",
+      "starter": {
+        "name": "Starter",
+        "price": "€9",
+        "features": [
+          "1 site",
+          "Monthly cookie rescans",
+          "12-month consent retention"
+        ]
+      },
+      "pro": {
+        "name": "Pro",
+        "price": "€19",
+        "features": [
+          "3 sites",
+          "Weekly + on-demand rescans",
+          "3-year consent retention",
+          "Remove Complyr branding"
+        ]
+      },
+      "business": {
+        "name": "Business",
+        "price": "€29",
+        "features": [
+          "10 sites",
+          "Everything in Pro",
+          "Priority scans",
+          "CSV export API"
+        ]
+      },
+      "redirecting": "Redirecting…"
+    },
+    "checkout": {
+      "error": "We couldn't start checkout. Please try again."
+    }
   }
 }

@@ -400,5 +400,75 @@
       "label": "Vista previa en vivo",
       "description": "El aspecto de su banner con la configuración actual."
     }
+  },
+  "billing": {
+    "title": "Facturación",
+    "subtitle": "Gestiona tu plan, uso y suscripción.",
+    "loadError": "No pudimos cargar tus datos de facturación. Inténtalo de nuevo.",
+    "state": {
+      "trial": "Prueba",
+      "subscribed": "Activo",
+      "expired": "Caducado"
+    },
+    "current": {
+      "title": "Tu plan",
+      "onPlan": "Tienes el plan {plan}."
+    },
+    "trial": {
+      "daysLeft": "{days, plural, =0 {La prueba termina hoy} one {# día restante en tu prueba} other {# días restantes en tu prueba}}",
+      "endsOn": "Tu prueba termina el {date}."
+    },
+    "expired": {
+      "description": "Tu prueba ha terminado. Suscríbete para volver a añadir sitios y ejecutar análisis."
+    },
+    "usage": {
+      "sitesLabel": "Sitios",
+      "sites": "{used} de {max} sitios activos"
+    },
+    "manage": {
+      "button": "Gestionar suscripción",
+      "error": "No pudimos abrir el portal de facturación. Inténtalo de nuevo."
+    },
+    "plans": {
+      "title": "Planes",
+      "description": "Mejora en cualquier momento. Precios sin IVA.",
+      "perMonth": "al mes",
+      "popular": "Más popular",
+      "current": "Plan actual",
+      "choose": "Elegir {plan}",
+      "starter": {
+        "name": "Starter",
+        "price": "€9",
+        "features": [
+          "1 sitio",
+          "Análisis mensuales de cookies",
+          "Retención de consentimiento 12 meses"
+        ]
+      },
+      "pro": {
+        "name": "Pro",
+        "price": "€19",
+        "features": [
+          "3 sitios",
+          "Análisis semanales + bajo demanda",
+          "Retención de consentimiento 3 años",
+          "Eliminar la marca Complyr"
+        ]
+      },
+      "business": {
+        "name": "Business",
+        "price": "€29",
+        "features": [
+          "10 sitios",
+          "Todo lo de Pro",
+          "Análisis prioritarios",
+          "API de exportación CSV"
+        ]
+      },
+      "redirecting": "Redirigiendo…"
+    },
+    "checkout": {
+      "error": "No pudimos iniciar el pago. Inténtalo de nuevo."
+    }
   }
 }
