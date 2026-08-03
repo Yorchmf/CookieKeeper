@@ -33,7 +33,13 @@ class BillingService(
         plan: Plan,
     ): String {
         val billing = properties.billing
-        val existingCustomerId = subscriptionRepository.findByUserId(userId)?.stripeCustomerId
+        val existing = subscriptionRepository.findByUserId(userId)
+        // An already-active subscription must never start a second Checkout: Stripe would mint a
+        // duplicate subscription (double-billing) while our one-row-per-user constraint hides it.
+        // Route these users to the Customer Portal instead. A lapsed row (canceled/past_due) may still
+        // re-subscribe below, reusing its Stripe customer.
+        if (existing?.isActive == true) throw AlreadySubscribedException()
+        val existingCustomerId = existing?.stripeCustomerId
         // Reuse the existing Stripe customer when there is one; only load the user (for the email
         // Stripe needs to create a customer) on the first-time path, and never send both — Stripe
         // rejects a request carrying an existing customer AND a customer_email.

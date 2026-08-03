@@ -112,8 +112,8 @@ class BillingWebhookService(
         subscriptionRepository.acquireSubscriptionLock(advisoryLockKey(data.subscriptionId))
 
         val existing = resolveExisting(data)
-        if (isOutOfOrder(existing, eventCreatedAt)) {
-            log.info("Skipping out-of-order Stripe subscription event (older than last applied)")
+        if (isOutOfOrder(existing, data.status, eventCreatedAt)) {
+            log.info("Skipping out-of-order Stripe subscription event (older, or a same-second terminal-row reorder)")
             return
         }
 
@@ -151,17 +151,33 @@ class BillingWebhookService(
             ?: data.customerId?.let { subscriptionRepository.findByStripeCustomerId(it) }
 
     /**
-     * True when this event is STRICTLY older than the last one applied to the row — a reordered
-     * redelivery we must not let clobber newer state. Ties are NOT out-of-order: Stripe's `created`
-     * is epoch-*seconds*, so two distinct events (e.g. an `updated` immediately followed by a
-     * `deleted` on instant cancel) can share a second; dropping the second would strand a canceled
-     * sub as active. Under the per-subscription lock in [applySubscription], same-second events apply
-     * in arrival order (≈ creation order), so last-writer-wins yields the correct final state.
+     * True when this event must NOT be applied over the row's current state, in two cases:
+     *
+     *  1. **Strictly older** than the last applied event — a reordered redelivery we must not let
+     *     clobber newer state.
+     *  2. **A same-second non-terminal reorder of a terminal row.** Stripe's `created` is epoch-
+     *     *seconds*, so two distinct events (e.g. an `updated`(active) and the `deleted`(canceled) of
+     *     an instant cancel) can share a second and be delivered reversed. Same-second ties are
+     *     normally applied in arrival order (last-writer-wins gives the right final state) — but if the
+     *     terminal `canceled`/`incomplete_expired` landed first, a same-second `active`/`trialing`
+     *     arriving after it would *resurrect* a canceled subscription and hand back entitlement, with
+     *     no later event to self-correct. So once the row is terminal, a same-second (or older)
+     *     non-terminal event is treated as out-of-order and skipped; a genuinely newer event (a real
+     *     re-subscribe carries a later `created`) still applies.
      */
     private fun isOutOfOrder(
         existing: SubscriptionEntity?,
+        eventStatus: String,
         eventCreatedAt: Instant,
-    ): Boolean = existing?.stripeEventAt?.let { eventCreatedAt.isBefore(it) } ?: false
+    ): Boolean {
+        val watermark = existing?.stripeEventAt ?: return false
+        if (eventCreatedAt.isBefore(watermark)) return true
+        val resurrectsTerminal =
+            existing.status in TERMINAL_STATUSES &&
+                eventStatus !in TERMINAL_STATUSES &&
+                eventCreatedAt == watermark
+        return resurrectsTerminal
+    }
 
     /**
      * Build the row to save: an immutable `copy(...)` of [existing], or a fresh entity on the first
@@ -217,6 +233,11 @@ class BillingWebhookService(
         private const val FNV_PRIME = 0x100000001b3L
         private const val BYTE_MASK = 0xffL
         private const val PAST_DUE_STATUS = "past_due"
+
+        // Stripe subscription statuses a sub never leaves for the SAME subscription id (a re-subscribe
+        // creates a NEW id). A same-second non-terminal event must not overwrite one of these — see
+        // [isOutOfOrder]. `incomplete_expired` is the terminal end of a never-activated sub.
+        private val TERMINAL_STATUSES = setOf("canceled", "incomplete_expired")
     }
 
     /**

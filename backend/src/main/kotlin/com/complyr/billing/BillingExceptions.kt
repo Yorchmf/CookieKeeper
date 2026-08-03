@@ -16,6 +16,20 @@ class NoBillingAccountException :
     )
 
 /**
+ * Raised when a user who already holds an ACTIVE subscription tries to start a fresh Checkout. Left
+ * unguarded, a second Checkout would mint a *second* Stripe subscription (double-billing the customer)
+ * while our `uq_subscriptions_user_id` collapses both to one row — so the dashboard would still show a
+ * single plan and hide the duplicate. Returned as 409 so the dashboard routes these users to the
+ * Customer Portal (manage/switch plan) instead of a new Checkout.
+ */
+class AlreadySubscribedException :
+    ApiException(
+        HttpStatus.CONFLICT,
+        code = "ALREADY_SUBSCRIBED",
+        message = "You already have an active subscription — manage it from the billing portal",
+    )
+
+/**
  * Raised when a call to Stripe fails (network, API error, or a missing redirect URL). The message is
  * deliberately generic — Stripe error detail (which can carry the customer id) is logged server-side
  * by request id only, never surfaced to the client or written into logs verbatim (CLAUDE.md #4).

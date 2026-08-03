@@ -30,9 +30,14 @@ class StripeWebhookController(
     @PostMapping("/webhook", consumes = [MediaType.ALL_VALUE])
     fun webhook(
         request: HttpServletRequest,
-        @RequestHeader(STRIPE_SIGNATURE_HEADER) signature: String,
+        @RequestHeader(value = STRIPE_SIGNATURE_HEADER, required = false) signature: String?,
     ): ApiResponse<WebhookAck> {
+        // Read (under the size cap) before the header check so an oversize body is rejected with 413
+        // regardless of whether a signature is present. The header is bound as optional so an absent
+        // one becomes our own 400 (INVALID_SIGNATURE) instead of Spring's unmapped 500 — a missing
+        // signature is a bad request Stripe must not be told to retry, same as an invalid one.
         val payload = readCappedBody(request)
+        if (signature.isNullOrBlank()) throw WebhookSignatureException()
         billingWebhookService.handle(payload, signature)
         return ApiResponse.success(WebhookAck(received = true))
     }

@@ -82,13 +82,16 @@ class BillingServiceTest {
     private val userId = UUID.randomUUID()
     private val user = UserEntity(id = userId, email = "owner@example.com", passwordHash = "hash")
 
-    private fun subscription(stripeCustomerId: String?): SubscriptionEntity =
+    private fun subscription(
+        stripeCustomerId: String?,
+        status: String = "active",
+    ): SubscriptionEntity =
         SubscriptionEntity(
             userId = userId,
             stripeCustomerId = stripeCustomerId,
             stripeSubId = "sub_x",
             plan = Plan.STARTER,
-            status = "active",
+            status = status,
             periodEnd = Instant.parse("2026-09-01T00:00:00Z"),
             createdAt = Instant.parse("2026-08-01T00:00:00Z"),
             updatedAt = Instant.parse("2026-08-01T00:00:00Z"),
@@ -115,7 +118,9 @@ class BillingServiceTest {
 
     @Test
     fun `startCheckout reuses an existing stripe customer without loading the user`() {
-        every { subscriptionRepository.findByUserId(userId) } returns subscription(stripeCustomerId = "cus_existing")
+        // A LAPSED subscription (canceled) may re-subscribe: reuse its Stripe customer, don't block it.
+        every { subscriptionRepository.findByUserId(userId) } returns
+            subscription(stripeCustomerId = "cus_existing", status = "canceled")
 
         service.startCheckout(userId, Plan.STARTER)
 
@@ -124,6 +129,31 @@ class BillingServiceTest {
         assertEquals("price_starter", request.priceId)
         // The returning-customer path must not incur a user lookup (email only needed for a new one).
         verify(exactly = 0) { userRepository.findById(any()) }
+    }
+
+    @Test
+    fun `startCheckout rejects a user who already has an active subscription`() {
+        // Guard against double-Checkout: an active subscriber must be routed to the Portal, never mint
+        // a second Stripe subscription (which the one-row-per-user constraint would then hide).
+        every { subscriptionRepository.findByUserId(userId) } returns
+            subscription(stripeCustomerId = "cus_active", status = "active")
+
+        assertThrows<AlreadySubscribedException> { service.startCheckout(userId, Plan.PRO) }
+
+        assertEquals(null, gateway.lastCheckout, "an active subscriber must never reach Stripe Checkout")
+        verify(exactly = 0) { userRepository.findById(any()) }
+    }
+
+    @Test
+    fun `startCheckout allows re-subscribing after a trialing subscription lapses`() {
+        // `trialing` counts as active (entitled), so it is also guarded — only genuinely-lapsed rows
+        // (past_due here) may re-checkout. Confirms the guard keys on isActive, not a hardcoded status.
+        every { subscriptionRepository.findByUserId(userId) } returns
+            subscription(stripeCustomerId = "cus_lapsed", status = "past_due")
+
+        service.startCheckout(userId, Plan.PRO)
+
+        assertEquals(CheckoutCustomer.Existing("cus_lapsed"), requireNotNull(gateway.lastCheckout).customer)
     }
 
     @Test

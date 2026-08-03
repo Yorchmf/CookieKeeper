@@ -260,6 +260,41 @@ class BillingWebhookServiceTest {
     }
 
     @Test
+    fun `handle does not let a same-second non-terminal event resurrect a canceled subscription`() {
+        // The reverse of the same-second cancel: the terminal `canceled` landed FIRST (watermark ==
+        // event time), then a same-second `active`/`updated` arrives reordered. Applying it would hand
+        // entitlement back to a canceled account with no later event to correct it — so it must be
+        // skipped, yet still stamped processed so Stripe stops retrying.
+        gateway.event = subscriptionEvent(status = "active")
+        every { stripeEventRepository.findByStripeEventId("evt_1") } returns recorded(processedAt = null)
+        every { subscriptionRepository.findByStripeSubId("sub_1") } returns
+            existingSubscription(stripeEventAt = eventCreated, status = "canceled")
+
+        service.handle("{}", "sig")
+
+        verify(exactly = 0) { subscriptionRepository.save(any()) }
+        verify(exactly = 0) { eventPublisher.publishEvent(match<Any> { it is SubscriptionActivated }) }
+        verify { stripeEventRepository.markProcessedAndRedact("evt_1", now) }
+    }
+
+    @Test
+    fun `handle applies a genuinely-later reactivation after a cancellation`() {
+        // A real re-subscribe on the same row carries a strictly-later `created`, so the terminal guard
+        // must NOT block it — entitlement is legitimately restored.
+        gateway.event = subscriptionEvent(status = "active")
+        every { stripeEventRepository.findByStripeEventId("evt_1") } returns recorded(processedAt = null)
+        every { subscriptionRepository.findByStripeSubId("sub_1") } returns
+            existingSubscription(stripeEventAt = eventCreated.minusSeconds(60), status = "canceled")
+        val saved = slot<SubscriptionEntity>()
+        every { subscriptionRepository.save(capture(saved)) } answers { saved.captured }
+
+        service.handle("{}", "sig")
+
+        assertEquals("active", saved.captured.status, "a strictly-later reactivation is applied")
+        verify { stripeEventRepository.markProcessedAndRedact("evt_1", now) }
+    }
+
+    @Test
     fun `handle propagates an apply failure without stamping the event processed`() {
         // Core invariant of the two-transaction design: a failed apply leaves processed_at null (the
         // payload is retained) so Stripe redelivers. A save failure must propagate and never mark.
