@@ -108,6 +108,16 @@ complyr:
       api-key: ${BREVO_API_KEY:}
       base-url: ${BREVO_BASE_URL:https://api.brevo.com}
       sender-name: ${BREVO_SENDER_NAME:Complyr}
+  observability:
+    # Error tracking (ADR-15). Sentry SaaS EU region ONLY (DSN host *.de.sentry.io) for GDPR data
+    # residency (CLAUDE.md #2) — a non-EU DSN is refused at startup. A BLANK dsn disables Sentry, so
+    # local (and any environment that hasn't set SENTRY_DSN_BACKEND) runs with error tracking off. No
+    # PII is ever sent: send-default-pii stays off and request/user context is scrubbed (CLAUDE.md #4).
+    sentry:
+      dsn: ${SENTRY_DSN_BACKEND:}
+      environment: ${SENTRY_ENVIRONMENT:local}
+      release: ${SENTRY_RELEASE:}
+      traces-sample-rate: ${SENTRY_TRACES_SAMPLE_RATE:0.0}
   app-base-url: ${APP_BASE_URL:http://localhost:3000}
   cdn-base-url: ${CDN_BASE_URL:http://localhost:8081}
   mail-from: ${MAIL_FROM:no-reply@complyr.eu}

@@ -5,8 +5,11 @@ packages:
   - widget
 # Dependency build scripts explicitly approved (pnpm 11 blocks them by default).
 # esbuild → vite (widget); @swc/core, sharp, @parcel/watcher, unrs-resolver → Next.js (dashboard).
+# @sentry/cli's build script (source-map upload binary) is intentionally NOT run — the dashboard
+# disables Sentry source-map upload (ADR-15), so the CLI binary is never invoked at build/runtime.
 allowBuilds:
   '@parcel/watcher': true
+  '@sentry/cli': false
   '@swc/core': true
   esbuild: true
   sharp: true

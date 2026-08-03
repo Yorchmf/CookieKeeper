@@ -37,6 +37,12 @@ dependencies {
     // and the bundled Chromium must be the same Playwright version.
     implementation("com.microsoft.playwright:playwright:1.61.0")
     implementation("com.stripe:stripe-java:33.2.0")
+    // Error tracking (ADR-15). Framework-agnostic logback integration: SentryConfig attaches a
+    // SentryAppender to the root logger so unhandled ERROR-level logs become Sentry events. Chosen
+    // over sentry-spring-boot-4, which for Spring Boot 4 requires the OpenTelemetry Java agent
+    // (-javaagent + SENTRY_AUTO_INIT=false) — unneeded weight for MVP error capture. logback-classic
+    // is already on the classpath via the Spring Boot logging starter.
+    implementation("io.sentry:sentry-logback:8.51.0")
     implementation("org.flywaydb:flyway-database-postgresql")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("tools.jackson.module:jackson-module-kotlin")

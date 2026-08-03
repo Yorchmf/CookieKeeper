@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 import createNextIntlPlugin from "next-intl/plugin";
 import { routing } from "./src/i18n/routing";
 
@@ -35,4 +36,15 @@ const nextConfig: NextConfig = {
 
 const withNextIntl = createNextIntlPlugin();
 
-export default withNextIntl(nextConfig);
+// Sentry build-time wiring (ADR-15). Source-map upload is disabled: it requires a SENTRY_AUTH_TOKEN +
+// org/project we don't provision for the MVP, and without it withSentryConfig only injects the SDK. The
+// runtime EU-residency + PII guards live in the sentry.*.config / instrumentation-client files. Enable
+// uploads later by setting org/project/authToken and flipping sourcemaps.disable.
+export default withSentryConfig(withNextIntl(nextConfig), {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  // Only log during CI builds; keep local `next build` quiet.
+  silent: !process.env.CI,
+  sourcemaps: { disable: true },
+  telemetry: false,
+});

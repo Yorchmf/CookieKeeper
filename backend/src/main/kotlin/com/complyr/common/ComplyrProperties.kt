@@ -15,6 +15,7 @@ data class ComplyrProperties(
     val scan: Scan = Scan(),
     val billing: Billing = Billing(),
     val mail: Mail = Mail(),
+    val observability: Observability = Observability(),
     val appBaseUrl: String,
     val cdnBaseUrl: String,
     val mailFrom: String,
@@ -407,6 +408,43 @@ data class ComplyrProperties(
             const val DEFAULT_BREVO_BASE_URL = "https://api.brevo.com"
             const val DEFAULT_BREVO_SENDER_NAME = "Complyr"
             val SUPPORTED_PROVIDERS = setOf("smtp", "brevo")
+        }
+    }
+
+    /**
+     * Error-tracking (Sentry) configuration — see [com.complyr.common.SentryConfig] and ADR-15.
+     *
+     * [Sentry.dsn] is bound from `${'$'}{SENTRY_DSN_BACKEND}` with an EMPTY default, and a blank DSN
+     * DISABLES Sentry entirely (no init, no appender) — so local and any environment without a DSN run
+     * with error tracking off, and only a real DSN turns it on. When set it MUST be a Sentry EU-region
+     * DSN (host `*.de.sentry.io`); the [com.complyr.common.SentryConfig] bean refuses a non-EU DSN at
+     * startup for GDPR data residency (CLAUDE.md #2). No PII is ever sent: `send-default-pii` stays off
+     * and a beforeSend scrub drops any request/user context (CLAUDE.md #4).
+     *
+     * [Sentry.environment] tags events (local|dev|prd); [Sentry.release] is an optional build marker
+     * (e.g. the deployed image tag). [Sentry.tracesSampleRate] is the performance-tracing sample
+     * fraction — 0.0 (off) by default, since we run no OpenTelemetry agent.
+     */
+    data class Observability(
+        val sentry: Sentry = Sentry(),
+    ) {
+        data class Sentry(
+            val dsn: String = "",
+            val environment: String = DEFAULT_ENVIRONMENT,
+            val release: String = "",
+            val tracesSampleRate: Double = DEFAULT_TRACES_SAMPLE_RATE,
+        ) {
+            init {
+                require(tracesSampleRate in 0.0..1.0) {
+                    "complyr.observability.sentry.traces-sample-rate must be within [0.0, 1.0] " +
+                        "(was $tracesSampleRate)"
+                }
+            }
+
+            companion object {
+                const val DEFAULT_ENVIRONMENT = "local"
+                const val DEFAULT_TRACES_SAMPLE_RATE = 0.0
+            }
         }
     }
 }
