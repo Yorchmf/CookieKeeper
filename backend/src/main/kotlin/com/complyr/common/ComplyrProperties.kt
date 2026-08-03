@@ -28,16 +28,39 @@ data class ComplyrProperties(
         val resetTokenTtl: Duration,
         // Reuse tolerance for the immediately-preceding refresh token (parallel-refresh races).
         val refreshReuseGrace: Duration = Duration.ofSeconds(DEFAULT_REFRESH_REUSE_GRACE_SECONDS),
+        // Consecutive failed logins that lock an account, and for how long. The per-IP auth rate limit
+        // bounds one source; this per-account backstop bounds a botnet spraying one email from many IPs
+        // (see [com.complyr.auth.LoginAttemptService]). The lock is TEMPORARY (auto-expiring) rather than
+        // permanent, and a successful login clears the counter — but note the tradeoff inherent to any
+        // account-lockout scheme: an attacker who knows a victim's email can re-trigger the lock every
+        // window to keep that user out. Accepted for MVP as a bounded, self-clearing DoS; a non-lockout
+        // mitigation (self-service unlock / step-up challenge after N failures) is a tracked follow-up.
+        val maxFailedLoginAttempts: Int = DEFAULT_MAX_FAILED_LOGIN_ATTEMPTS,
+        val loginLockoutDuration: Duration = Duration.ofMinutes(DEFAULT_LOGIN_LOCKOUT_MINUTES),
     ) {
         init {
             require(jwtSecret.toByteArray(Charsets.UTF_8).size >= MIN_JWT_SECRET_BYTES) {
                 "complyr.auth.jwt-secret must be at least $MIN_JWT_SECRET_BYTES bytes (HS256 key material)"
+            }
+            // A non-positive threshold would lock every account on its first (or zeroth) failed login,
+            // locking out all legitimate users; refuse the misconfig at startup.
+            require(maxFailedLoginAttempts > 0) {
+                "complyr.auth.max-failed-login-attempts must be positive (was $maxFailedLoginAttempts)"
+            }
+            // A zero/negative window would mint an already-elapsed lock, disabling the lockout entirely.
+            require(!loginLockoutDuration.isZero && !loginLockoutDuration.isNegative) {
+                "complyr.auth.login-lockout-duration must be a positive duration (was $loginLockoutDuration)"
             }
         }
 
         companion object {
             const val MIN_JWT_SECRET_BYTES = 32
             const val DEFAULT_REFRESH_REUSE_GRACE_SECONDS = 10L
+
+            // Generous enough that a real user fat-fingering a password a few times is never locked in
+            // normal use, tight enough to make online guessing against one account infeasible.
+            const val DEFAULT_MAX_FAILED_LOGIN_ATTEMPTS = 10
+            const val DEFAULT_LOGIN_LOCKOUT_MINUTES = 15L
         }
     }
 

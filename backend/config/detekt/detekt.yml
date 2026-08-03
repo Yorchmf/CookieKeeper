@@ -6,8 +6,9 @@ complexity:
   LongParameterList:
     # JPA entities and boundary DTOs are immutable data classes mirroring table/JSON shape.
     ignoreDataClasses: true
-    # Constructor injection only (CLAUDE.md): DI constructors legitimately reach 7 collaborators.
-    constructorThreshold: 8
+    # Constructor injection only (CLAUDE.md): DI constructors legitimately reach 8 collaborators
+    # (e.g. AuthService, which orchestrates users, tokens, hashing, events, and the lockout tracker).
+    constructorThreshold: 9
     # Test request-builder helpers expose every field as an optional named arg so each case sets
     # only what it exercises; that's a readability win, not a design smell (mirrors LongMethod below).
     excludes: ['**/src/test/**']

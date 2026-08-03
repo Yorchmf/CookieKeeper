@@ -55,6 +55,7 @@ class AuthServiceTest {
     private val authTokenRepository = mockk<AuthTokenRepository>()
     private val tokenService = mockk<TokenService>()
     private val eventPublisher = mockk<ApplicationEventPublisher>()
+    private val loginAttemptService = mockk<LoginAttemptService>(relaxed = true)
 
     private val service =
         AuthService(
@@ -63,6 +64,7 @@ class AuthServiceTest {
             tokenService,
             passwordEncoder,
             eventPublisher,
+            loginAttemptService,
             properties,
             clock,
         )
@@ -170,6 +172,75 @@ class AuthServiceTest {
         assertEquals("access-jwt", session.accessToken)
         assertEquals("raw-refresh", session.refreshToken)
         assertEquals(existing.id, session.user.id)
+    }
+
+    @Test
+    fun `a wrong password records a failed login attempt`() {
+        val existing = user(password = "correct-password")
+        every { userRepository.findByEmail("alice@example.com") } returns existing
+
+        assertThrows<InvalidCredentialsException> {
+            service.login(LoginRequest(email = "alice@example.com", password = "wrong-password"))
+        }
+
+        verify(exactly = 1) { loginAttemptService.recordFailure(existing.id) }
+    }
+
+    @Test
+    fun `a locked account is rejected even with the correct password and records no new attempt`() {
+        val locked =
+            user(password = "correct-password").copy(lockedUntil = now.plusSeconds(600))
+        every { userRepository.findByEmail("alice@example.com") } returns locked
+
+        assertThrows<InvalidCredentialsException> {
+            service.login(LoginRequest(email = "alice@example.com", password = "correct-password"))
+        }
+
+        // The lock short-circuits the real password check, so a locked account never issues a session…
+        verify(exactly = 0) { tokenService.issueRefreshToken(any()) }
+        // …and the lock rejection is not itself a "failed attempt" (it would never let the window lapse).
+        verify(exactly = 0) { loginAttemptService.recordFailure(any()) }
+    }
+
+    @Test
+    fun `an elapsed lock no longer blocks a valid login and clears the stale counter`() {
+        val elapsed =
+            user(password = "correct-password", verifiedAt = now)
+                .copy(failedLoginAttempts = 0, lockedUntil = now.minusSeconds(1))
+        every { userRepository.findByEmail("alice@example.com") } returns elapsed
+        every { tokenService.issueAccessToken(elapsed.id, emailVerified = true) } returns "access-jwt"
+        every { tokenService.issueRefreshToken(elapsed.id) } returns IssuedRefreshToken(elapsed.id, "raw-refresh")
+
+        val session = service.login(LoginRequest(email = "alice@example.com", password = "correct-password"))
+
+        assertEquals("access-jwt", session.accessToken)
+        verify(exactly = 1) { loginAttemptService.clearFailures(elapsed.id) }
+    }
+
+    @Test
+    fun `a clean successful login never touches the attempt tracker`() {
+        val existing = user(password = "correct-password", verifiedAt = now)
+        every { userRepository.findByEmail("alice@example.com") } returns existing
+        every { tokenService.issueAccessToken(existing.id, emailVerified = true) } returns "access-jwt"
+        every { tokenService.issueRefreshToken(existing.id) } returns IssuedRefreshToken(existing.id, "raw-refresh")
+
+        service.login(LoginRequest(email = "alice@example.com", password = "correct-password"))
+
+        verify(exactly = 0) { loginAttemptService.clearFailures(any()) }
+        verify(exactly = 0) { loginAttemptService.recordFailure(any()) }
+    }
+
+    @Test
+    fun `a successful login clears accumulated failures`() {
+        val existing =
+            user(password = "correct-password", verifiedAt = now).copy(failedLoginAttempts = 3)
+        every { userRepository.findByEmail("alice@example.com") } returns existing
+        every { tokenService.issueAccessToken(existing.id, emailVerified = true) } returns "access-jwt"
+        every { tokenService.issueRefreshToken(existing.id) } returns IssuedRefreshToken(existing.id, "raw-refresh")
+
+        service.login(LoginRequest(email = "alice@example.com", password = "correct-password"))
+
+        verify(exactly = 1) { loginAttemptService.clearFailures(existing.id) }
     }
 
     @Test
@@ -308,7 +379,16 @@ class AuthServiceTest {
         every { encoder.encode(any()) } returns "encoded-equalizer"
         every { encoder.matches(any(), any()) } returns false
         val timingService =
-            AuthService(userRepository, authTokenRepository, tokenService, encoder, eventPublisher, properties, clock)
+            AuthService(
+                userRepository,
+                authTokenRepository,
+                tokenService,
+                encoder,
+                eventPublisher,
+                loginAttemptService,
+                properties,
+                clock,
+            )
         every { userRepository.findByEmail("ghost@example.com") } returns null
 
         assertThrows<InvalidCredentialsException> {

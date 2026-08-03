@@ -32,6 +32,7 @@ class AuthService(
     private val tokenService: TokenService,
     private val passwordEncoder: PasswordEncoder,
     private val eventPublisher: ApplicationEventPublisher,
+    private val loginAttemptService: LoginAttemptService,
     private val properties: ComplyrProperties,
     private val clock: Clock,
 ) {
@@ -75,12 +76,22 @@ class AuthService(
     @Transactional
     fun login(request: LoginRequest): AuthSession {
         val user = userRepository.findByEmail(normalizeEmail(request.email))
-        if (user == null) {
-            // Burn the same bcrypt cost as the known-email branch (anti-enumeration timing).
+        // Unknown email OR a locked account (distributed brute-force backstop, see LoginAttemptService):
+        // burn one bcrypt (anti-enumeration timing) and reject with the SAME generic error as a wrong
+        // password. A locked account must be indistinguishable from a wrong password / unknown email —
+        // revealing "account locked" would leak that the email exists and hand an attacker a live oracle
+        // for whether their spray is landing.
+        if (user == null || user.lockedUntil?.isAfter(clock.instant()) == true) {
             passwordEncoder.matches(request.password, timingEqualizerHash)
             throw InvalidCredentialsException()
         }
-        if (!passwordEncoder.matches(request.password, user.passwordHash)) throw InvalidCredentialsException()
+        if (!passwordEncoder.matches(request.password, user.passwordHash)) {
+            // Commits in its own transaction so the increment survives this method's rollback.
+            loginAttemptService.recordFailure(user.id)
+            throw InvalidCredentialsException()
+        }
+        // Successful login clears any accumulated failures; skip the write on the common clean path.
+        if (user.failedLoginAttempts != 0 || user.lockedUntil != null) loginAttemptService.clearFailures(user.id)
         return issueSession(user)
     }
 
