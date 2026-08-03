@@ -46,19 +46,36 @@ class PolicyService(
         // Serialize concurrent generation for this site so two parallel calls can't both read the same
         // max version and then collide on the (site, version, language) unique constraint (a raw 500).
         // The advisory lock is transaction-scoped and released at commit; the read-only validation above
-        // never contends for it, and distinct sites never block each other.
+        // never contends for it, and distinct sites never block each other. Held across the debounce
+        // compare-and-save below so a concurrent generate can't slip a version in between.
+        // Correctness assumes the default READ COMMITTED isolation: the version reads below run AFTER the
+        // lock is granted, each taking a fresh snapshot that sees the prior holder's committed version.
+        // Under REPEATABLE READ/SERIALIZABLE the snapshot would pin at the transaction's first statement
+        // and these reads could go stale — do not raise the isolation on this path without revisiting.
         policyRepository.acquireSiteGenerationLock(advisoryLockKey(site.id))
+
+        val context = contextBuilder.build(site.id, details)
+        val rendered = languages.associateWith { PolicyRenderer.render(it, context) }
+
+        // Debounce a no-op regenerate: if this render is byte-identical to the site's current version
+        // (same language set, same HTML each — the HTML embeds the "last updated" date, so this skips a
+        // same-day re-run with no changes while a genuine edit or a new day still produces a version), do
+        // not append an identical version. Without this a customer looping the endpoint can inflate their
+        // audit-referenced `policies` table unbounded (the per-user rate limit only slows it). We COMPARE
+        // only — never UPDATE or DELETE existing versions, which consent events reference (docs §4.5) — so
+        // append-only audit semantics hold.
+        currentIfUnchanged(site.id, rendered)?.let { return it }
+
         val settings = upsertSettings(site.id, details)
         val version = nextVersion(site.id)
-        val context = contextBuilder.build(site.id, details)
         val now = clock.instant()
-        languages.forEach { language ->
+        rendered.forEach { (language, html) ->
             policyRepository.save(
                 PolicyEntity(
                     siteId = site.id,
                     version = version,
                     language = language,
-                    html = PolicyRenderer.render(language, context),
+                    html = html,
                     publishedAt = now,
                 ),
             )
@@ -69,6 +86,36 @@ class PolicyService(
             hostedUrl = hostedUrl(settings.publicId),
             languages = languages,
         )
+    }
+
+    /**
+     * Returns the current version's response when [rendered] is byte-identical to it (same languages,
+     * same HTML each), so [generate] can no-op instead of appending an identical row set; null when there
+     * is no current version, it differs, or its settings are somehow absent (fall through to a fresh
+     * publish). Read-only — never mutates the stored, audit-referenced versions.
+     */
+    private fun currentIfUnchanged(
+        siteId: UUID,
+        rendered: Map<String, String>,
+    ): PolicyGenerationResponse? {
+        // "Latest" here (unpublished-inclusive) matches nextVersion's; it coincides with current()'s
+        // latest-PUBLISHED because generate always stamps publishedAt. If a draft version is ever
+        // introduced, reconcile these two notions of "latest" so the debounce can't return a draft.
+        val latestVersion = policyRepository.findFirstBySiteIdOrderByVersionDesc(siteId)?.version ?: return null
+        val current = policyRepository.findBySiteIdAndVersion(siteId, latestVersion).associate { it.language to it.html }
+        // Compare before touching settings so a genuine change short-circuits without the extra read.
+        return if (current != rendered) {
+            null
+        } else {
+            policySettingsRepository.findById(siteId).orElse(null)?.let { settings ->
+                PolicyGenerationResponse(
+                    version = latestVersion,
+                    publicId = settings.publicId.toString(),
+                    hostedUrl = hostedUrl(settings.publicId),
+                    languages = rendered.keys.toList(),
+                )
+            }
+        }
     }
 
     /** The site's currently published policy, or [PolicyNotFoundException] if none has been generated. */

@@ -69,6 +69,24 @@ class PolicyServiceTest {
             languages = languages,
         )
 
+    /**
+     * The [PolicyContext] the service builds internally for [request] on the happy path — mirrors its
+     * private `toDetails` (blank website defaults to the site domain) and uses the same builder, clock,
+     * and no-completed-scan collaborators — so a test can render byte-identical HTML and drive the
+     * debounce. Callers must stub `scanRepository.findFirst…DONE` (returning null on the happy path)
+     * before calling, since `build` reads it.
+     */
+    private fun contextFor(request: PolicyGenerationRequest): PolicyContext {
+        val details =
+            PolicyDetails(
+                companyName = request.companyName.trim(),
+                contactEmail = request.contactEmail.trim(),
+                websiteUrl = request.websiteUrl?.trim()?.takeIf { it.isNotBlank() } ?: "https://${site().domain}",
+                address = request.address?.trim()?.takeIf { it.isNotBlank() },
+            )
+        return PolicyContextBuilder(scanRepository, scanCookieRepository, clock).build(siteId, details)
+    }
+
     /** Wire the happy-path collaborators: owned site, no prior settings/version/banner/scan. */
     private fun stubHappyPath() {
         every { siteRepository.findByIdAndUserId(siteId, userId) } returns site()
@@ -154,6 +172,8 @@ class PolicyServiceTest {
         stubHappyPath()
         val existing = PolicyEntity(siteId = siteId, version = 3, language = "en", html = "<p/>", publishedAt = now)
         every { policyRepository.findFirstBySiteIdOrderByVersionDesc(siteId) } returns existing
+        // The current version's HTML ("<p/>") differs from a real render, so this is a genuine change.
+        every { policyRepository.findBySiteIdAndVersion(siteId, 3) } returns listOf(existing)
         val saved = mutableListOf<PolicyEntity>()
         every { policyRepository.save(capture(saved)) } answers { firstArg() }
 
@@ -161,6 +181,110 @@ class PolicyServiceTest {
 
         assertEquals(4, response.version)
         assertEquals(4, saved.single().version)
+    }
+
+    @Test
+    fun `regenerating with byte-identical output no-ops instead of appending a duplicate version`() {
+        val stablePublicId = UUID.randomUUID()
+        every { siteRepository.findByIdAndUserId(siteId, userId) } returns site()
+        every { policySettingsRepository.findById(siteId) } returns
+            Optional.of(
+                PolicySettingsEntity(
+                    siteId = siteId,
+                    publicId = stablePublicId,
+                    details = PolicyDetails("Acme GmbH", "privacy@acme.example.com", "https://acme.example.com"),
+                    createdAt = now.minusSeconds(3600),
+                    updatedAt = now.minusSeconds(3600),
+                ),
+            )
+        every { policyRepository.acquireSiteGenerationLock(any()) } returns 1L
+        every { bannerConfigService.currentPublished(siteId) } returns null
+        every { scanRepository.findFirstBySiteIdAndStatusOrderByCreatedAtDesc(siteId, ScanStatus.DONE) } returns null
+        every { properties.appBaseUrl } returns "https://app.complyr.eu"
+        // The current version's stored HTML is exactly what this request would render, for the same set
+        // of languages — so a regenerate must return the current version and write nothing.
+        val currentHtml = PolicyRenderer.render("en", contextFor(request()))
+        val current = PolicyEntity(siteId = siteId, version = 7, language = "en", html = currentHtml, publishedAt = now)
+        every { policyRepository.findFirstBySiteIdOrderByVersionDesc(siteId) } returns current
+        every { policyRepository.findBySiteIdAndVersion(siteId, 7) } returns listOf(current)
+
+        val response = service.generate(userId, siteId, request(languages = listOf("en")))
+
+        assertEquals(7, response.version, "the current version is returned, not a new one")
+        assertEquals(stablePublicId.toString(), response.publicId)
+        assertEquals(listOf("en"), response.languages)
+        // No new policy rows and no settings churn (updatedAt not bumped) on a true no-op.
+        verify(exactly = 0) { policyRepository.save(any()) }
+        verify(exactly = 0) { policySettingsRepository.save(any()) }
+    }
+
+    @Test
+    fun `an otherwise-identical regenerate on a new day still bumps the version`() {
+        // The debounce's core premise: the rendered HTML embeds updatedOn (today's date), so the same
+        // inputs a day later are NOT byte-identical and must produce a genuine new version — otherwise a
+        // real "last updated" change would be silently suppressed. Guards against updatedOn ever being
+        // dropped from the render.
+        val dayTwo = Clock.fixed(Instant.parse("2026-08-02T12:00:00Z"), ZoneOffset.UTC)
+        val dayTwoService =
+            PolicyService(
+                siteRepository,
+                policyRepository,
+                policySettingsRepository,
+                bannerConfigService,
+                PolicyContextBuilder(scanRepository, scanCookieRepository, dayTwo),
+                properties,
+                dayTwo,
+            )
+        every { siteRepository.findByIdAndUserId(siteId, userId) } returns site()
+        every { policySettingsRepository.findById(siteId) } returns
+            Optional.of(
+                PolicySettingsEntity(
+                    siteId = siteId,
+                    publicId = UUID.randomUUID(),
+                    details = PolicyDetails("Acme GmbH", "privacy@acme.example.com", "https://acme.example.com"),
+                    createdAt = now.minusSeconds(3600),
+                    updatedAt = now.minusSeconds(3600),
+                ),
+            )
+        every { policySettingsRepository.save(any()) } answers { firstArg() }
+        every { policyRepository.acquireSiteGenerationLock(any()) } returns 1L
+        every { bannerConfigService.currentPublished(siteId) } returns null
+        every { scanRepository.findFirstBySiteIdAndStatusOrderByCreatedAtDesc(siteId, ScanStatus.DONE) } returns null
+        every { properties.appBaseUrl } returns "https://app.complyr.eu"
+        // The current version was rendered on day one (contextFor uses the class clock, 2026-08-01).
+        val dayOneHtml = PolicyRenderer.render("en", contextFor(request()))
+        val current = PolicyEntity(siteId = siteId, version = 5, language = "en", html = dayOneHtml, publishedAt = now)
+        every { policyRepository.findFirstBySiteIdOrderByVersionDesc(siteId) } returns current
+        every { policyRepository.findBySiteIdAndVersion(siteId, 5) } returns listOf(current)
+        val saved = mutableListOf<PolicyEntity>()
+        every { policyRepository.save(capture(saved)) } answers { firstArg() }
+
+        val response = dayTwoService.generate(userId, siteId, request(languages = listOf("en")))
+
+        assertEquals(6, response.version, "a new day changes updatedOn, so it is a genuine new version")
+        assertEquals(6, saved.single().version)
+    }
+
+    @Test
+    fun `regenerating with a changed language set is not debounced even if shared languages match`() {
+        stubHappyPath()
+        // Current version has en+de; the new request narrows to en only. Different language set → a new
+        // version, never a no-op, so the customer's narrowing actually takes effect.
+        val enHtml = PolicyRenderer.render("en", contextFor(request()))
+        val current = PolicyEntity(siteId = siteId, version = 2, language = "en", html = enHtml, publishedAt = now)
+        every { policyRepository.findFirstBySiteIdOrderByVersionDesc(siteId) } returns current
+        every { policyRepository.findBySiteIdAndVersion(siteId, 2) } returns
+            listOf(
+                current,
+                PolicyEntity(siteId = siteId, version = 2, language = "de", html = "<de/>", publishedAt = now),
+            )
+        val saved = mutableListOf<PolicyEntity>()
+        every { policyRepository.save(capture(saved)) } answers { firstArg() }
+
+        val response = service.generate(userId, siteId, request(languages = listOf("en")))
+
+        assertEquals(3, response.version)
+        assertEquals(listOf("en"), saved.map { it.language })
     }
 
     @Test
