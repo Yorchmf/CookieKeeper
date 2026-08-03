@@ -172,6 +172,7 @@ data class ComplyrProperties(
         val originTokenSecret: String = "",
         val originTokenTtl: Duration = Duration.ofMinutes(DEFAULT_ORIGIN_TOKEN_TTL_MINUTES),
         val partitionLookaheadMonths: Int = DEFAULT_PARTITION_LOOKAHEAD_MONTHS,
+        val retentionMonths: Int = DEFAULT_RETENTION_MONTHS,
     ) {
         init {
             // A zero/negative window makes cutoff >= now, so the reaper would delete still-active,
@@ -189,6 +190,16 @@ data class ComplyrProperties(
             // DEFAULT partition (GDPR storage-limitation risk, see ConsentEventPartitionProvisioner).
             require(partitionLookaheadMonths >= 1) {
                 "complyr.consent.partition-lookahead-months must be at least 1 (was $partitionLookaheadMonths)"
+            }
+            // Consent evidence is dropped a whole partition at a time and irreversibly (ADR-16), and the
+            // window is TENANT-BLIND, so it MUST cover the LONGEST plan retention (Pro/Business, 3 yr =
+            // 36 mo — billing.Plan.RETENTION_YEARS_PAID), NOT the shortest. Anything below that would let
+            // the reaper irreversibly drop consent evidence a paying customer is still entitled to on its
+            // next run. The floor is the longest plan window, refusing that misconfig (and any fat-finger
+            // like 0/1) at startup — see ADR-16 and [ConsentEventPartitionReaper].
+            require(retentionMonths >= MIN_RETENTION_MONTHS) {
+                "complyr.consent.retention-months must be at least $MIN_RETENTION_MONTHS " +
+                    "(the longest plan retention; was $retentionMonths)"
             }
             // A zero/negative TTL would mint already-expired tokens, rejecting every token-bearing
             // (i.e. every current-widget) consent post. Refuse it at startup. Secret length is
@@ -214,6 +225,21 @@ data class ComplyrProperties(
             // and never fall into the un-reclaimable DEFAULT partition. See
             // [com.complyr.consent.ConsentEventPartitionProvisioner].
             const val DEFAULT_PARTITION_LOOKAHEAD_MONTHS = 3
+
+            // Consent-log retention window in months (ADR-16). Default 36 = 3 years, matching the
+            // longest plan retention (Pro/Business) and the §5 documented default. The retention job
+            // ([com.complyr.consent.ConsentEventPartitionReaper]) drops any monthly partition older
+            // than this. Tenant-blind: it must stay >= the longest plan window or a longer-retention
+            // customer loses evidence.
+            const val DEFAULT_RETENTION_MONTHS = 36
+
+            // Absolute floor for [retentionMonths] — the LONGEST plan retention (Pro/Business, 3 yr).
+            // The window is tenant-blind and DROP is irreversible, so it must never fall below the longest
+            // entitlement or a paying customer loses evidence they are entitled to. This mirrors
+            // billing.Plan.RETENTION_YEARS_PAID (3 yr): the config-binding layer intentionally does not
+            // depend on the billing `Plan` type (see [Billing.PriceIds]), so the value is duplicated here
+            // and kept honest by a drift guard in ComplyrPropertiesTest.
+            const val MIN_RETENTION_MONTHS = 36
         }
     }
 

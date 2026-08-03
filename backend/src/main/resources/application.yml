@@ -61,6 +61,13 @@ complyr:
     # How long a minted origin token stays valid. Short (bounds replay) but above client→server
     # latency; the widget self-censors tokens older than ~90s to stay clear of this ceiling.
     origin-token-ttl: ${CONSENT_ORIGIN_TOKEN_TTL:2m}
+    # Consent-log retention window in months (ADR-16). Partitions whose entire month is older than
+    # this are dropped by ConsentEventPartitionReaper. Tenant-blind, so it MUST be >= the longest
+    # plan retention (Pro/Business 3 yr = 36); validated >= 12 (shortest plan) at startup.
+    retention-months: ${CONSENT_RETENTION_MONTHS:36}
+    # Retention-drop schedule (Spring cron, server zone). Default 04:00 daily is baked into the job;
+    # runs after the provisioner (03:15) and the idempotency/public-scan reapers (03:30/03:45).
+    retention-drop-cron: ${CONSENT_RETENTION_DROP_CRON:0 0 4 * * *}
   scan:
     # How often a scanner worker polls the queue (only the `scanner` profile runs the poller).
     poll-interval-millis: ${SCAN_POLL_INTERVAL_MS:5000}
