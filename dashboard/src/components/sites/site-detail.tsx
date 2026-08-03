@@ -148,6 +148,21 @@ export function SiteDetail({ siteId }: { siteId: string }) {
 
         <Card>
           <CardHeader>
+            <CardTitle>{t("detail.consentLogTitle")}</CardTitle>
+            <CardDescription>{t("detail.consentLogDescription")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="outline"
+              render={<Link href={`/sites/${siteId}/consent-log`} />}
+            >
+              {t("detail.consentLogCta")}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle>{t("detail.dangerZone")}</CardTitle>
             <CardDescription>{t("detail.archiveHint")}</CardDescription>
           </CardHeader>

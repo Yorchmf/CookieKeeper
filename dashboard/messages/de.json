@@ -203,7 +203,10 @@
       "policyCta": "Richtlinie verwalten",
       "bannerTitle": "Einwilligungsbanner",
       "bannerDescription": "Passen Sie Aussehen, Text und Kategorien Ihres Cookie-Banners an.",
-      "bannerCta": "Banner anpassen"
+      "bannerCta": "Banner anpassen",
+      "consentLogTitle": "Einwilligungsprotokoll",
+      "consentLogDescription": "Durchsuchen und exportieren Sie die für diese Website erfassten Einwilligungen.",
+      "consentLogCta": "Einwilligungsprotokoll ansehen"
     }
   },
   "dashboard": {
@@ -469,6 +472,53 @@
     },
     "checkout": {
       "error": "Der Bezahlvorgang konnte nicht gestartet werden. Bitte versuchen Sie es erneut."
+    }
+  },
+  "consentLog": {
+    "title": "Einwilligungsprotokoll",
+    "subtitle": "Jede für diese Website erfasste Einwilligung – neueste zuerst. Prüfnachweis, gemäß Ihrem Tarif aufbewahrt.",
+    "loadError": "Das Einwilligungsprotokoll konnte nicht geladen werden. Bitte versuchen Sie es erneut.",
+    "empty": {
+      "title": "Noch keine Einwilligungen",
+      "description": "Sobald Besucher mit Ihrem Banner interagieren, erscheinen ihre Einwilligungen hier."
+    },
+    "filters": {
+      "legend": "Ereignisse filtern",
+      "from": "Von",
+      "to": "Bis",
+      "action": "Aktion",
+      "language": "Sprache",
+      "visitorId": "Besucher-ID",
+      "visitorIdPlaceholder": "Exakte Besucher-UUID",
+      "visitorIdInvalid": "Geben Sie eine gültige Besucher-UUID ein.",
+      "allActions": "Alle Aktionen",
+      "allLanguages": "Alle Sprachen",
+      "apply": "Anwenden",
+      "clear": "Filter zurücksetzen"
+    },
+    "actions": {
+      "accept_all": "Alle akzeptiert",
+      "reject_all": "Alle abgelehnt",
+      "custom": "Benutzerdefiniert"
+    },
+    "columns": {
+      "when": "Zeitpunkt",
+      "visitor": "Besucher",
+      "action": "Aktion",
+      "categories": "Kategorien",
+      "language": "Sprache",
+      "version": "Banner / Richtlinie"
+    },
+    "categoriesNone": "Keine",
+    "unknownValue": "—",
+    "retry": "Erneut versuchen",
+    "loadingMore": "Weitere werden geladen…",
+    "endOfLog": "Ende des Protokolls",
+    "tableCaption": "Einwilligungen für diese Website, neueste zuerst",
+    "export": {
+      "label": "CSV exportieren",
+      "businessOnly": "Der CSV-Export ist im Business-Tarif verfügbar.",
+      "upgrade": "Upgraden"
     }
   }
 }

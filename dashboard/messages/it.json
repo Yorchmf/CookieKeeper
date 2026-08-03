@@ -203,7 +203,10 @@
       "policyCta": "Gestisci informativa",
       "bannerTitle": "Banner di consenso",
       "bannerDescription": "Personalizza l'aspetto, il testo e le categorie del tuo banner dei cookie.",
-      "bannerCta": "Personalizza banner"
+      "bannerCta": "Personalizza banner",
+      "consentLogTitle": "Registro dei consensi",
+      "consentLogDescription": "Esplora ed esporta le scelte di consenso registrate per questo sito.",
+      "consentLogCta": "Vedi registro"
     }
   },
   "dashboard": {
@@ -469,6 +472,53 @@
     },
     "checkout": {
       "error": "Impossibile avviare il pagamento. Riprova."
+    }
+  },
+  "consentLog": {
+    "title": "Registro dei consensi",
+    "subtitle": "Ogni scelta di consenso registrata per questo sito, dalla più recente. Prova di audit, conservata in base al tuo piano.",
+    "loadError": "Impossibile caricare il registro dei consensi. Riprova.",
+    "empty": {
+      "title": "Ancora nessun consenso",
+      "description": "Quando i visitatori interagiscono con il tuo banner, le loro scelte appaiono qui."
+    },
+    "filters": {
+      "legend": "Filtra eventi",
+      "from": "Da",
+      "to": "A",
+      "action": "Azione",
+      "language": "Lingua",
+      "visitorId": "ID visitatore",
+      "visitorIdPlaceholder": "UUID esatto del visitatore",
+      "visitorIdInvalid": "Inserisci un UUID visitatore valido.",
+      "allActions": "Tutte le azioni",
+      "allLanguages": "Tutte le lingue",
+      "apply": "Applica",
+      "clear": "Cancella filtri"
+    },
+    "actions": {
+      "accept_all": "Accettato tutto",
+      "reject_all": "Rifiutato tutto",
+      "custom": "Personalizzato"
+    },
+    "columns": {
+      "when": "Data",
+      "visitor": "Visitatore",
+      "action": "Azione",
+      "categories": "Categorie",
+      "language": "Lingua",
+      "version": "Banner / Informativa"
+    },
+    "categoriesNone": "Nessuna",
+    "unknownValue": "—",
+    "retry": "Riprova",
+    "loadingMore": "Caricamento…",
+    "endOfLog": "Fine del registro",
+    "tableCaption": "Consensi per questo sito, dal più recente",
+    "export": {
+      "label": "Esporta CSV",
+      "businessOnly": "L’esportazione CSV è disponibile nel piano Business.",
+      "upgrade": "Aggiorna"
     }
   }
 }

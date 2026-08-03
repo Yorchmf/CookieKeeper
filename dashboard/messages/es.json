@@ -203,7 +203,10 @@
       "policyCta": "Gestionar política",
       "bannerTitle": "Banner de consentimiento",
       "bannerDescription": "Personalice el aspecto, el texto y las categorías de su banner de cookies.",
-      "bannerCta": "Personalizar banner"
+      "bannerCta": "Personalizar banner",
+      "consentLogTitle": "Registro de consentimientos",
+      "consentLogDescription": "Consulta y exporta las decisiones de consentimiento registradas para este sitio.",
+      "consentLogCta": "Ver registro"
     }
   },
   "dashboard": {
@@ -469,6 +472,53 @@
     },
     "checkout": {
       "error": "No pudimos iniciar el pago. Inténtalo de nuevo."
+    }
+  },
+  "consentLog": {
+    "title": "Registro de consentimientos",
+    "subtitle": "Cada decisión de consentimiento registrada para este sitio, de la más reciente a la más antigua. Prueba de auditoría, conservada según tu plan.",
+    "loadError": "No se pudo cargar el registro de consentimientos. Inténtalo de nuevo.",
+    "empty": {
+      "title": "Aún no hay consentimientos",
+      "description": "Cuando los visitantes interactúen con tu banner, sus decisiones aparecerán aquí."
+    },
+    "filters": {
+      "legend": "Filtrar eventos",
+      "from": "Desde",
+      "to": "Hasta",
+      "action": "Acción",
+      "language": "Idioma",
+      "visitorId": "ID de visitante",
+      "visitorIdPlaceholder": "UUID exacto del visitante",
+      "visitorIdInvalid": "Introduce un UUID de visitante válido.",
+      "allActions": "Todas las acciones",
+      "allLanguages": "Todos los idiomas",
+      "apply": "Aplicar",
+      "clear": "Borrar filtros"
+    },
+    "actions": {
+      "accept_all": "Aceptó todo",
+      "reject_all": "Rechazó todo",
+      "custom": "Personalizado"
+    },
+    "columns": {
+      "when": "Fecha",
+      "visitor": "Visitante",
+      "action": "Acción",
+      "categories": "Categorías",
+      "language": "Idioma",
+      "version": "Banner / Política"
+    },
+    "categoriesNone": "Ninguna",
+    "unknownValue": "—",
+    "retry": "Reintentar",
+    "loadingMore": "Cargando más…",
+    "endOfLog": "Fin del registro",
+    "tableCaption": "Consentimientos de este sitio, del más reciente al más antiguo",
+    "export": {
+      "label": "Exportar CSV",
+      "businessOnly": "La exportación CSV está disponible en el plan Business.",
+      "upgrade": "Mejorar plan"
     }
   }
 }

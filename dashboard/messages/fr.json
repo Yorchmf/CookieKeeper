@@ -203,7 +203,10 @@
       "policyCta": "Gérer la politique",
       "bannerTitle": "Bandeau de consentement",
       "bannerDescription": "Personnalisez l'apparence, le texte et les catégories de votre bandeau de cookies.",
-      "bannerCta": "Personnaliser le bandeau"
+      "bannerCta": "Personnaliser le bandeau",
+      "consentLogTitle": "Journal des consentements",
+      "consentLogDescription": "Parcourez et exportez les choix de consentement enregistrés pour ce site.",
+      "consentLogCta": "Voir le journal"
     }
   },
   "dashboard": {
@@ -469,6 +472,53 @@
     },
     "checkout": {
       "error": "Impossible de démarrer le paiement. Veuillez réessayer."
+    }
+  },
+  "consentLog": {
+    "title": "Journal des consentements",
+    "subtitle": "Chaque choix de consentement enregistré pour ce site — du plus récent au plus ancien. Preuve d’audit, conservée selon votre offre.",
+    "loadError": "Le journal des consentements n’a pas pu être chargé. Veuillez réessayer.",
+    "empty": {
+      "title": "Aucun consentement pour l’instant",
+      "description": "Dès que les visiteurs interagissent avec votre bandeau, leurs choix apparaissent ici."
+    },
+    "filters": {
+      "legend": "Filtrer les évènements",
+      "from": "Du",
+      "to": "Au",
+      "action": "Action",
+      "language": "Langue",
+      "visitorId": "ID visiteur",
+      "visitorIdPlaceholder": "UUID visiteur exact",
+      "visitorIdInvalid": "Saisissez un UUID de visiteur valide.",
+      "allActions": "Toutes les actions",
+      "allLanguages": "Toutes les langues",
+      "apply": "Appliquer",
+      "clear": "Effacer les filtres"
+    },
+    "actions": {
+      "accept_all": "Tout accepté",
+      "reject_all": "Tout refusé",
+      "custom": "Personnalisé"
+    },
+    "columns": {
+      "when": "Date",
+      "visitor": "Visiteur",
+      "action": "Action",
+      "categories": "Catégories",
+      "language": "Langue",
+      "version": "Bandeau / Politique"
+    },
+    "categoriesNone": "Aucune",
+    "unknownValue": "—",
+    "retry": "Réessayer",
+    "loadingMore": "Chargement…",
+    "endOfLog": "Fin du journal",
+    "tableCaption": "Consentements pour ce site, du plus récent au plus ancien",
+    "export": {
+      "label": "Exporter en CSV",
+      "businessOnly": "L’export CSV est disponible avec l’offre Business.",
+      "upgrade": "Mettre à niveau"
     }
   }
 }

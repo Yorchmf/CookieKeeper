@@ -31,4 +31,8 @@ data class ApiMeta(
     val total: Long? = null,
     val page: Int? = null,
     val limit: Int? = null,
+    // Opaque keyset cursor for the next page; null when the current page is the last.
+    // Used by cursor-paginated reads (e.g. the consent-event log) where OFFSET paging
+    // over a large, append-only, partitioned table would be too costly.
+    val nextCursor: String? = null,
 )

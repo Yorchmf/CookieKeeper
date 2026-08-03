@@ -203,7 +203,10 @@
       "policyCta": "Manage policy",
       "bannerTitle": "Consent banner",
       "bannerDescription": "Customize the look, wording, and categories of your cookie banner.",
-      "bannerCta": "Customize banner"
+      "bannerCta": "Customize banner",
+      "consentLogTitle": "Consent log",
+      "consentLogDescription": "Browse and export the consent choices recorded for this site.",
+      "consentLogCta": "View consent log"
     }
   },
   "dashboard": {
@@ -469,6 +472,53 @@
     },
     "checkout": {
       "error": "We couldn't start checkout. Please try again."
+    }
+  },
+  "consentLog": {
+    "title": "Consent log",
+    "subtitle": "Every consent choice recorded for this site — newest first. Audit evidence, retained per your plan.",
+    "loadError": "The consent log could not be loaded. Please try again.",
+    "empty": {
+      "title": "No consent events yet",
+      "description": "Once visitors interact with your banner, their consent choices appear here."
+    },
+    "filters": {
+      "legend": "Filter events",
+      "from": "From",
+      "to": "To",
+      "action": "Action",
+      "language": "Language",
+      "visitorId": "Visitor ID",
+      "visitorIdPlaceholder": "Exact visitor UUID",
+      "visitorIdInvalid": "Enter a valid visitor UUID.",
+      "allActions": "All actions",
+      "allLanguages": "All languages",
+      "apply": "Apply",
+      "clear": "Clear filters"
+    },
+    "actions": {
+      "accept_all": "Accepted all",
+      "reject_all": "Rejected all",
+      "custom": "Custom"
+    },
+    "columns": {
+      "when": "When",
+      "visitor": "Visitor",
+      "action": "Action",
+      "categories": "Categories",
+      "language": "Language",
+      "version": "Banner / Policy"
+    },
+    "categoriesNone": "None",
+    "unknownValue": "—",
+    "retry": "Try again",
+    "loadingMore": "Loading more…",
+    "endOfLog": "End of the log",
+    "tableCaption": "Consent events for this site, newest first",
+    "export": {
+      "label": "Export CSV",
+      "businessOnly": "CSV export is available on the Business plan.",
+      "upgrade": "Upgrade"
     }
   }
 }

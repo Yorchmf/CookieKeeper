@@ -64,6 +64,15 @@ class EntitlementService(
         if (activeSites >= cap) throw SiteLimitReachedException()
     }
 
+    /**
+     * Guard the consent-log CSV export against the plan's [Entitlements.csvExport] flag (Business-only).
+     * Throws [CsvExportNotEntitledException] (403) otherwise. Read-only — export is a dashboard feature, never
+     * on the consent-ingestion path, so no lock is needed.
+     */
+    fun requireCsvExport(userId: UUID) {
+        if (!resolve(userId).entitlements.csvExport) throw CsvExportNotEntitledException()
+    }
+
     // Fold the 128-bit user id into the 64-bit key pg_advisory_xact_lock takes (mirrors PolicyService);
     // a rare collision with another key space only causes harmless extra serialization, never a miss.
     private fun advisoryLockKey(userId: UUID): Long = userId.mostSignificantBits xor userId.leastSignificantBits

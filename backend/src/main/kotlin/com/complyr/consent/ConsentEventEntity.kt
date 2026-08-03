@@ -62,9 +62,12 @@ data class ConsentEventEntity(
  * the append-only invariant is enforced at the type level, not just by convention. Reads are
  * deliberately narrow and bounded: never an unpaginated `findAll()` across a multi-year,
  * monthly-partitioned table. [findByVisitorId] is the audit-correlation query backed by the
- * `idx_consent_events_visitor_id` index (V3).
+ * `idx_consent_events_visitor_id` index (V3). The dashboard's filterable, keyset-paginated log
+ * comes from the [ConsentEventLogFragment] mix-in (still read-only — append-only stays intact).
  */
-interface ConsentEventRepository : Repository<ConsentEventEntity, UUID> {
+interface ConsentEventRepository :
+    Repository<ConsentEventEntity, UUID>,
+    ConsentEventLogFragment {
     fun save(event: ConsentEventEntity): ConsentEventEntity
 
     fun countBySiteId(siteId: UUID): Long

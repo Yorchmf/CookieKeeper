@@ -13,6 +13,8 @@ export interface ApiMeta {
   total?: number;
   page?: number;
   limit?: number;
+  // Opaque keyset cursor for the next (older) page; absent/null on the last page.
+  nextCursor?: string | null;
 }
 
 /** Mirrors the backend's ApiError DTO (ApiResponse.kt). */
