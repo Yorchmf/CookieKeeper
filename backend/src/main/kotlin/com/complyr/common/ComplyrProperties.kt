@@ -120,6 +120,7 @@ data class ComplyrProperties(
         val idempotencyPruneBatchSize: Int = DEFAULT_IDEMPOTENCY_PRUNE_BATCH_SIZE,
         val originTokenSecret: String = "",
         val originTokenTtl: Duration = Duration.ofMinutes(DEFAULT_ORIGIN_TOKEN_TTL_MINUTES),
+        val partitionLookaheadMonths: Int = DEFAULT_PARTITION_LOOKAHEAD_MONTHS,
     ) {
         init {
             // A zero/negative window makes cutoff >= now, so the reaper would delete still-active,
@@ -131,6 +132,12 @@ data class ComplyrProperties(
             // refuse it at startup rather than silently disabling the prune.
             require(idempotencyPruneBatchSize > 0) {
                 "complyr.consent.idempotency-prune-batch-size must be positive (was $idempotencyPruneBatchSize)"
+            }
+            // At least the current + next month must always exist ahead of the write path, or a
+            // month-boundary crossing between provisioning runs lands rows in the un-reclaimable
+            // DEFAULT partition (GDPR storage-limitation risk, see ConsentEventPartitionProvisioner).
+            require(partitionLookaheadMonths >= 1) {
+                "complyr.consent.partition-lookahead-months must be at least 1 (was $partitionLookaheadMonths)"
             }
             // A zero/negative TTL would mint already-expired tokens, rejecting every token-bearing
             // (i.e. every current-widget) consent post. Refuse it at startup. Secret length is
@@ -150,6 +157,12 @@ data class ComplyrProperties(
             // Short enough that a captured payload's token dies quickly, long enough to survive
             // normal client→server latency and modest clock skew (widget attaches only if <~90s old).
             const val DEFAULT_ORIGIN_TOKEN_TTL_MINUTES = 2L
+
+            // Months of consent_events partitions to pre-create beyond the current month. 3 gives a
+            // wide buffer: even if the nightly provisioner is down for weeks, rows still find a home
+            // and never fall into the un-reclaimable DEFAULT partition. See
+            // [com.complyr.consent.ConsentEventPartitionProvisioner].
+            const val DEFAULT_PARTITION_LOOKAHEAD_MONTHS = 3
         }
     }
 
