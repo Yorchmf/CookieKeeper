@@ -64,11 +64,12 @@ class SentryConfig(
             options.beforeSend = SentryOptions.BeforeSendCallback { event, _ -> scrubPii(event) }
             // Transactions carry their own request context and bypass beforeSend; scrub them too so a
             // future SENTRY_TRACES_SAMPLE_RATE>0 can't leak request URLs/query strings.
-            options.beforeSendTransaction = SentryOptions.BeforeSendTransactionCallback { txn, _ ->
-                txn.request = null
-                txn.user = null
-                txn
-            }
+            options.beforeSendTransaction =
+                SentryOptions.BeforeSendTransactionCallback { txn, _ ->
+                    txn.request = null
+                    txn.user = null
+                    txn
+                }
             // No per-request scope exists (no sentry-spring), so accumulated breadcrumbs would attach to
             // the wrong request on a reused worker thread — drop them entirely.
             options.beforeBreadcrumb = SentryOptions.BeforeBreadcrumbCallback { _, _ -> null }

@@ -1,20 +1,17 @@
 package com.complyr.common
 
-import io.github.bucket4j.Bandwidth
-import io.github.bucket4j.Bucket
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.core.Ordered
 import org.springframework.core.annotation.Order
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
 import tools.jackson.databind.ObjectMapper
-import java.time.Duration
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * In-memory per-client-IP rate limiting (Bucket4j) for the unauthenticated public endpoints.
@@ -34,56 +31,24 @@ class RateLimitFilter(
     private val properties: ComplyrProperties,
     private val objectMapper: ObjectMapper,
 ) : OncePerRequestFilter() {
-    private val clients = ConcurrentHashMap<String, TrackedBucket>()
+    private val buckets = RateLimitBuckets(properties.rateLimit.maxTrackedKeys)
 
     override fun shouldNotFilter(request: HttpServletRequest): Boolean =
-        HttpMethod.OPTIONS.matches(request.method) || tierFor(normalizedPath(request)) == null
+        HttpMethod.OPTIONS.matches(request.method) || tierFor(RequestPaths.tierPath(request)) == null
 
     override fun doFilterInternal(
         request: HttpServletRequest,
         response: HttpServletResponse,
         filterChain: FilterChain,
     ) {
-        val tier = tierFor(normalizedPath(request)) ?: return filterChain.doFilter(request, response)
-        val capacity = capacityFor(tier)
-        evictIdleWhenOverCap()
-
+        val tier = tierFor(RequestPaths.tierPath(request)) ?: return filterChain.doFilter(request, response)
         val key = "${tier.name}|${request.remoteAddr}"
-        val tracked = clients.computeIfAbsent(key) { TrackedBucket(newBucket(capacity), capacity) }
-        if (tracked.bucket.tryConsume(1)) {
+        if (buckets.tryConsume(key, capacityFor(tier))) {
             filterChain.doFilter(request, response)
         } else {
             writeRateLimited(response)
         }
     }
-
-    /**
-     * Memory bound: when tracking too many clients, evict only idle buckets — those refilled
-     * back to their own full capacity, i.e. clients not currently being throttled. Never drop a
-     * bucket mid-throttle, so an attacker spraying many source IPs cannot push the map over the
-     * cap to reset a targeted client's (or their own) limit. An evicted idle bucket is recreated
-     * — starting full — on that client's next request, which is harmless.
-     */
-    private fun evictIdleWhenOverCap() {
-        if (clients.size <= MAX_TRACKED_CLIENTS) return
-        // First choice: drop only idle buckets (refilled to full) — never resets a client
-        // mid-throttle, so a source-IP spray can't push the map over cap to reset a target.
-        clients.values.removeIf { it.bucket.availableTokens >= it.capacity }
-        // Absolute bound: a distributed spray can keep every bucket partially drained so none
-        // are idle. Still cap memory by dropping arbitrary entries. At >cap distinct IPs/min
-        // this is an attack the edge (Cloudflare) is the primary control for, and a reset
-        // bucket only grants one client a fresh (already generous) allowance — benign.
-        if (clients.size > MAX_TRACKED_CLIENTS) {
-            val iterator = clients.keys.iterator()
-            while (clients.size > MAX_TRACKED_CLIENTS && iterator.hasNext()) {
-                iterator.next()
-                iterator.remove()
-            }
-        }
-    }
-
-    /** Strip matrix/path params so `/api/v1/consent;x=1` cannot slip past tier matching. */
-    private fun normalizedPath(request: HttpServletRequest): String = request.requestURI.substringBefore(';')
 
     private fun tierFor(uri: String): Tier? =
         when {
@@ -116,6 +81,7 @@ class RateLimitFilter(
 
     private fun writeRateLimited(response: HttpServletResponse) {
         response.status = HttpStatus.TOO_MANY_REQUESTS.value()
+        response.setHeader(HttpHeaders.RETRY_AFTER, RETRY_AFTER_SECONDS)
         response.contentType = MediaType.APPLICATION_JSON_VALUE
         response.characterEncoding = Charsets.UTF_8.name()
         response.writer.write(
@@ -125,23 +91,7 @@ class RateLimitFilter(
         )
     }
 
-    private fun newBucket(perMinute: Long): Bucket =
-        Bucket
-            .builder()
-            .addLimit(
-                Bandwidth
-                    .builder()
-                    .capacity(perMinute)
-                    .refillGreedy(perMinute, Duration.ofMinutes(1))
-                    .build(),
-            ).build()
-
     private enum class Tier { AUTH, CONSENT, PUBLIC_SCAN, PUBLIC_POLICY }
-
-    private class TrackedBucket(
-        val bucket: Bucket,
-        val capacity: Long,
-    )
 
     companion object {
         val AUTH_PATHS =
@@ -158,6 +108,8 @@ class RateLimitFilter(
         const val CONSENT_TOKEN_PATH = "/api/v1/consent-token"
         const val PUBLIC_SCAN_PATH = "/api/v1/public-scan"
         const val PUBLIC_POLICY_PATH = "/api/v1/public/policy"
-        const val MAX_TRACKED_CLIENTS = 10_000
+
+        // Buckets refill over a 1-minute window, so a drained caller can retry after at most 60s.
+        private const val RETRY_AFTER_SECONDS = "60"
     }
 }

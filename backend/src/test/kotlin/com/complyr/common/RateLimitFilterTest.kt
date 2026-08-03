@@ -178,6 +178,25 @@ class RateLimitFilterTest {
     }
 
     @Test
+    fun `a percent-encoded auth path cannot slip past the auth throttle`() {
+        val chain = mockk<FilterChain>(relaxed = true)
+
+        // `/api/v1/auth/l%6fgin` (%6f = 'o') decodes to the real login route Spring dispatches on, so
+        // the AUTH tier (2/min) must apply — otherwise an attacker sidesteps the login brute-force cap
+        // by encoding one character. The 3rd request is throttled.
+        repeat(2) {
+            val response = MockHttpServletResponse()
+            filter.doFilter(request("/api/v1/auth/l%6fgin"), response, chain)
+            assertEquals(200, response.status)
+        }
+
+        val limited = MockHttpServletResponse()
+        filter.doFilter(request("/api/v1/auth/l%6fgin"), limited, chain)
+        assertEquals(429, limited.status)
+        assertTrue(limited.contentAsString.contains("\"RATE_LIMITED\""), limited.contentAsString)
+    }
+
+    @Test
     fun `non-auth endpoints are not rate limited`() {
         val chain = mockk<FilterChain>(relaxed = true)
 

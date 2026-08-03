@@ -59,12 +59,39 @@ data class ComplyrProperties(
         // visitor loads it once. This is only the coarse per-IP backstop against a single id being
         // hammered past the edge cache; enumeration is infeasible (random UUID public id).
         val publicPolicyPerMinute: Long = DEFAULT_PUBLIC_POLICY_PER_MINUTE,
+        // Requests per minute per authenticated user on `/api/v1/billing/**` (post-auth, keyed by the
+        // JWT subject — see [com.complyr.common.AuthenticatedRateLimitFilter]). Tight: every billing
+        // call is a live Stripe API round-trip, so one account looping checkout/portal could burn the
+        // shared Stripe rate budget for all tenants. Normal use is a handful of clicks per session.
+        val authBillingPerMinute: Long = DEFAULT_AUTH_BILLING_PER_MINUTE,
+        // Requests per minute per authenticated user on all other authed `/api/v1/**` endpoints. A
+        // generous backstop a real dashboard session never reaches, bounding amplification abuse
+        // (e.g. `POST /api/v1/sites` enqueues a Chromium crawl; consent-log reads fan across monthly
+        // partitions). The per-user advisory locks (site-cap, webhook) and edge limiting (Cloudflare)
+        // remain the primary controls; this is the coarse per-account ceiling behind them.
+        val authGeneralPerMinute: Long = DEFAULT_AUTH_GENERAL_PER_MINUTE,
+        // Hard cap on distinct keys each in-memory bucket registry tracks before it evicts (idle-first)
+        // to bound memory — see [com.complyr.common.RateLimitBuckets]. Sized with headroom for the
+        // authenticated registry's fan-out: it keys by `tier|userId`, so an active tenant can hold up
+        // to 2 keys (billing + general). The default covers well past MVP scale; raise it before the
+        // active-user count approaches half this value, or steady-state traffic keeps the map at cap
+        // and turns eviction from a rare safety valve into a per-new-key cost.
+        val maxTrackedKeys: Int = DEFAULT_MAX_TRACKED_KEYS,
     ) {
+        init {
+            require(authBillingPerMinute > 0) { "complyr.rate-limit.auth-billing-per-minute must be > 0" }
+            require(authGeneralPerMinute > 0) { "complyr.rate-limit.auth-general-per-minute must be > 0" }
+            require(maxTrackedKeys > 0) { "complyr.rate-limit.max-tracked-keys must be > 0" }
+        }
+
         companion object {
             const val DEFAULT_AUTH_PER_MINUTE = 10L
             const val DEFAULT_CONSENT_PER_MINUTE = 120L
             const val DEFAULT_PUBLIC_SCAN_PER_MINUTE = 10L
             const val DEFAULT_PUBLIC_POLICY_PER_MINUTE = 120L
+            const val DEFAULT_AUTH_BILLING_PER_MINUTE = 20L
+            const val DEFAULT_AUTH_GENERAL_PER_MINUTE = 300L
+            const val DEFAULT_MAX_TRACKED_KEYS = 50_000
         }
     }
 
