@@ -211,7 +211,7 @@ Deploy mechanism: `appleboy/ssh-action` with a deploy-only SSH key, `cd /opt/com
 - *Residual PII leak:* the `public_token` travels in the result URL, so it can reach infra access logs / `Referrer` headers. Mitigated by `Referrer-Policy: strict-origin-when-cross-origin` (above) plus not logging full request URLs/query at the Caddy layer. The stored lead `email` must be escaped in any downstream CSV export (formula-injection) / HTML email.
 - Headers on dashboard + hosted policy pages: CSP (nonce-based), HSTS, X-Content-Type-Options, Referrer-Policy.
 - Postgres not exposed publicly (compose-internal network only); VPS firewall allows 22/80/443 only, SSH by key.
-- Backups: Hetzner VPS snapshots (daily) + `pg_dump` cron per env shipped to Hetzner Object Storage (encrypted, 30-day rotation). **Restore is tested as part of the launch checklist.**
+- Backups: Hetzner VPS snapshots (daily) + `pg_dump` cron per env (`infra/scripts/backup.sh`). Dumps carry visitor PII + append-only consent evidence, so they are **encrypted client-side** with `age` (`pg_dump | gzip | age` — plaintext never touches disk) to a **public** key: the VPS can *write* backups but cannot *decrypt* them (write-only model; the private identity stays offline). Shipped to Hetzner Object Storage (**EU region** — same provider, no new processor per constraint #2) via rclone with a SHA-256 sidecar; rotation ~14-day local / 90-day off-site. **Restore is drilled** by `infra/scripts/restore-drill.sh` (decrypt → restore into a throwaway scratch DB → sanity-verify → drop) as a launch-checklist item and quarterly thereafter.
 - `security-reviewer` agent is mandatory on: auth, billing, consent ingestion, scanner, and any endpoint changes.
 
 ## 9. Observability
