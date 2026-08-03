@@ -1,28 +1,25 @@
 package com.complyr.notify
 
-import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.util.UUID
 
 /**
- * Composes and delivers auth emails. Delivery is best-effort: failures are logged
- * (userId only — never email addresses, no PII in logs) and never propagate, so a
- * broken SMTP relay can never fail a signup or password-reset transaction.
+ * Composes and delivers auth emails via the shared [BestEffortEmailDelivery] contract: failures
+ * are logged (userId only — never email addresses, no PII in logs) and never propagate, so a
+ * broken mail provider can never fail a signup or password-reset transaction.
  */
 @Service
 class AuthNotifier(
     private val composer: AuthEmailComposer,
-    private val sender: EmailSender,
+    private val delivery: BestEffortEmailDelivery,
 ) {
-    private val log = LoggerFactory.getLogger(AuthNotifier::class.java)
-
     fun sendVerification(
         userId: UUID,
         email: String,
         locale: String,
         rawToken: String,
     ) {
-        sendQuietly(userId, email, composer.verificationEmail(locale, rawToken))
+        delivery.deliver(userId, email, composer.verificationEmail(locale, rawToken), "verification")
     }
 
     fun sendPasswordReset(
@@ -31,20 +28,14 @@ class AuthNotifier(
         locale: String,
         rawToken: String,
     ) {
-        sendQuietly(userId, email, composer.passwordResetEmail(locale, rawToken))
+        delivery.deliver(userId, email, composer.passwordResetEmail(locale, rawToken), "password-reset")
     }
 
-    @Suppress("TooGenericExceptionCaught") // the "never propagate" contract must survive any sender bug
-    private fun sendQuietly(
+    fun sendWelcome(
         userId: UUID,
         email: String,
-        composed: ComposedEmail,
+        locale: String,
     ) {
-        try {
-            sender.send(email, composed.subject, composed.htmlBody)
-        } catch (ex: Exception) {
-            // Broad on purpose: no sender failure of any kind may ever propagate.
-            log.error("Failed to send auth email to user {}", userId, ex)
-        }
+        delivery.deliver(userId, email, composer.welcomeEmail(locale), "welcome")
     }
 }

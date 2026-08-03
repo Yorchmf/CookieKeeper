@@ -14,6 +14,7 @@ data class ComplyrProperties(
     val consent: Consent = Consent(),
     val scan: Scan = Scan(),
     val billing: Billing = Billing(),
+    val mail: Mail = Mail(),
     val appBaseUrl: String,
     val cdnBaseUrl: String,
     val mailFrom: String,
@@ -355,6 +356,44 @@ data class ComplyrProperties(
             // Rows per prune transaction. Steady-state webhook volume is tiny, so this only matters
             // when draining a backlog; kept small for short, vacuum-friendly DELETEs.
             const val DEFAULT_STRIPE_EVENT_PRUNE_BATCH_SIZE = 500
+        }
+    }
+
+    /**
+     * Transactional email delivery selection. [provider] picks exactly one [com.complyr.notify.EmailSender]
+     * bean via `@ConditionalOnProperty` — `smtp` (the default; Mailpit locally) or `brevo` (Brevo's HTTP
+     * API in dev/prd, an EU processor). The From address is the top-level [mailFrom]; [Brevo.senderName]
+     * is only the display name paired with it.
+     *
+     * [Brevo.apiKey] is bound from `${'$'}{BREVO_API_KEY}` with an empty default so the no-arg `Mail()`
+     * (SMTP path, and unrelated unit tests) still constructs; the [com.complyr.notify.BrevoEmailSender]
+     * bean — created only when `provider=brevo` — rejects a blank key at startup, so dev/prd fail fast if
+     * it is unset. [Brevo.baseUrl] is the EU API host (overridable so a mock server can stand in under test).
+     */
+    data class Mail(
+        val provider: String = DEFAULT_PROVIDER,
+        val brevo: Brevo = Brevo(),
+    ) {
+        init {
+            // `provider` is always materialised (application.yml defaults it), so a typo would match
+            // neither sender's case-sensitive @ConditionalOnProperty, leaving no EmailSender bean and an
+            // opaque NoSuchBeanDefinitionException elsewhere. Fail fast here with the real cause instead.
+            require(provider in SUPPORTED_PROVIDERS) {
+                "complyr.mail.provider (MAIL_PROVIDER) must be one of $SUPPORTED_PROVIDERS, was '$provider'"
+            }
+        }
+
+        data class Brevo(
+            val apiKey: String = "",
+            val baseUrl: String = DEFAULT_BREVO_BASE_URL,
+            val senderName: String = DEFAULT_BREVO_SENDER_NAME,
+        )
+
+        companion object {
+            const val DEFAULT_PROVIDER = "smtp"
+            const val DEFAULT_BREVO_BASE_URL = "https://api.brevo.com"
+            const val DEFAULT_BREVO_SENDER_NAME = "Complyr"
+            val SUPPORTED_PROVIDERS = setOf("smtp", "brevo")
         }
     }
 }

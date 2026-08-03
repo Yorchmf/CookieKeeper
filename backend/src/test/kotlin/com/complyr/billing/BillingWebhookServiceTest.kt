@@ -8,6 +8,7 @@ import io.mockk.verify
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.TransactionDefinition
 import org.springframework.transaction.TransactionStatus
@@ -87,6 +88,8 @@ class BillingWebhookServiceTest {
     private val now = Instant.parse("2026-08-01T12:00:00Z")
     private val clock = Clock.fixed(now, ZoneOffset.UTC)
 
+    private val eventPublisher = mockk<ApplicationEventPublisher>(relaxed = true)
+
     private val service =
         BillingWebhookService(
             gateway = gateway,
@@ -94,6 +97,7 @@ class BillingWebhookServiceTest {
             subscriptionRepository = subscriptionRepository,
             planCatalog = PlanCatalog(properties),
             clock = clock,
+            eventPublisher = eventPublisher,
             transactionManager = NoopTransactionManager(),
         )
 
@@ -291,6 +295,77 @@ class BillingWebhookServiceTest {
         assertThrows<WebhookSignatureException> { service.handle("{}", "bad-sig") }
 
         verify(exactly = 0) { stripeEventRepository.insertIfAbsent(any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `a first active subscription publishes a subscription-activated email`() {
+        gateway.event = subscriptionEvent()
+        every { stripeEventRepository.findByStripeEventId("evt_1") } returns recorded(processedAt = null)
+        every { subscriptionRepository.findByStripeSubId("sub_1") } returns null
+        every { subscriptionRepository.findByUserId(userId) } returns null
+        every { subscriptionRepository.findByStripeCustomerId("cus_1") } returns null
+        every { subscriptionRepository.save(any()) } answers { firstArg() }
+
+        service.handle("{}", "sig")
+
+        verify(exactly = 1) { eventPublisher.publishEvent(SubscriptionActivated(userId, Plan.PRO)) }
+        verify(exactly = 0) { eventPublisher.publishEvent(match<Any> { it is PaymentIssue }) }
+    }
+
+    @Test
+    fun `a transition into past_due publishes a payment-issue email`() {
+        gateway.event = subscriptionEvent(status = "past_due")
+        every { stripeEventRepository.findByStripeEventId("evt_1") } returns recorded(processedAt = null)
+        every { subscriptionRepository.findByStripeSubId("sub_1") } returns
+            existingSubscription(stripeEventAt = eventCreated.minusSeconds(60), plan = Plan.PRO, status = "active")
+        every { subscriptionRepository.save(any()) } answers { firstArg() }
+
+        service.handle("{}", "sig")
+
+        verify(exactly = 1) { eventPublisher.publishEvent(PaymentIssue(userId)) }
+        // The account was already active, so re-activating it must NOT re-mail.
+        verify(exactly = 0) { eventPublisher.publishEvent(match<Any> { it is SubscriptionActivated }) }
+    }
+
+    @Test
+    fun `recovery from past_due back to active publishes a subscription-activated email`() {
+        gateway.event = subscriptionEvent(status = "active")
+        every { stripeEventRepository.findByStripeEventId("evt_1") } returns recorded(processedAt = null)
+        every { subscriptionRepository.findByStripeSubId("sub_1") } returns
+            existingSubscription(stripeEventAt = eventCreated.minusSeconds(60), plan = Plan.PRO, status = "past_due")
+        every { subscriptionRepository.save(any()) } answers { firstArg() }
+
+        service.handle("{}", "sig")
+
+        verify(exactly = 1) { eventPublisher.publishEvent(SubscriptionActivated(userId, Plan.PRO)) }
+        verify(exactly = 0) { eventPublisher.publishEvent(match<Any> { it is PaymentIssue }) }
+    }
+
+    @Test
+    fun `re-applying an already-active subscription sends no email`() {
+        gateway.event = subscriptionEvent(status = "active")
+        every { stripeEventRepository.findByStripeEventId("evt_1") } returns recorded(processedAt = null)
+        every { subscriptionRepository.findByStripeSubId("sub_1") } returns
+            existingSubscription(stripeEventAt = eventCreated.minusSeconds(60), plan = Plan.PRO, status = "active")
+        every { subscriptionRepository.save(any()) } answers { firstArg() }
+
+        service.handle("{}", "sig")
+
+        verify(exactly = 0) { eventPublisher.publishEvent(match<Any> { it is SubscriptionActivated }) }
+        verify(exactly = 0) { eventPublisher.publishEvent(match<Any> { it is PaymentIssue }) }
+    }
+
+    @Test
+    fun `a skipped out-of-order event publishes no email`() {
+        gateway.event = subscriptionEvent()
+        every { stripeEventRepository.findByStripeEventId("evt_1") } returns recorded(processedAt = null)
+        every { subscriptionRepository.findByStripeSubId("sub_1") } returns
+            existingSubscription(stripeEventAt = eventCreated.plusSeconds(60))
+
+        service.handle("{}", "sig")
+
+        verify(exactly = 0) { eventPublisher.publishEvent(match<Any> { it is SubscriptionActivated }) }
+        verify(exactly = 0) { eventPublisher.publishEvent(match<Any> { it is PaymentIssue }) }
     }
 
     private companion object {

@@ -98,6 +98,16 @@ complyr:
     # Stripe Tax on Checkout. On by default; set false in an environment whose Stripe account has no
     # Tax configured (automatic_tax against a Tax-less account errors the Checkout create).
     automatic-tax: ${STRIPE_AUTOMATIC_TAX:true}
+  mail:
+    # Which EmailSender delivers transactional mail. `smtp` (default) → Mailpit locally via spring.mail
+    # above; dev/prd override to `brevo` (see application-dev/prd.yml) to use Brevo's EU HTTP API.
+    provider: ${MAIL_PROVIDER:smtp}
+    brevo:
+      # No default here on purpose: when provider=brevo the BrevoEmailSender bean fails fast at startup
+      # if this is blank. Empty default keeps the smtp path (and unit tests) constructing without it.
+      api-key: ${BREVO_API_KEY:}
+      base-url: ${BREVO_BASE_URL:https://api.brevo.com}
+      sender-name: ${BREVO_SENDER_NAME:Complyr}
   app-base-url: ${APP_BASE_URL:http://localhost:3000}
   cdn-base-url: ${CDN_BASE_URL:http://localhost:8081}
   mail-from: ${MAIL_FROM:no-reply@complyr.eu}

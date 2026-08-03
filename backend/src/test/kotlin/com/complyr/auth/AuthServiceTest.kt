@@ -5,6 +5,7 @@ import com.complyr.auth.dto.SignupRequest
 import com.complyr.common.ComplyrProperties
 import com.complyr.notify.PasswordResetEmailRequested
 import com.complyr.notify.VerificationEmailRequested
+import com.complyr.notify.WelcomeEmailRequested
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
@@ -193,6 +194,32 @@ class AuthServiceTest {
         assertNotNull(response.verifiedAt)
         verify { authTokenRepository.save(match { it.id == token.id && it.usedAt == now }) }
         verify { userRepository.save(match { it.id == existing.id && it.verifiedAt == now }) }
+        val welcome = publishedEvent<WelcomeEmailRequested>()
+        assertEquals(existing.id, welcome.userId)
+        assertEquals("alice@example.com", welcome.email)
+        assertEquals("de", welcome.locale)
+    }
+
+    @Test
+    fun `re-verifying an already-verified account does not re-send the welcome email`() {
+        stubSaves()
+        val existing = user(verifiedAt = now.minusSeconds(3600))
+        val raw = OpaqueTokens.generate()
+        val token =
+            AuthTokenEntity(
+                userId = existing.id,
+                tokenHash = OpaqueTokens.sha256(raw),
+                purpose = TokenPurpose.EMAIL_VERIFICATION,
+                expiresAt = now.plusSeconds(60),
+            )
+        every {
+            authTokenRepository.findByTokenHashAndPurpose(token.tokenHash, TokenPurpose.EMAIL_VERIFICATION)
+        } returns token
+        every { userRepository.findById(existing.id) } returns Optional.of(existing)
+
+        service.verifyEmail(raw)
+
+        verify(exactly = 0) { eventPublisher.publishEvent(any<WelcomeEmailRequested>()) }
     }
 
     @Test

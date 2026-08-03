@@ -11,7 +11,7 @@ import java.util.UUID
 class AuthNotifierTest {
     private val composer = mockk<AuthEmailComposer>()
     private val sender = mockk<EmailSender>()
-    private val notifier = AuthNotifier(composer, sender)
+    private val notifier = AuthNotifier(composer, BestEffortEmailDelivery(sender))
 
     @Test
     fun `delivers the composed verification email`() {
@@ -19,6 +19,16 @@ class AuthNotifierTest {
         every { sender.send(any(), any(), any()) } just runs
 
         notifier.sendVerification(UUID.randomUUID(), "alice@example.com", "de", "raw-token")
+
+        verify { sender.send("alice@example.com", "subject", "body") }
+    }
+
+    @Test
+    fun `delivers the composed welcome email`() {
+        every { composer.welcomeEmail("en") } returns ComposedEmail("subject", "body")
+        every { sender.send(any(), any(), any()) } just runs
+
+        notifier.sendWelcome(UUID.randomUUID(), "alice@example.com", "en")
 
         verify { sender.send("alice@example.com", "subject", "body") }
     }

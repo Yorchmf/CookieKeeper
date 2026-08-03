@@ -29,6 +29,9 @@ class AuthEmailComposer(
         rawToken: String,
     ): ComposedEmail = compose("reset", locale, link(locale, "reset-password", rawToken))
 
+    /** First-verification welcome; links to the localized dashboard home, no token. */
+    fun welcomeEmail(locale: String): ComposedEmail = compose("welcome", locale, "${properties.appBaseUrl}/$locale")
+
     private fun link(
         locale: String,
         page: String,

@@ -30,4 +30,13 @@ class AuthEmailListenerTest {
 
         verify(exactly = 1) { notifier.sendPasswordReset(userId, "alice@example.com", "en", "raw-token") }
     }
+
+    @Test
+    fun `welcome events are dispatched to the notifier`() {
+        every { notifier.sendWelcome(userId, "alice@example.com", "fr") } just runs
+
+        listener.onAuthEmailRequested(WelcomeEmailRequested(userId, "alice@example.com", "fr"))
+
+        verify(exactly = 1) { notifier.sendWelcome(userId, "alice@example.com", "fr") }
+    }
 }

@@ -8,6 +8,7 @@ import com.complyr.common.UnauthenticatedException
 import com.complyr.common.violatedConstraint
 import com.complyr.notify.PasswordResetEmailRequested
 import com.complyr.notify.VerificationEmailRequested
+import com.complyr.notify.WelcomeEmailRequested
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.security.crypto.password.PasswordEncoder
@@ -108,8 +109,15 @@ class AuthService(
     fun verifyEmail(rawToken: String): UserResponse {
         val token = consumeToken(rawToken, TokenPurpose.EMAIL_VERIFICATION)
         val user = userRepository.findById(token.userId).orElseThrow { InvalidTokenException() }
-        val verified = if (user.verifiedAt == null) user.copy(verifiedAt = clock.instant()) else user
-        return UserResponse.from(userRepository.save(verified))
+        val wasUnverified = user.verifiedAt == null
+        val verified = if (wasUnverified) user.copy(verifiedAt = clock.instant()) else user
+        val saved = userRepository.save(verified)
+        // Welcome only on the FIRST confirmation — a re-clicked verification link must not re-send it.
+        // AFTER_COMMIT + async, so a mail failure can never roll back the verification (see listener).
+        if (wasUnverified) {
+            eventPublisher.publishEvent(WelcomeEmailRequested(saved.id, saved.email, saved.locale))
+        }
+        return UserResponse.from(saved)
     }
 
     /** Always succeeds (anti-enumeration): sends only for existing, unverified accounts. */

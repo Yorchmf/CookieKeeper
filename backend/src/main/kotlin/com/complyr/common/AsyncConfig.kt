@@ -6,24 +6,24 @@ import org.springframework.scheduling.annotation.EnableAsync
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor
 
 /**
- * Async infrastructure. Currently a single small executor dedicated to best-effort auth
- * email delivery — deliberately separate from any request-serving pool so a slow SMTP
- * relay can only ever back up this queue, never HTTP threads.
+ * Async infrastructure. A single small executor dedicated to best-effort transactional email
+ * delivery (auth + billing) — deliberately separate from any request-serving pool so a slow
+ * mail provider can only ever back up this queue, never HTTP threads.
  */
 @Configuration
 @EnableAsync
 class AsyncConfig {
-    @Bean(AUTH_EMAIL_EXECUTOR)
-    fun authEmailExecutor(): ThreadPoolTaskExecutor =
+    @Bean(EMAIL_EXECUTOR)
+    fun emailExecutor(): ThreadPoolTaskExecutor =
         ThreadPoolTaskExecutor().apply {
             corePoolSize = 1
             maxPoolSize = 2
             queueCapacity = EMAIL_QUEUE_CAPACITY
-            setThreadNamePrefix("auth-mail-")
+            setThreadNamePrefix("mail-")
         }
 
     companion object {
-        const val AUTH_EMAIL_EXECUTOR = "authEmailExecutor"
+        const val EMAIL_EXECUTOR = "emailExecutor"
         private const val EMAIL_QUEUE_CAPACITY = 200
     }
 }

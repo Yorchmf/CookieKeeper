@@ -15,7 +15,7 @@ import org.springframework.transaction.event.TransactionalEventListener
 class AuthEmailListener(
     private val notifier: AuthNotifier,
 ) {
-    @Async(AsyncConfig.AUTH_EMAIL_EXECUTOR)
+    @Async(AsyncConfig.EMAIL_EXECUTOR)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     fun onAuthEmailRequested(event: AuthEmailRequested) {
         when (event) {
@@ -23,6 +23,8 @@ class AuthEmailListener(
                 notifier.sendVerification(event.userId, event.email, event.locale, event.rawToken)
             is PasswordResetEmailRequested ->
                 notifier.sendPasswordReset(event.userId, event.email, event.locale, event.rawToken)
+            is WelcomeEmailRequested ->
+                notifier.sendWelcome(event.userId, event.email, event.locale)
         }
     }
 }

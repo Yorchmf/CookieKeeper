@@ -1,6 +1,7 @@
 package com.complyr.billing
 
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.support.TransactionTemplate
@@ -33,6 +34,7 @@ class BillingWebhookService(
     private val subscriptionRepository: SubscriptionRepository,
     private val planCatalog: PlanCatalog,
     private val clock: Clock,
+    private val eventPublisher: ApplicationEventPublisher,
     transactionManager: PlatformTransactionManager,
 ) {
     private val log = LoggerFactory.getLogger(BillingWebhookService::class.java)
@@ -120,6 +122,26 @@ class BillingWebhookService(
         val plan = planCatalog.planForPriceId(data.priceId) ?: existing?.plan ?: Plan.STARTER
         val row = upsertRow(existing, data, plan, eventCreatedAt) ?: return
         subscriptionRepository.save(row)
+        publishLifecycleEmails(existing, row)
+    }
+
+    /**
+     * Publish customer-facing billing emails on a status TRANSITION only (compared against the row's
+     * prior state), so a duplicate/no-op redelivery of an already-active event doesn't re-mail. Events
+     * fire AFTER_COMMIT + async ([BillingEmailListener]); a mail failure can never roll back the apply
+     * (which would make Stripe redeliver) or delay our 200. Both branches are independent: an
+     * `active → past_due` transition mails the payment issue; a `past_due → active` recovery re-activates.
+     */
+    private fun publishLifecycleEmails(
+        existing: SubscriptionEntity?,
+        saved: SubscriptionEntity,
+    ) {
+        if (saved.isActive && existing?.isActive != true) {
+            eventPublisher.publishEvent(SubscriptionActivated(saved.userId, saved.plan))
+        }
+        if (saved.status == PAST_DUE_STATUS && existing?.status != PAST_DUE_STATUS) {
+            eventPublisher.publishEvent(PaymentIssue(saved.userId))
+        }
     }
 
     /** Locate the account's row from the event, most-specific link first. */
@@ -194,6 +216,7 @@ class BillingWebhookService(
         private const val FNV_OFFSET_BASIS = -0x340d631b7bdddcdbL // 64-bit FNV-1a offset basis
         private const val FNV_PRIME = 0x100000001b3L
         private const val BYTE_MASK = 0xffL
+        private const val PAST_DUE_STATUS = "past_due"
     }
 
     /**
