@@ -65,9 +65,9 @@ GitHub repo → Settings → Secrets and variables → Actions:
 | `SSH_USER` | `deploy` |
 | `SSH_KEY`  | the ed25519 **private** key |
 
-Copy `infra/scripts/deploy.sh`, `backup.sh`, and `restore-drill.sh` to
-`/opt/complyr/` and `chmod +x` them (the deploy workflow also rsyncs them on
-every deploy).
+Copy `infra/scripts/deploy.sh`, `backup.sh`, `restore-drill.sh`, and
+`uptime-check.sh` to `/opt/complyr/` and `chmod +x` them (the deploy workflow
+also rsyncs them on every deploy).
 
 ## 6. DNS (Cloudflare)
 
@@ -197,3 +197,5 @@ age -d -i /dev/shm/id.txt complyr-prd-<ts>.sql.gz.age \
 - [ ] `curl -I https://cdn.dev.complyr.eu/v1.js` → 200 with `max-age=3600` (NOT immutable — deploys overwrite v1.js in place)
 - [ ] Postgres port NOT reachable from outside (`nmap -p 5432 <ip>`)
 - [ ] Backup cron produced an **encrypted** dump (`*.sql.gz.age` + `.sha256`), it appears in the EU off-site bucket, and `restore-drill.sh` PASSED
+- [ ] Load smoke test (`infra/load/README.md`) run against dev — reads p95 < 500ms, no 5xx; thread/pool defaults confirmed for the CX22
+- [ ] Uptime monitoring live (`infra/monitoring/uptime.md`): external checks on api health + dashboard + widget CDN, and `uptime-check.sh` heartbeat cron pinging green

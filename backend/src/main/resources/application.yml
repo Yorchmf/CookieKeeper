@@ -5,6 +5,16 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/complyr}
     username: ${DB_USER:complyr}
     password: ${DB_PASSWORD:complyr}
+    hikari:
+      # CX22 (2 vCPU / 4GB) runs dev+prd side by side (two API JVMs, two Postgres,
+      # dashboards, scanner). A small pool is correct: Postgres throughput on 2 vCPU
+      # peaks around a handful of active connections, and each idle connection still
+      # costs backend memory. Env-overridable so the load smoke test (infra/load) can
+      # tune it without a rebuild. Must stay well under Postgres max_connections
+      # summed across every service that connects.
+      maximum-pool-size: ${DB_POOL_MAX:10}
+      minimum-idle: ${DB_POOL_MIN_IDLE:2}
+      connection-timeout: ${DB_POOL_CONNECTION_TIMEOUT_MS:10000}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -31,6 +41,20 @@ spring:
 
 server:
   port: 8080
+  tomcat:
+    threads:
+      # Default is 200 worker threads per JVM — far too many for a 2 vCPU box shared
+      # by two API JVMs: ~200 idle thread stacks each waste memory, and requests still
+      # serialize on the 10-connection Hikari pool. Cap to a value comfortably above
+      # the pool so DB-bound requests queue in Tomcat (not the OS) while cache-served
+      # reads (health, hosted policy) still flow. Confirm/adjust from the load smoke
+      # test (infra/load); env-overridable so tuning needs no rebuild.
+      max: ${SERVER_TOMCAT_MAX_THREADS:50}
+      min-spare: ${SERVER_TOMCAT_MIN_SPARE_THREADS:5}
+    # Backlog of connections accepted while all worker threads are busy — a short
+    # spike buffers here instead of being refused; a sustained overload sheds fast.
+    accept-count: ${SERVER_TOMCAT_ACCEPT_COUNT:100}
+    max-connections: ${SERVER_TOMCAT_MAX_CONNECTIONS:2000}
   # All dev/prd traffic arrives via the Caddy container, so remoteAddr would otherwise be
   # Caddy's IP for every client (collapsing per-IP rate limiting into one global bucket).
   # `native` enables Tomcat's RemoteIpValve, which honors X-Forwarded-For only when the

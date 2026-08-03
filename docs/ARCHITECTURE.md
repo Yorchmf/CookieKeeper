@@ -216,7 +216,7 @@ Deploy mechanism: `appleboy/ssh-action` with a deploy-only SSH key, `cd /opt/com
 
 ## 9. Observability
 
-- **Uptime:** BetterStack free tier (or UptimeRobot) probing api health + dashboard + widget CDN URL from outside.
+- **Uptime:** two layers (`infra/monitoring/uptime.md`) — (1) BetterStack/UptimeRobot free tier probing api health + dashboard + widget CDN URL from outside (catches box/edge down), and (2) an on-box `uptime-check.sh` dead-man's-switch that asserts app health from inside (health body `"status":"UP"`, not a bare 200) and pings an external heartbeat only when all green, so a dead VPS surfaces as a missing heartbeat. Backend capacity (Tomcat threads + Hikari pool) is CX22-sized in `application.yml` and validated by the `infra/load/` k6 smoke test.
 - **Errors:** Sentry free tier — backend (Kotlin SDK) + dashboard. The widget gets **no** Sentry (size + GDPR); widget errors fail silent-safe and are sampled via a tiny beacon to our own API.
 - **Logs:** JSON to stdout → `docker logs` + Loki later if needed. No PII in logs (enforced convention + review).
 - **Product analytics:** deferred to post-MVP; when added, self-hosted Umami in the same compose stack (GDPR-consistent).
