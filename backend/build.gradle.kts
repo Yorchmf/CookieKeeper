@@ -121,6 +121,8 @@ val coverageClassPatterns =
         // Cookie classification (W4 slice 3): pure matcher + the classifier that drives it.
         "com/complyr/scan/CookieSignatureMatcher*",
         "com/complyr/scan/CookieClassifier*",
+        // Compliance report: pure scoring/issue logic over a completed scan's classified cookies.
+        "com/complyr/scan/ComplianceAnalyzer*",
         // Domain verification (ADR-17). The fetcher is the only app-initiated outbound request to a
         // customer-controlled host, and the matcher is what an attacker would try to forge — both are
         // security-critical enough that a coverage regression should fail the build.

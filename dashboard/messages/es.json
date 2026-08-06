@@ -313,6 +313,25 @@
         "title": "No se encontraron cookies",
         "description": "Este escaneo no detectó ninguna cookie en el sitio."
       }
+    },
+    "compliance": {
+      "title": "Cumplimiento",
+      "subtitle": "Una puntuación orientativa basada en los resultados de este análisis.",
+      "scoreCaption": "de 100",
+      "disclaimer": "Una orientación para priorizar las correcciones, no asesoramiento legal.",
+      "clean": "No se han encontrado problemas de cumplimiento en este análisis.",
+      "issuesTitle": "Problemas por resolver",
+      "severity": {
+        "critical": "Crítico",
+        "warning": "Advertencia",
+        "info": "Para revisar"
+      },
+      "issues": {
+        "pre_consent_tracking": "{count, plural, one {# cookie no esencial se estableció antes del consentimiento} other {# cookies no esenciales se establecieron antes del consentimiento}}",
+        "marketing_cookies": "{count, plural, one {# cookie de marketing se estableció antes del consentimiento} other {# cookies de marketing se establecieron antes del consentimiento}}",
+        "long_lived_cookies": "{count, plural, one {# cookie no esencial dura más de un año} other {# cookies no esenciales duran más de un año}}",
+        "unclassified_cookies": "{count, plural, one {# cookie no se pudo clasificar y necesita revisión} other {# cookies no se pudieron clasificar y necesitan revisión}}"
+      }
     }
   },
   "policy": {

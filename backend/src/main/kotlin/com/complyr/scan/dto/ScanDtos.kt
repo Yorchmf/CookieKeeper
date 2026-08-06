@@ -1,5 +1,6 @@
 package com.complyr.scan.dto
 
+import com.complyr.scan.ComplianceAnalyzer
 import com.complyr.scan.ScanCookieEntity
 import com.complyr.scan.ScanEntity
 import com.complyr.scan.ScanStatus
@@ -69,6 +70,9 @@ data class ScanSummaryResponse(
  * by their canonical [com.complyr.banner.ConsentCategory] key (the dashboard localizes the key), and
  * [needsReview] holds cookies the signature DB did not recognize (isKnown = false) for the customer to
  * categorize. Category keys are stable machine tokens, never user-facing text (i18n from day one).
+ *
+ * [compliance] is the derived score + issue list ([ComplianceAnalyzer]); it is populated only for a
+ * `done` scan (a queued/running/failed scan has no meaningful findings yet) and is `null` otherwise.
  */
 data class ScanDetailResponse(
     val id: UUID,
@@ -81,11 +85,13 @@ data class ScanDetailResponse(
     val createdAt: Instant,
     val cookiesByCategory: Map<String, List<ScanCookieResponse>>,
     val needsReview: List<ScanCookieResponse>,
+    val compliance: ComplianceReport?,
 ) {
     companion object {
         fun from(
             scan: ScanEntity,
             cookies: List<ScanCookieEntity>,
+            now: Instant,
         ): ScanDetailResponse {
             // A classified cookie always carries a category (classifier invariant: isKnown ⇒ category
             // set); anything else — unknown, or the defensive known-but-uncategorized case — is a
@@ -106,6 +112,8 @@ data class ScanDetailResponse(
                         { ScanCookieResponse.from(it) },
                     ),
                 needsReview = unrecognized.map(ScanCookieResponse::from),
+                // Only a completed crawl has meaningful findings; an in-flight/failed scan carries no score.
+                compliance = if (scan.status == ScanStatus.DONE) ComplianceAnalyzer.analyze(cookies, now) else null,
             )
         }
     }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useFormatter, useTranslations } from "next-intl";
+import { ComplianceReport } from "@/components/scans/compliance-report";
 import {
   CookieTable,
   orderedCategories,
@@ -102,6 +103,8 @@ export function ScanResults({
             </span>
           )}
         </header>
+
+        {data.compliance && <ComplianceReport report={data.compliance} />}
 
         {!hasCookies ? (
           <div className="rounded-lg border border-dashed border-border p-10 text-center">

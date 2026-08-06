@@ -313,6 +313,25 @@
         "title": "No cookies found",
         "description": "This scan did not detect any cookies on the site."
       }
+    },
+    "compliance": {
+      "title": "Compliance",
+      "subtitle": "An indicative score based on what this scan found.",
+      "scoreCaption": "out of 100",
+      "disclaimer": "Indicative guidance to help you prioritise fixes — not legal advice.",
+      "clean": "No compliance issues found in this scan.",
+      "issuesTitle": "Issues to address",
+      "severity": {
+        "critical": "Critical",
+        "warning": "Warning",
+        "info": "For review"
+      },
+      "issues": {
+        "pre_consent_tracking": "{count, plural, one {# non-essential cookie was set before consent} other {# non-essential cookies were set before consent}}",
+        "marketing_cookies": "{count, plural, one {# marketing cookie was set before consent} other {# marketing cookies were set before consent}}",
+        "long_lived_cookies": "{count, plural, one {# non-essential cookie lasts longer than a year} other {# non-essential cookies last longer than a year}}",
+        "unclassified_cookies": "{count, plural, one {# cookie could not be classified and needs review} other {# cookies could not be classified and need review}}"
+      }
     }
   },
   "policy": {

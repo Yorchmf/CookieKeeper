@@ -6,6 +6,7 @@ import com.complyr.site.SiteNotFoundException
 import com.complyr.site.SiteRepository
 import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
+import java.time.Clock
 import java.util.UUID
 
 /**
@@ -19,6 +20,7 @@ class ScanQueryService(
     private val siteRepository: SiteRepository,
     private val scanRepository: ScanRepository,
     private val scanCookieRepository: ScanCookieRepository,
+    private val clock: Clock,
 ) {
     /** Newest-first scan history for a site the caller owns, bounded to a sane page size. */
     fun list(
@@ -42,7 +44,7 @@ class ScanQueryService(
         requireOwnedSite(userId, siteId)
         val scan = scanRepository.findByIdAndSiteId(scanId, siteId) ?: throw ScanNotFoundException()
         val cookies = scanCookieRepository.findByScanId(scanId)
-        return ScanDetailResponse.from(scan, cookies)
+        return ScanDetailResponse.from(scan, cookies, clock.instant())
     }
 
     private fun requireOwnedSite(

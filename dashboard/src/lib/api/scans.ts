@@ -29,14 +29,39 @@ export interface ScanCookie {
   isKnown: boolean;
 }
 
+/** Severity of a compliance issue (ComplianceIssue.severity), most-to-least severe. */
+export type ComplianceSeverity = "critical" | "warning" | "info";
+
+/**
+ * One machine-coded compliance finding (ComplianceIssue). `code` is a stable token the dashboard
+ * localizes via `scans.compliance.issues.{code}`; `count` is the number of cookies behind it. The
+ * backend emits no prose — all wording is chosen here (i18n constraint).
+ */
+export interface ComplianceIssue {
+  code: string;
+  severity: ComplianceSeverity;
+  count: number;
+}
+
+/**
+ * The indicative compliance report for a completed scan (ComplianceReport). `score` is 0–100,
+ * `issues` is ordered most-severe first. Present only for a `done` scan; null otherwise.
+ */
+export interface ComplianceReport {
+  score: number;
+  issues: ComplianceIssue[];
+}
+
 /**
  * A scan plus its cookies (ScanDetailResponse). `cookiesByCategory` is keyed by the backend's
  * canonical consent-category token (necessary/preferences/statistics/marketing) — the UI localizes
- * the key. `needsReview` holds cookies the signature DB did not recognize.
+ * the key. `needsReview` holds cookies the signature DB did not recognize. `compliance` is the
+ * indicative score/issue report, populated only once the scan is `done`.
  */
 export interface ScanDetail extends ScanSummary {
   cookiesByCategory: Record<string, ScanCookie[]>;
   needsReview: ScanCookie[];
+  compliance: ComplianceReport | null;
 }
 
 export interface ScansList {
