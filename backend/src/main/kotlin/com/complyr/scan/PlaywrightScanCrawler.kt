@@ -11,13 +11,19 @@ import java.util.UUID
 
 /**
  * The authenticated per-site scan adapter (`scanner` profile). It owns the ownership/state gates —
- * the site must exist, be ACTIVE, and be *verified* (§4.4 SSRF posture: we only crawl a domain the
- * customer proved they control) — then drives the shared [ScanEngine] over the site's domain in the
- * full multi-page mode and classifies/persists the observed cookies into `scan_cookies`.
+ * the site must exist and be ACTIVE — then drives the shared [ScanEngine] over the site's domain and
+ * classifies/persists the observed cookies into `scan_cookies`.
  *
- * The crawl itself (browser, SSRF pre-flight + per-request guards, time budgets) lives in the engine;
- * this class is deliberately thin so the anonymous funnel (docs ADR-12) can reuse the same engine
- * without inheriting the verified-domain requirement.
+ * Verification selects crawl *depth*, it does not gate crawling (docs ADR-17). An unverified site is
+ * crawled in [CrawlMode.QUICK] — byte-for-byte the same posture as the anonymous funnel, which already
+ * QUICK-crawls arbitrary unowned domains through this same engine — and a verified site gets the
+ * multi-page [CrawlMode.FULL] depth the plan pays for. Refusing to crawl an unverified *registered*
+ * site while happily crawling an unverified *stranger's* domain bought no safety, only a dead end:
+ * every scan a customer ever enqueued failed, because nothing set `verified_at`.
+ *
+ * SSRF defense is therefore entirely the engine's: [ScanTargetValidator] plus the per-request route
+ * guards plus container network isolation, identical for both paths. The crawl itself (browser, time
+ * budgets) lives in the engine; this class is deliberately thin so both callers share it.
  */
 @Component
 @Profile("scanner")
@@ -38,13 +44,11 @@ class PlaywrightScanCrawler(
         if (site.status != SiteStatus.ACTIVE) {
             throw ScanTargetException(ScanFailureReason.INTERNAL, "scan ${claim.scanId}: site ${site.id} is not active")
         }
-        // SSRF posture (§4.4): only ever crawl a domain the customer has proven they control. The
-        // engine adds the resolve-public pre-flight + per-request guards on top.
-        if (site.verifiedAt == null) {
-            throw ScanTargetException(ScanFailureReason.DOMAIN_NOT_VERIFIED, "scan ${claim.scanId}: domain not verified")
-        }
+        // Verification buys depth, not permission to crawl (ADR-17): unverified sites get the same
+        // single-page pass the anonymous funnel runs, verified ones get the paid multi-page crawl.
+        val mode = if (site.verifiedAt != null) CrawlMode.FULL else CrawlMode.QUICK
 
-        val outcome = engine.crawl(site.domain, CrawlMode.FULL)
+        val outcome = engine.crawl(site.domain, mode)
         val recorded = persistCookies(claim.scanId, outcome.cookies)
         // Log the count actually persisted after de-dup/cap, not the raw observed count.
         log.info("Scan {} crawled {} page(s), recorded {} cookie(s)", claim.scanId, outcome.pagesCrawled, recorded)

@@ -28,7 +28,12 @@ class AuthenticatedRateLimitFilterTest {
                     verificationTokenTtl = Duration.ofHours(24),
                     resetTokenTtl = Duration.ofHours(1),
                 ),
-            rateLimit = ComplyrProperties.RateLimit(authBillingPerMinute = 2, authGeneralPerMinute = 3),
+            rateLimit =
+                ComplyrProperties.RateLimit(
+                    authBillingPerMinute = 2,
+                    authVerifyPerMinute = 1,
+                    authGeneralPerMinute = 3,
+                ),
             appBaseUrl = "http://localhost:3000",
             cdnBaseUrl = "http://localhost:8081",
             mailFrom = "no-reply@complyr.eu",
@@ -133,6 +138,41 @@ class AuthenticatedRateLimitFilterTest {
         filter.doFilter(request("/api/v1/sites"), limited, chain)
         assertEquals(429, limited.status)
         assertTrue(limited.contentAsString.contains("\"RATE_LIMITED\""), limited.contentAsString)
+    }
+
+    @Test
+    fun `domain verification is throttled on its own tightest tier`() {
+        val chain = mockk<FilterChain>(relaxed = true)
+        authenticate("13131313-1313-1313-1313-131313131313")
+        val siteId = "22222222-2222-2222-2222-222222222222"
+
+        // Verify (1/min here) is the only authed endpoint that dials a customer-supplied host on a
+        // request thread, so it must not fall through to the generous GENERAL tier.
+        val allowed = MockHttpServletResponse()
+        filter.doFilter(request("/api/v1/sites/$siteId/verify"), allowed, chain)
+        assertEquals(200, allowed.status)
+
+        val limited = MockHttpServletResponse()
+        filter.doFilter(request("/api/v1/sites/$siteId/verify"), limited, chain)
+        assertEquals(429, limited.status)
+        assertTrue(limited.contentAsString.contains("\"RATE_LIMITED\""), limited.contentAsString)
+    }
+
+    @Test
+    fun `the scan list a site page polls every 3s stays on the general tier`() {
+        val chain = mockk<FilterChain>(relaxed = true)
+        authenticate("14141414-1414-1414-1414-141414141414")
+        val siteId = "33333333-3333-3333-3333-333333333333"
+
+        // Tier matching is method- and suffix-based, so a sibling sub-resource under the same
+        // `/api/v1/sites/{id}/` prefix must not be dragged onto the 1/min verify tier — the open site
+        // page polls this every 3 seconds and would be throttled out of the UI within one minute.
+        filter.doFilter(request("/api/v1/sites/$siteId/verify"), MockHttpServletResponse(), chain)
+        repeat(3) {
+            val response = MockHttpServletResponse()
+            filter.doFilter(request("/api/v1/sites/$siteId/scans", method = "GET"), response, chain)
+            assertEquals(200, response.status)
+        }
     }
 
     @Test

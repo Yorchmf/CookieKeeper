@@ -10,6 +10,7 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase
 import org.springframework.context.annotation.Import
 import org.springframework.dao.DataIntegrityViolationException
+import java.time.Instant
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -98,6 +99,61 @@ class SiteRepositoryIntegrationTest {
         assertEquals(2, siteRepository.countByUserIdAndStatus(alice.id, SiteStatus.ACTIVE))
         assertEquals(1, siteRepository.countByUserIdAndStatus(alice.id, SiteStatus.ARCHIVED))
         assertEquals(0, siteRepository.countByUserIdAndStatus(UUID.randomUUID(), SiteStatus.ACTIVE))
+    }
+
+    @Test
+    fun `verification method round-trips through the converter for every enum value`() {
+        val user = newUser()
+        val verifiedAt = Instant.parse("2026-08-04T09:00:00Z")
+
+        VerificationMethod.entries.forEachIndexed { index, method ->
+            val saved =
+                siteRepository.saveAndFlush(
+                    SiteEntity(
+                        userId = user.id,
+                        domain = "site-$index.example.com",
+                        siteKey = "pk_${UUID.randomUUID()}",
+                        verifiedAt = verifiedAt,
+                        verificationMethod = method,
+                    ),
+                )
+            siteRepository.flush()
+            assertEquals(method, siteRepository.findById(saved.id).orElseThrow().verificationMethod)
+        }
+    }
+
+    @Test
+    fun `a half-set verification pair is rejected by the paired CHECK`() {
+        val user = newUser()
+
+        // verified_at without a method...
+        assertThrows<DataIntegrityViolationException> {
+            siteRepository.saveAndFlush(
+                SiteEntity(
+                    userId = user.id,
+                    domain = "no-method.example.com",
+                    siteKey = "pk_${UUID.randomUUID()}",
+                    verifiedAt = Instant.parse("2026-08-04T09:00:00Z"),
+                ),
+            )
+        }
+    }
+
+    @Test
+    fun `a verification method without a timestamp is rejected by the paired CHECK`() {
+        val user = newUser()
+
+        // ...and a method without verified_at. Both halves move together or not at all.
+        assertThrows<DataIntegrityViolationException> {
+            siteRepository.saveAndFlush(
+                SiteEntity(
+                    userId = user.id,
+                    domain = "no-timestamp.example.com",
+                    siteKey = "pk_${UUID.randomUUID()}",
+                    verificationMethod = VerificationMethod.DNS_TXT,
+                ),
+            )
+        }
     }
 
     @Test

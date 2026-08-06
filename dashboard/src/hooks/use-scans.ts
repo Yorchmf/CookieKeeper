@@ -1,7 +1,16 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { getScan, listScans, type ScanStatus } from "@/lib/api/scans";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import {
+  getScan,
+  listScans,
+  requestScan,
+  type ScanStatus,
+} from "@/lib/api/scans";
 
 export const SCANS_QUERY_KEY = ["scans"] as const;
 
@@ -24,6 +33,23 @@ export function useScans(siteId: string, limit?: number) {
       )
         ? POLL_INTERVAL_MS
         : false,
+  });
+}
+
+/**
+ * Enqueue an on-demand re-scan, then invalidate this site's scan-history query. That refetch surfaces
+ * the freshly-queued row, at which point `useScans`'s existing 3s `refetchInterval` takes over polling
+ * to `done` — no extra polling logic lives here.
+ */
+export function useRequestScan(siteId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => requestScan(siteId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: [...SCANS_QUERY_KEY, siteId],
+      });
+    },
   });
 }
 

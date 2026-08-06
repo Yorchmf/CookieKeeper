@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Import
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.TestPropertySource
 import java.time.Duration
+import java.time.Instant
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -62,7 +63,7 @@ class ScanQueueTest {
     fun `enqueue creates a queued scan and a pending job referencing it`() {
         val siteId = insertSite()
 
-        val scanId = scanQueue.enqueue(siteId, ScanTrigger.SITE_ADDED)
+        val scanId = scanQueue.enqueue(siteId, ScanTrigger.SITE_ADDED, Instant.now())
 
         val scan = scanRepository.findById(scanId).orElseThrow()
         assertEquals(ScanStatus.QUEUED, scan.status)
@@ -76,9 +77,20 @@ class ScanQueueTest {
     }
 
     @Test
+    fun `a future availableAt defers delivery while still showing the scan as queued`() {
+        // The scheduled re-scan job jitters availableAt across a window so a nightly batch doesn't hit the
+        // single-Chromium worker at once. The customer-visible scan row must still appear immediately.
+        val siteId = insertSite()
+        val scanId = scanQueue.enqueue(siteId, ScanTrigger.SCHEDULED, Instant.now().plus(Duration.ofHours(1)))
+
+        assertEquals(ScanStatus.QUEUED, scanRepository.findById(scanId).orElseThrow().status)
+        assertNull(scanQueue.claimNext(), "a job is not due until its availableAt passes")
+    }
+
+    @Test
     fun `claimNext moves the scan and job to running and marks succeeded records the result`() {
         val siteId = insertSite()
-        val scanId = scanQueue.enqueue(siteId, ScanTrigger.SITE_ADDED)
+        val scanId = scanQueue.enqueue(siteId, ScanTrigger.SITE_ADDED, Instant.now())
 
         val claim = scanQueue.claimNext()
         assertNotNull(claim, "the sole due job must be claimable")
@@ -100,7 +112,7 @@ class ScanQueueTest {
     @Test
     fun `a claimed job is hidden from a second claim until its visibility lock expires`() {
         val siteId = insertSite()
-        scanQueue.enqueue(siteId, ScanTrigger.SITE_ADDED)
+        scanQueue.enqueue(siteId, ScanTrigger.SITE_ADDED, Instant.now())
 
         val first = scanQueue.claimNext()
         assertNotNull(first)
@@ -111,7 +123,7 @@ class ScanQueueTest {
     @Test
     fun `a crashed job is redelivered once its visibility lock expires`() {
         val siteId = insertSite()
-        scanQueue.enqueue(siteId, ScanTrigger.SITE_ADDED)
+        scanQueue.enqueue(siteId, ScanTrigger.SITE_ADDED, Instant.now())
         val first = scanQueue.claimNext()
         assertNotNull(first)
 
@@ -127,7 +139,7 @@ class ScanQueueTest {
     @Test
     fun `a stale worker cannot complete a job that was already re-claimed`() {
         val siteId = insertSite()
-        val scanId = scanQueue.enqueue(siteId, ScanTrigger.SITE_ADDED)
+        val scanId = scanQueue.enqueue(siteId, ScanTrigger.SITE_ADDED, Instant.now())
 
         // Worker A claims, then overruns its lease and the job is redelivered to worker B.
         val stale = scanQueue.claimNext()
@@ -153,7 +165,7 @@ class ScanQueueTest {
     @Test
     fun `markFailed requeues while attempts remain then dead-letters both rows`() {
         val siteId = insertSite()
-        val scanId = scanQueue.enqueue(siteId, ScanTrigger.SITE_ADDED)
+        val scanId = scanQueue.enqueue(siteId, ScanTrigger.SITE_ADDED, Instant.now())
 
         // Attempt 1 fails — with max-attempts=2 and zero backoff it is immediately requeued.
         val attempt1 = scanQueue.claimNext()

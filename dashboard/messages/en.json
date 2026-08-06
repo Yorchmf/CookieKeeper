@@ -4,7 +4,10 @@
     "tagline": "GDPR cookie consent, done right"
   },
   "common": {
-    "close": "Close"
+    "close": "Close",
+    "lockedFeature": {
+      "upgrade": "Upgrade"
+    }
   },
   "marketing": {
     "hero": {
@@ -101,6 +104,8 @@
       "EMAIL_NOT_VERIFIED": "Please verify your email address first",
       "DOMAIN_ALREADY_REGISTERED": "This domain is already registered",
       "INVALID_DOMAIN": "Enter a valid domain, e.g. www.example.eu",
+      "ON_DEMAND_RESCAN_NOT_ENTITLED": "On-demand rescans are available on the Pro and Business plans",
+      "SCAN_ALREADY_IN_PROGRESS": "A scan is already running for this site",
       "GENERIC": "Something went wrong. Please try again."
     },
     "login": {
@@ -206,7 +211,40 @@
       "bannerCta": "Customize banner",
       "consentLogTitle": "Consent log",
       "consentLogDescription": "Browse and export the consent choices recorded for this site.",
-      "consentLogCta": "View consent log"
+      "consentLogCta": "View consent log",
+      "verify": {
+        "title": "Verify your domain",
+        "description": "Prove you control this domain to publish your hosted cookie policy and unlock full multi-page scans.",
+        "cta": "Verify now",
+        "checking": "Checking…",
+        "success": "You've proven control of this domain. Your hosted policy page is live and full scans are unlocked.",
+        "verifiedVia": {
+          "snippet": "Verified via your installed Complyr widget.",
+          "dns_txt": "Verified via a DNS TXT record."
+        },
+        "methodSnippet": {
+          "title": "Option 1 — install the widget",
+          "description": "Add this snippet before the closing </head> tag on your homepage, then verify. It's the same snippet that runs your banner."
+        },
+        "methodDns": {
+          "title": "Option 2 — add a DNS TXT record",
+          "description": "Create this TXT record with your DNS provider, then verify. DNS changes can take a little while to propagate.",
+          "nameLabel": "Record name",
+          "valueLabel": "Record value"
+        },
+        "failure": {
+          "snippet_not_found": "We couldn't find your Complyr snippet or a matching DNS record yet. Add one of the options above, then try again.",
+          "unreachable": "We couldn't reach your domain. Check that it's online and publicly accessible, then try again."
+        },
+        "error": "Verification couldn't be completed right now. Please try again in a moment."
+      },
+      "rescan": {
+        "label": "Re-scan now",
+        "locked": "On-demand rescans are available on the Pro and Business plans.",
+        "starting": "Starting…",
+        "started": "Re-scan started. Results will update automatically.",
+        "inProgress": "A scan is already running for this site."
+      }
     }
   },
   "dashboard": {
@@ -228,6 +266,14 @@
       "running": "Running",
       "done": "Completed",
       "failed": "Failed"
+    },
+    "errors": {
+      "internal_error": "The scan failed unexpectedly. Please try again.",
+      "domain_not_verified": "The scan was skipped because the domain wasn't verified.",
+      "blocked_target": "This domain couldn't be scanned for security reasons.",
+      "dns_failure": "This domain couldn't be found. Check that it's spelled correctly and publicly resolvable.",
+      "timeout": "The scan took too long and was stopped. Please try again.",
+      "unreachable": "We couldn't reach this site. Check that it's online and publicly accessible."
     },
     "categories": {
       "necessary": "Necessary",
@@ -312,6 +358,11 @@
       "embedTitle": "Embed on your site",
       "embedDescription": "Paste this HTML where you want the policy to appear on your own pages.",
       "copyHtml": "Copy HTML"
+    },
+    "unverifiedNotice": {
+      "title": "Your hosted page is not live yet",
+      "description": "This link shows \"Policy not found\" until you verify that you control {domain}. The preview below already shows the finished page.",
+      "cta": "Verify your domain"
     },
     "preview": {
       "title": "Preview",

@@ -15,9 +15,13 @@ import java.util.UUID
  * [com.complyr.common.SecurityConfig] and rate-limited on the `PUBLIC_POLICY` tier; the result is a
  * cacheable GET (Cloudflare caches public policy pages — see docs §1).
  *
- * Addressed only by the opaque public id, never by site id; an unknown/unpublished id returns one
- * identical 404 ([PolicyNotFoundException]) so the id is not an existence oracle. An invalid UUID is a
- * plain 400 (the page content is public, so enumeration parity does not matter for malformed input).
+ * Addressed only by the opaque public id, never by site id; an unknown id, an unpublished site, an
+ * archived one and one whose domain is not yet verified (ADR-17) all return the same 404
+ * ([PolicyNotFoundException]) so the id is not an existence oracle. An invalid UUID is a plain 400 (the
+ * page content is public, so enumeration parity does not matter for malformed input).
+ *
+ * The dashboard's own preview does NOT come through here — it is authenticated and ungated, at
+ * `GET /api/v1/sites/{siteId}/policy/preview`, so the owner can see the page before verifying.
  */
 @RestController
 @RequestMapping("/api/v1/public/policy")

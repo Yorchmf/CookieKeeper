@@ -110,14 +110,17 @@ class PlaywrightScanCrawlerTest {
     }
 
     @Test
-    fun `unverified domain is refused before any crawl (SSRF posture)`() {
+    fun `unverified site still crawls, in QUICK mode (ADR-17 - verification buys depth, not permission)`() {
         every { siteRepository.findById(siteId) } returns Optional.of(site(verifiedAt = null))
-        val engine = FakeScanEngine(EngineCrawlResult(pagesCrawled = 0, cookies = emptyList()))
+        every { classifier.classify(any()) } answers { firstArg() }
+        val engine = FakeScanEngine(EngineCrawlResult(pagesCrawled = 1, cookies = emptyList()))
 
-        val ex = assertThrows<ScanTargetException> { crawlerWith(engine).crawl(claim) }
+        val result = crawlerWith(engine).crawl(claim)
 
-        assertEquals(ScanFailureReason.DOMAIN_NOT_VERIFIED, ex.reason)
-        assertEquals(0, engine.callCount, "an unverified domain must never reach the engine")
+        assertEquals(1, engine.callCount, "an unverified site must still be scanned — it used to dead-end here")
+        assertEquals(CrawlMode.QUICK, engine.lastMode, "unverified gets the same single-page pass as the anonymous funnel")
+        assertEquals("example.com", engine.lastDomain)
+        assertEquals(1, result.pagesCrawled)
     }
 
     @Test

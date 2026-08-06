@@ -104,8 +104,16 @@ class SiteService(
         val domain = DomainValidator.normalize(newDomain)
         if (domain == site.domain) return site
         ensureDomainAvailable(site.userId, domain)
-        // Ownership proof does not transfer between domains: verification restarts.
-        return saveEnsuringDomainUniqueness(site.copy(domain = domain, verifiedAt = null, updatedAt = clock.instant()))
+        // Ownership proof does not transfer between domains: verification restarts. Both columns must
+        // be cleared together or `ck_sites_verification_method_pairs` (V15) rejects the row.
+        return saveEnsuringDomainUniqueness(
+            site.copy(
+                domain = domain,
+                verifiedAt = null,
+                verificationMethod = null,
+                updatedAt = clock.instant(),
+            ),
+        )
     }
 
     /**

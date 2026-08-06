@@ -19,15 +19,20 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   usePolicy,
-  usePublicPolicy,
+  usePolicyPreview,
   useGeneratePolicy,
 } from "@/hooks/use-policy";
+import { useSite } from "@/hooks/use-sites";
+import { Link } from "@/i18n/navigation";
 import type { PolicyCurrent, PolicyGenerationInput } from "@/lib/api/policy";
 
 /** Dashboard policy surface: business-details form, published summary, and a language-tabbed preview. */
 export function PolicyManager({ siteId }: { siteId: string }) {
   const t = useTranslations("policy");
   const policy = usePolicy(siteId);
+  // Only for the hosted-link notice: the public page 404s until the domain is verified (ADR-17), so
+  // the customer must not be handed a link that looks live and isn't. Nothing else here depends on it.
+  const site = useSite(siteId);
   const generate = useGeneratePolicy(siteId);
   const [selectedLang, setSelectedLang] = useState<string | undefined>(undefined);
 
@@ -99,9 +104,18 @@ export function PolicyManager({ siteId }: { siteId: string }) {
 
         {current ? (
           <>
-            <PublishedCard current={current} selectedLang={effectiveLang} />
+            <PublishedCard
+              current={current}
+              selectedLang={effectiveLang}
+              unverifiedDomain={
+                site.data && site.data.verifiedAt === null
+                  ? site.data.domain
+                  : null
+              }
+              siteId={siteId}
+            />
             <PreviewCard
-              publicId={current.publicId}
+              siteId={siteId}
               lang={effectiveLang}
               onSelectLang={setSelectedLang}
             />
@@ -119,15 +133,26 @@ export function PolicyManager({ siteId }: { siteId: string }) {
   );
 }
 
-/** Version, publish date, languages, the hosted URL, and the copyable embed block. */
+/**
+ * Version, publish date, languages, the hosted URL, and the copyable embed block.
+ *
+ * `unverifiedDomain` is the domain when the site is *not* yet verified, and null otherwise — the
+ * hosted link below is dead until then, so the notice says so rather than letting the customer paste
+ * a 404 into their footer.
+ */
 function PublishedCard({
   current,
   selectedLang,
+  unverifiedDomain,
+  siteId,
 }: {
   current: PolicyCurrent;
   selectedLang: string | undefined;
+  unverifiedDomain: string | null;
+  siteId: string;
 }) {
   const t = useTranslations("policy.published");
+  const tNotice = useTranslations("policy.unverifiedNotice");
   const format = useFormatter();
 
   return (
@@ -158,11 +183,31 @@ function PublishedCard({
 
         <div className="flex flex-col gap-2">
           <span className="text-sm font-medium">{t("hostedUrl")}</span>
+          {unverifiedDomain ? (
+            <div
+              id="policy-unverified-notice"
+              className="flex flex-col gap-1 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-900 dark:bg-amber-950/40"
+            >
+              <span className="font-medium">{tNotice("title")}</span>
+              <span className="text-muted-foreground">
+                {tNotice("description", { domain: unverifiedDomain })}
+              </span>
+              <Link
+                href={`/sites/${siteId}`}
+                className="w-fit font-medium underline underline-offset-4"
+              >
+                {tNotice("cta")}
+              </Link>
+            </div>
+          ) : null}
           <div className="flex flex-wrap items-center gap-2">
             <a
               href={current.hostedUrl}
               target="_blank"
               rel="noopener noreferrer"
+              aria-describedby={
+                unverifiedDomain ? "policy-unverified-notice" : undefined
+              }
               className="truncate rounded bg-muted px-2 py-1 font-mono text-xs underline-offset-4 hover:underline"
             >
               {current.hostedUrl}
@@ -192,18 +237,24 @@ function PublishedCard({
   );
 }
 
-/** Language-tabbed live preview of the hosted policy, plus the copyable HTML embed block. */
+/**
+ * Language-tabbed live preview of the hosted policy, plus the copyable HTML embed block.
+ *
+ * Reached by site id through the authenticated preview endpoint, not by public id through the hosted
+ * read: the hosted page is gated on domain verification (ADR-17) and the owner has to see the page
+ * before they can prove they control the domain.
+ */
 function PreviewCard({
-  publicId,
+  siteId,
   lang,
   onSelectLang,
 }: {
-  publicId: string;
+  siteId: string;
   lang: string | undefined;
   onSelectLang: (lang: string) => void;
 }) {
   const t = useTranslations("policy");
-  const preview = usePublicPolicy(publicId, lang);
+  const preview = usePolicyPreview(siteId, lang);
 
   return (
     <Card>

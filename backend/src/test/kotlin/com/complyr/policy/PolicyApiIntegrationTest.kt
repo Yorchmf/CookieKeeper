@@ -9,6 +9,8 @@ import com.complyr.scan.ScanEntity
 import com.complyr.scan.ScanRepository
 import com.complyr.scan.ScanStatus
 import com.complyr.scan.ScanTrigger
+import com.complyr.site.SiteRepository
+import com.complyr.site.VerificationMethod
 import jakarta.servlet.http.Cookie
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -31,6 +33,10 @@ import kotlin.test.assertNotNull
  * authenticated `current` view reports it; the public hosted read serves the escaped HTML by opaque id
  * with forgiving language selection; and the security edges hold (ownership isolation, unauthenticated
  * generate, and the unknown-id 404 parity that keeps the public id from being an existence oracle).
+ *
+ * The hosted read is additionally gated on domain verification (ADR-17) while the owner's preview is
+ * not — both halves are asserted here, since a gate with no way to see what you're publishing would
+ * make the feature unusable, and a preview that leaked the page publicly would make the gate pointless.
  * A completed scan is seeded directly since the crawler is `scanner`-profile only.
  */
 @SpringBootTest
@@ -51,6 +57,21 @@ class PolicyApiIntegrationTest {
 
     @Autowired
     private lateinit var scanCookieRepository: ScanCookieRepository
+
+    @Autowired
+    private lateinit var siteRepository: SiteRepository
+
+    /**
+     * Flip a site to verified straight in the DB. The real endpoint (`POST /sites/{id}/verify`) reaches
+     * out to the customer's domain, which has no place in a policy test — what matters here is only that
+     * the hosted read consults `verified_at`, which this sets exactly as the verification service does.
+     */
+    private fun markVerified(siteId: UUID) {
+        val site = siteRepository.findById(siteId).orElseThrow()
+        siteRepository.save(
+            site.copy(verifiedAt = Instant.now(), verificationMethod = VerificationMethod.SNIPPET, updatedAt = Instant.now()),
+        )
+    }
 
     private fun registeredUser(): Cookie {
         val email = "user-${UUID.randomUUID()}@example.com"
@@ -169,7 +190,9 @@ class PolicyApiIntegrationTest {
             .andExpect(jsonPath("$.data.languages[1]").value("en"))
 
         // Public hosted read, no auth, by opaque id: serves the requested language and escapes the
-        // attacker-influenced cookie name (no raw <script> in the HTML).
+        // attacker-influenced cookie name (no raw <script> in the HTML). Publishing needs a verified
+        // domain (ADR-17), so flip the site first — the gate itself is asserted below.
+        markVerified(siteId)
         val hosted =
             mockMvc
                 .perform(get("/api/v1/public/policy/$publicId").param("lang", "de"))
@@ -251,6 +274,78 @@ class PolicyApiIntegrationTest {
     fun `an unknown public id returns the generic 404, not an existence oracle`() {
         mockMvc
             .perform(get("/api/v1/public/policy/${UUID.randomUUID()}"))
+            .andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.error.code").value("POLICY_NOT_FOUND"))
+    }
+
+    @Test
+    fun `the hosted page is a 404 until the domain is verified, then serves the policy`() {
+        val alice = registeredUser()
+        val siteId = createSite(alice, "gate-${UUID.randomUUID().toString().take(8)}.example.com")
+
+        val generated =
+            generate(alice, siteId, """{"companyName":"Acme GmbH","contactEmail":"p@acme.example.com","languages":["en"]}""")
+                .andExpect(status().isOk)
+                .andReturn()
+        val publicId =
+            objectMapper
+                .readTree(generated.response.contentAsString)
+                .path("data")
+                .path("publicId")
+                .asString()
+
+        // Published but unverified: the public page must be indistinguishable from an unknown id, so an
+        // unverified customer can never publish a Complyr-hosted page for a domain they don't control.
+        mockMvc
+            .perform(get("/api/v1/public/policy/$publicId"))
+            .andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.error.code").value("POLICY_NOT_FOUND"))
+
+        markVerified(siteId)
+
+        mockMvc
+            .perform(get("/api/v1/public/policy/$publicId"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.version").value(1))
+            .andExpect(jsonPath("$.data.companyName").value("Acme GmbH"))
+    }
+
+    @Test
+    fun `the owner previews an unverified site's policy, which the public page still refuses`() {
+        val alice = registeredUser()
+        val bob = registeredUser()
+        val siteId = createSite(alice, "preview-${UUID.randomUUID().toString().take(8)}.example.com")
+
+        generate(alice, siteId, """{"companyName":"Acme GmbH","contactEmail":"p@acme.example.com","languages":["en","de"]}""")
+            .andExpect(status().isOk)
+
+        // The activation loop depends on this: see what you're about to publish, then go verify.
+        mockMvc
+            .perform(get("/api/v1/sites/$siteId/policy/preview").cookie(alice).param("lang", "de"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.language").value("de"))
+            .andExpect(jsonPath("$.data.companyName").value("Acme GmbH"))
+            .andExpect(jsonPath("$.data.availableLanguages.length()").value(2))
+            .andExpect(jsonPath("$.data.html").isNotEmpty)
+
+        mockMvc
+            .perform(get("/api/v1/sites/$siteId/policy/preview").cookie(bob))
+            .andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.error.code").value("SITE_NOT_FOUND"))
+
+        mockMvc
+            .perform(get("/api/v1/sites/$siteId/policy/preview"))
+            .andExpect(status().isUnauthorized)
+            .andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED"))
+    }
+
+    @Test
+    fun `preview is a 404 before any policy is generated`() {
+        val alice = registeredUser()
+        val siteId = createSite(alice, "nopreview-${UUID.randomUUID().toString().take(8)}.example.com")
+
+        mockMvc
+            .perform(get("/api/v1/sites/$siteId/policy/preview").cookie(alice))
             .andExpect(status().isNotFound)
             .andExpect(jsonPath("$.error.code").value("POLICY_NOT_FOUND"))
     }

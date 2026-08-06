@@ -9,6 +9,8 @@ import jakarta.persistence.Id
 import jakarta.persistence.Table
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 import java.time.Instant
 import java.util.UUID
 
@@ -116,4 +118,41 @@ interface ScanRepository : JpaRepository<ScanEntity, UUID> {
         siteId: UUID,
         status: ScanStatus,
     ): ScanEntity?
+
+    /**
+     * Whether the site already has a live (queued or running) scan — the one-live-scan-per-site rule
+     * behind [ScanAlreadyInProgressException]. Backed by the partial `idx_scans_site_id_live` (V16), so it
+     * costs an index probe over the handful of live rows rather than a walk of the site's whole history.
+     *
+     * Must be called under [acquireSiteScanLock] to be a decision rather than a guess: without it two
+     * concurrent requests can both read "no live scan" before either inserts.
+     */
+    fun existsBySiteIdAndStatusIn(
+        siteId: UUID,
+        statuses: Collection<ScanStatus>,
+    ): Boolean
+
+    /**
+     * Take a transaction-scoped per-site advisory lock, serializing the check-then-enqueue in
+     * [ScanRequestService]. Copied from [com.complyr.site.SiteRepository.acquireUserSiteLock]: the lock
+     * releases automatically on commit/rollback, and the wrapping `SELECT count(*)` just gives the native
+     * query a mappable result.
+     */
+    @Query(
+        value = "SELECT count(*) FROM (SELECT pg_advisory_xact_lock(:key)) AS _lock",
+        nativeQuery = true,
+    )
+    fun acquireSiteScanLock(
+        @Param("key") key: Long,
+    ): Long
+
+    /**
+     * Non-blocking sibling of [acquireSiteScanLock] for the scheduled re-scan job: returns false when
+     * another instance already holds the lock, so a second scheduler exits immediately instead of queueing
+     * up behind the first. Mirrors [com.complyr.scan.PublicScanRepository.tryAcquireAdvisoryXactLock].
+     */
+    @Query(value = "SELECT pg_try_advisory_xact_lock(:key)", nativeQuery = true)
+    fun tryAcquireAdvisoryXactLock(
+        @Param("key") key: Long,
+    ): Boolean
 }

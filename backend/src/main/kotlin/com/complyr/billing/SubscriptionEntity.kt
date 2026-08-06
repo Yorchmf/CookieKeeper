@@ -63,6 +63,13 @@ interface SubscriptionRepository : JpaRepository<SubscriptionEntity, UUID> {
     /** The account's single subscription, for entitlement resolution and the billing page. */
     fun findByUserId(userId: UUID): SubscriptionEntity?
 
+    /**
+     * The subscriptions for a batch of users in one query, for [EntitlementService.resolveAll] — the
+     * scheduled re-scan job resolves a whole candidate batch without an N+1. Users with no subscription
+     * row simply have no entry (the trial/expired path in [PlanResolver] handles them).
+     */
+    fun findAllByUserIdIn(userIds: Collection<UUID>): List<SubscriptionEntity>
+
     /** Resolve the Stripe subscription id → our row, for `customer.subscription.*` webhook sync. */
     fun findByStripeSubId(stripeSubId: String): SubscriptionEntity?
 

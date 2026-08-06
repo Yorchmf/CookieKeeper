@@ -3,8 +3,18 @@ package com.complyr.billing
 import java.time.Instant
 import java.time.Period
 
-/** How often a site's cookies are automatically re-scanned. */
-enum class RescanFrequency { MONTHLY, WEEKLY }
+/**
+ * How often a site's cookies are automatically re-scanned. [interval] is the single source of truth for
+ * the cadence — [com.complyr.scan.ScheduledRescanJob] reads it directly to decide when a site is due, so
+ * the pricing table and the job can never drift. A guard test asserts every interval stays `>= 7 days`,
+ * which is what lets the job's SQL pre-filter use a fixed 7-day cutoff (the shortest cadence).
+ */
+enum class RescanFrequency(
+    val interval: Period,
+) {
+    MONTHLY(Period.ofMonths(1)),
+    WEEKLY(Period.ofWeeks(1)),
+}
 
 /**
  * The concrete limits enforced across the app for a given billing state — site create (count cap),

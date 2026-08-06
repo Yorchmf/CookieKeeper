@@ -4,23 +4,29 @@ import com.complyr.common.ApiMeta
 import com.complyr.common.ApiResponse
 import com.complyr.common.CurrentUser
 import com.complyr.scan.dto.ScanDetailResponse
+import com.complyr.scan.dto.ScanRequestedResponse
 import com.complyr.scan.dto.ScanSummaryResponse
+import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import java.util.UUID
 
 /**
- * Scan-results read API, nested under the owning site so the path itself asserts the ownership scope
- * (JWT-authenticated like the rest of `/api/v1/sites`). Write side (enqueue/crawl/classify) lives in
- * the scanner worker; this controller is read-only.
+ * Scan API, nested under the owning site so the path itself asserts the ownership scope
+ * (JWT-authenticated like the rest of `/api/v1/sites`). Reads return a site's history and one scan's
+ * classified cookies; the single write is "re-scan now", which only enqueues — the crawl and
+ * classification themselves run in the scanner worker.
  */
 @RestController
 @RequestMapping("/api/v1/sites/{siteId}/scans")
 class ScanController(
     private val scanQueryService: ScanQueryService,
+    private val scanRequestService: ScanRequestService,
 ) {
     @GetMapping
     fun list(
@@ -29,6 +35,21 @@ class ScanController(
     ): ApiResponse<List<ScanSummaryResponse>> {
         val scans = scanQueryService.list(CurrentUser.id(), siteId, limit)
         return ApiResponse.success(scans, meta = ApiMeta(total = scans.size.toLong()))
+    }
+
+    /**
+     * Queue an immediate re-scan (Pro and Business — [com.complyr.billing.EntitlementService.requireOnDemandRescan]).
+     * 201 because it creates a scan resource, not because the crawl finished: the response is an
+     * acknowledgement the dashboard follows with its existing scan-list poll. 409 when the site already has
+     * a live scan, which is the throttle — see [ScanRequestService].
+     */
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    fun request(
+        @PathVariable siteId: UUID,
+    ): ApiResponse<ScanRequestedResponse> {
+        val scanId = scanRequestService.request(CurrentUser.id(), siteId)
+        return ApiResponse.success(ScanRequestedResponse(scanId))
     }
 
     @GetMapping("/{scanId}")

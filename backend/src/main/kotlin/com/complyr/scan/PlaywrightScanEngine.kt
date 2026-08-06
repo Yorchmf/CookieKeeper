@@ -35,9 +35,10 @@ import java.time.Instant
  *     may reach public third parties (we must observe trackers) but never a private IP literal.
  *  3. Hard per-page and per-job time budgets so a hostile or broken site cannot hang a worker.
  *
- * The ownership check that only a *verified* domain may be crawled is NOT enforced here — it is the
- * authenticated caller's guarantee. The anonymous funnel deliberately crawls unverified domains, so
- * [validate] plus the network-isolation backstop are its load-bearing SSRF defense (docs ADR-12).
+ * No caller layers an ownership check on top: both the authenticated path and the anonymous funnel
+ * crawl unverified domains (verification selects depth only — docs ADR-12, ADR-17), so [validate] plus
+ * the per-request guards plus the network-isolation backstop are the *sole* SSRF defense for every
+ * crawl. Nothing here may assume the target is a domain the caller controls.
  */
 @Component
 @Profile("scanner")

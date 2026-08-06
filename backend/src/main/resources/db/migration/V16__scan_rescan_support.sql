@@ -1,0 +1,15 @@
+-- === scans: a partial index for the "is a scan already live?" question (ADR-17) ===
+-- On-demand re-scan ([com.complyr.scan.ScanRequestService]) and the scheduled re-scan job both have to
+-- answer the same question before enqueuing: does this site already have a queued or running scan? That
+-- is the whole throttle — a site can never hold two live scans, so a caller looping the endpoint just
+-- collects 409s and no counter, quota or extra rate-limit tier is needed.
+--
+-- Partial rather than plain `(site_id, status)`: live scans are a vanishingly small slice of the table
+-- (every row ends up `done`/`failed` and stays forever as history), so indexing only the live ones keeps
+-- this a few pages that stay resident, and Postgres can answer both the per-site EXISTS and the
+-- scheduler's `NOT EXISTS` anti-join from it. The existing `idx_scans_site_id_created_at` (V7) cannot:
+-- it would have to walk a site's entire scan history to find rows that are almost never there.
+--
+-- The status literals are inlined because a partial index predicate must be IMMUTABLE; they mirror
+-- [com.complyr.scan.ScanStatus] and are already pinned by the baseline's `scans_status_check`.
+CREATE INDEX idx_scans_site_id_live ON scans (site_id) WHERE status IN ('queued', 'running');

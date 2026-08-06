@@ -1,9 +1,11 @@
 "use client";
 
 import { useFormatter, useTranslations } from "next-intl";
+import { RescanButton } from "@/components/scans/rescan-button";
 import { ScanStatusBadge } from "@/components/scans/scan-status-badge";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -21,6 +23,14 @@ function ScanRow({ siteId, scan }: { siteId: string; scan: ScanSummary }) {
   const t = useTranslations("scans");
   const format = useFormatter();
   const when = scan.finishedAt ?? scan.createdAt;
+  // A failed scan carries a stable machine token in `scan.error`; map it to localized copy so the user
+  // learns *why* it failed, falling back to the generic reason for a token the UI doesn't map yet.
+  const errorMessage =
+    scan.status === "failed" && scan.error
+      ? t.has(`errors.${scan.error}`)
+        ? t(`errors.${scan.error}`)
+        : t("errors.internal_error")
+      : null;
 
   return (
     <li>
@@ -43,6 +53,11 @@ function ScanRow({ siteId, scan }: { siteId: string; scan: ScanSummary }) {
           </span>
         )}
         <ScanStatusBadge status={scan.status} />
+        {errorMessage && (
+          <span className="basis-full text-sm text-destructive">
+            {errorMessage}
+          </span>
+        )}
       </Link>
     </li>
   );
@@ -59,6 +74,9 @@ export function ScanHistory({ siteId }: { siteId: string }) {
           {t("history.title")}
         </CardTitle>
         <CardDescription>{t("history.subtitle")}</CardDescription>
+        <CardAction>
+          <RescanButton siteId={siteId} />
+        </CardAction>
       </CardHeader>
       <CardContent>
         {scans.isPending ? (

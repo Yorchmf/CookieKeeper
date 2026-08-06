@@ -13,13 +13,19 @@ RUN corepack enable pnpm
 FROM base AS deps
 WORKDIR /app
 COPY package.json pnpm-lock.yaml* ./
-# pnpm 11 blocks dependency build scripts unless explicitly approved.
+# pnpm 11 blocks dependency build scripts unless explicitly approved (every
+# script must be listed true/false, or the install hard-fails ERR_PNPM_IGNORED_BUILDS).
 # The monorepo root pnpm-workspace.yaml approves these; recreate the approval
 # here because the build context (dashboard/ only) does not include it.
+# Keep this list in sync with the root pnpm-workspace.yaml. @sentry/cli is
+# intentionally false — the dashboard disables Sentry source-map upload (ADR-15),
+# so its CLI binary is never built or invoked.
 RUN printf '%s\n' \
       'allowBuilds:' \
       "  '@parcel/watcher': true" \
+      "  '@sentry/cli': false" \
       "  '@swc/core': true" \
+      '  esbuild: true' \
       '  sharp: true' \
       '  unrs-resolver: true' \
       > pnpm-workspace.yaml

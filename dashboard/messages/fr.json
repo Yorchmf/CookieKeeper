@@ -4,7 +4,10 @@
     "tagline": "Le consentement aux cookies RGPD, bien fait"
   },
   "common": {
-    "close": "Fermer"
+    "close": "Fermer",
+    "lockedFeature": {
+      "upgrade": "Mettre à niveau"
+    }
   },
   "marketing": {
     "hero": {
@@ -101,6 +104,8 @@
       "EMAIL_NOT_VERIFIED": "Veuillez d'abord vérifier votre adresse e-mail",
       "DOMAIN_ALREADY_REGISTERED": "Ce domaine est déjà enregistré",
       "INVALID_DOMAIN": "Saisissez un domaine valide, p. ex. www.exemple.eu",
+      "ON_DEMAND_RESCAN_NOT_ENTITLED": "Les analyses à la demande sont disponibles avec les offres Pro et Business",
+      "SCAN_ALREADY_IN_PROGRESS": "Une analyse est déjà en cours pour ce site",
       "GENERIC": "Une erreur est survenue. Veuillez réessayer."
     },
     "login": {
@@ -206,7 +211,40 @@
       "bannerCta": "Personnaliser le bandeau",
       "consentLogTitle": "Journal des consentements",
       "consentLogDescription": "Parcourez et exportez les choix de consentement enregistrés pour ce site.",
-      "consentLogCta": "Voir le journal"
+      "consentLogCta": "Voir le journal",
+      "verify": {
+        "title": "Vérifiez votre domaine",
+        "description": "Prouvez que vous contrôlez ce domaine pour publier votre politique de cookies hébergée et débloquer les analyses complètes multipages.",
+        "cta": "Vérifier maintenant",
+        "checking": "Vérification…",
+        "success": "Vous avez prouvé le contrôle de ce domaine. Votre page de politique hébergée est en ligne et les analyses complètes sont débloquées.",
+        "verifiedVia": {
+          "snippet": "Vérifié via votre widget Complyr installé.",
+          "dns_txt": "Vérifié via un enregistrement DNS TXT."
+        },
+        "methodSnippet": {
+          "title": "Option 1 — installer le widget",
+          "description": "Ajoutez cet extrait avant la balise fermante </head> de votre page d'accueil, puis vérifiez. C'est le même extrait qui exécute votre bandeau."
+        },
+        "methodDns": {
+          "title": "Option 2 — ajouter un enregistrement DNS TXT",
+          "description": "Créez cet enregistrement TXT chez votre fournisseur DNS, puis vérifiez. La propagation DNS peut prendre un certain temps.",
+          "nameLabel": "Nom de l'enregistrement",
+          "valueLabel": "Valeur de l'enregistrement"
+        },
+        "failure": {
+          "snippet_not_found": "Nous n'avons pas encore trouvé votre extrait Complyr ni d'enregistrement DNS correspondant. Ajoutez l'une des options ci-dessus, puis réessayez.",
+          "unreachable": "Nous n'avons pas pu joindre votre domaine. Vérifiez qu'il est en ligne et accessible publiquement, puis réessayez."
+        },
+        "error": "La vérification n'a pas pu être effectuée pour le moment. Veuillez réessayer dans un instant."
+      },
+      "rescan": {
+        "label": "Analyser à nouveau",
+        "locked": "Les analyses à la demande sont disponibles avec les offres Pro et Business.",
+        "starting": "Démarrage…",
+        "started": "Nouvelle analyse lancée. Les résultats se mettront à jour automatiquement.",
+        "inProgress": "Une analyse est déjà en cours pour ce site."
+      }
     }
   },
   "dashboard": {
@@ -228,6 +266,14 @@
       "running": "En cours",
       "done": "Terminé",
       "failed": "Échec"
+    },
+    "errors": {
+      "internal_error": "L'analyse a échoué de manière inattendue. Veuillez réessayer.",
+      "domain_not_verified": "L'analyse a été ignorée car le domaine n'était pas vérifié.",
+      "blocked_target": "Ce domaine n'a pas pu être analysé pour des raisons de sécurité.",
+      "dns_failure": "Ce domaine est introuvable. Vérifiez qu'il est correctement orthographié et résoluble publiquement.",
+      "timeout": "L'analyse a pris trop de temps et a été interrompue. Veuillez réessayer.",
+      "unreachable": "Nous n'avons pas pu joindre ce site. Vérifiez qu'il est en ligne et accessible publiquement."
     },
     "categories": {
       "necessary": "Nécessaires",
@@ -312,6 +358,11 @@
       "embedTitle": "Intégrer sur votre site",
       "embedDescription": "Collez ce code HTML là où vous souhaitez afficher la politique sur vos propres pages.",
       "copyHtml": "Copier le HTML"
+    },
+    "unverifiedNotice": {
+      "title": "Votre page hébergée n'est pas encore en ligne",
+      "description": "Ce lien affiche \"Politique introuvable\" tant que vous n'avez pas vérifié que vous contrôlez {domain}. L'aperçu ci-dessous montre déjà la page finale.",
+      "cta": "Vérifier votre domaine"
     },
     "preview": {
       "title": "Aperçu",

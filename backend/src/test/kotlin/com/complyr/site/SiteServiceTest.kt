@@ -245,7 +245,9 @@ class SiteServiceTest {
 
     @Test
     fun `changing the domain resets verification`() {
-        val existing = site(domain = "old.example.com").copy(verifiedAt = now.minusSeconds(3600))
+        val existing =
+            site(domain = "old.example.com")
+                .copy(verifiedAt = now.minusSeconds(3600), verificationMethod = VerificationMethod.SNIPPET)
         every { siteRepository.findByIdAndUserId(existing.id, userId) } returns existing
         every { siteRepository.existsByUserIdAndDomainAndStatus(userId, "new.example.com", SiteStatus.ACTIVE) } returns false
         val saved = slot<SiteEntity>()
@@ -255,6 +257,8 @@ class SiteServiceTest {
 
         assertEquals("new.example.com", detail.domain)
         assertEquals(null, saved.captured.verifiedAt, "domain change must reset verifiedAt")
+        // Both halves must clear together or `ck_sites_verification_method_pairs` (V15) 500s the request.
+        assertEquals(null, saved.captured.verificationMethod, "domain change must reset verificationMethod")
         assertEquals(now, saved.captured.updatedAt)
     }
 

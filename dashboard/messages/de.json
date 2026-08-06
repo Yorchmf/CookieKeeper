@@ -4,7 +4,10 @@
     "tagline": "DSGVO-Cookie-Einwilligung, richtig gemacht"
   },
   "common": {
-    "close": "Schließen"
+    "close": "Schließen",
+    "lockedFeature": {
+      "upgrade": "Upgraden"
+    }
   },
   "marketing": {
     "hero": {
@@ -101,6 +104,8 @@
       "EMAIL_NOT_VERIFIED": "Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse",
       "DOMAIN_ALREADY_REGISTERED": "Diese Domain ist bereits registriert",
       "INVALID_DOMAIN": "Geben Sie eine gültige Domain ein, z. B. www.beispiel.eu",
+      "ON_DEMAND_RESCAN_NOT_ENTITLED": "On-Demand-Scans sind in den Tarifen Pro und Business verfügbar",
+      "SCAN_ALREADY_IN_PROGRESS": "Für diese Website läuft bereits ein Scan",
       "GENERIC": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
     },
     "login": {
@@ -206,7 +211,40 @@
       "bannerCta": "Banner anpassen",
       "consentLogTitle": "Einwilligungsprotokoll",
       "consentLogDescription": "Durchsuchen und exportieren Sie die für diese Website erfassten Einwilligungen.",
-      "consentLogCta": "Einwilligungsprotokoll ansehen"
+      "consentLogCta": "Einwilligungsprotokoll ansehen",
+      "verify": {
+        "title": "Domain bestätigen",
+        "description": "Bestätigen Sie, dass Sie diese Domain kontrollieren, um Ihre gehostete Cookie-Richtlinie zu veröffentlichen und vollständige mehrseitige Scans freizuschalten.",
+        "cta": "Jetzt bestätigen",
+        "checking": "Wird geprüft …",
+        "success": "Sie haben die Kontrolle über diese Domain nachgewiesen. Ihre gehostete Richtlinienseite ist online und vollständige Scans sind freigeschaltet.",
+        "verifiedVia": {
+          "snippet": "Über Ihr installiertes Complyr-Widget bestätigt.",
+          "dns_txt": "Über einen DNS-TXT-Eintrag bestätigt."
+        },
+        "methodSnippet": {
+          "title": "Option 1 — Widget installieren",
+          "description": "Fügen Sie dieses Snippet vor dem schließenden </head>-Tag auf Ihrer Startseite ein und bestätigen Sie dann. Es ist dasselbe Snippet, das Ihr Banner ausführt."
+        },
+        "methodDns": {
+          "title": "Option 2 — DNS-TXT-Eintrag hinzufügen",
+          "description": "Erstellen Sie diesen TXT-Eintrag bei Ihrem DNS-Anbieter und bestätigen Sie dann. DNS-Änderungen können etwas Zeit zur Verbreitung benötigen.",
+          "nameLabel": "Eintragsname",
+          "valueLabel": "Eintragswert"
+        },
+        "failure": {
+          "snippet_not_found": "Wir konnten Ihr Complyr-Snippet oder einen passenden DNS-Eintrag noch nicht finden. Fügen Sie eine der obigen Optionen hinzu und versuchen Sie es erneut.",
+          "unreachable": "Wir konnten Ihre Domain nicht erreichen. Prüfen Sie, ob sie online und öffentlich erreichbar ist, und versuchen Sie es erneut."
+        },
+        "error": "Die Bestätigung konnte gerade nicht abgeschlossen werden. Bitte versuchen Sie es gleich erneut."
+      },
+      "rescan": {
+        "label": "Jetzt erneut scannen",
+        "locked": "On-Demand-Scans sind in den Tarifen Pro und Business verfügbar.",
+        "starting": "Wird gestartet …",
+        "started": "Erneuter Scan gestartet. Die Ergebnisse werden automatisch aktualisiert.",
+        "inProgress": "Für diese Website läuft bereits ein Scan."
+      }
     }
   },
   "dashboard": {
@@ -228,6 +266,14 @@
       "running": "Läuft",
       "done": "Abgeschlossen",
       "failed": "Fehlgeschlagen"
+    },
+    "errors": {
+      "internal_error": "Der Scan ist unerwartet fehlgeschlagen. Bitte versuchen Sie es erneut.",
+      "domain_not_verified": "Der Scan wurde übersprungen, da die Domain nicht bestätigt war.",
+      "blocked_target": "Diese Domain konnte aus Sicherheitsgründen nicht gescannt werden.",
+      "dns_failure": "Diese Domain wurde nicht gefunden. Prüfen Sie die Schreibweise und ob sie öffentlich auflösbar ist.",
+      "timeout": "Der Scan hat zu lange gedauert und wurde abgebrochen. Bitte versuchen Sie es erneut.",
+      "unreachable": "Wir konnten diese Website nicht erreichen. Prüfen Sie, ob sie online und öffentlich erreichbar ist."
     },
     "categories": {
       "necessary": "Notwendig",
@@ -312,6 +358,11 @@
       "embedTitle": "Auf Ihrer Website einbetten",
       "embedDescription": "Fügen Sie dieses HTML dort ein, wo die Richtlinie auf Ihren eigenen Seiten erscheinen soll.",
       "copyHtml": "HTML kopieren"
+    },
+    "unverifiedNotice": {
+      "title": "Ihre gehostete Seite ist noch nicht online",
+      "description": "Dieser Link zeigt \"Richtlinie nicht gefunden\", bis Sie bestätigt haben, dass Sie {domain} kontrollieren. Die Vorschau unten zeigt die fertige Seite bereits.",
+      "cta": "Domain bestätigen"
     },
     "preview": {
       "title": "Vorschau",

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { ScanHistory } from "@/components/scans/scan-history";
 import { EmbedSnippet } from "@/components/sites/embed-snippet";
+import { VerifySiteCard } from "@/components/sites/verify-site-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -91,6 +92,8 @@ export function SiteDetail({ siteId }: { siteId: string }) {
             {data.verifiedAt ? t("verifiedBadge") : t("unverifiedBadge")}
           </Badge>
         </header>
+
+        <VerifySiteCard site={data} />
 
         <Card>
           <CardHeader>

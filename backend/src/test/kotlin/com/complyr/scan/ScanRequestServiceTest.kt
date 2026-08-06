@@ -1,0 +1,108 @@
+package com.complyr.scan
+
+import com.complyr.billing.EntitlementService
+import com.complyr.billing.OnDemandRescanNotEntitledException
+import com.complyr.site.SiteEntity
+import com.complyr.site.SiteNotFoundException
+import com.complyr.site.SiteRepository
+import com.complyr.site.SiteStatus
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.verify
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneOffset
+import java.util.UUID
+import kotlin.test.assertEquals
+
+class ScanRequestServiceTest {
+    private val now: Instant = Instant.parse("2026-08-04T09:00:00Z")
+    private val siteRepository = mockk<SiteRepository>()
+    private val scanRepository = mockk<ScanRepository>(relaxed = true)
+    private val entitlementService = mockk<EntitlementService>(relaxed = true)
+    private val scanQueue = mockk<ScanQueue>()
+
+    private val service =
+        ScanRequestService(
+            siteRepository,
+            scanRepository,
+            entitlementService,
+            scanQueue,
+            Clock.fixed(now, ZoneOffset.UTC),
+        )
+
+    private val userId: UUID = UUID.randomUUID()
+    private val siteId: UUID = UUID.randomUUID()
+
+    private fun site(status: SiteStatus = SiteStatus.ACTIVE) =
+        SiteEntity(
+            id = siteId,
+            userId = userId,
+            domain = "example.com",
+            siteKey = "pk_AbC123",
+            status = status,
+            createdAt = now,
+            updatedAt = now,
+        )
+
+    private fun stubSite(site: SiteEntity?) {
+        every { siteRepository.findByIdAndUserId(siteId, userId) } returns site
+    }
+
+    private fun stubLiveScan(exists: Boolean) {
+        every { scanRepository.existsBySiteIdAndStatusIn(siteId, ScanRequestService.LIVE_STATUSES) } returns exists
+    }
+
+    @Test
+    fun `an entitled account gets a MANUAL scan enqueued immediately`() {
+        stubSite(site())
+        stubLiveScan(false)
+        val scanId = UUID.randomUUID()
+        every { scanQueue.enqueue(siteId, ScanTrigger.MANUAL, now) } returns scanId
+
+        assertEquals(scanId, service.request(userId, siteId))
+        // The lock must be taken before the live-scan read, or the check-then-enqueue is a race.
+        verify { scanRepository.acquireSiteScanLock(any()) }
+    }
+
+    @Test
+    fun `a plan without on-demand rescan is refused before any scan state is read`() {
+        // Ordering matters: a Starter user must see the same upgrade prompt whether or not a scan happens
+        // to be running, otherwise the 409 leaks that the feature would have worked.
+        stubSite(site())
+        every { entitlementService.requireOnDemandRescan(userId) } throws OnDemandRescanNotEntitledException()
+
+        assertThrows<OnDemandRescanNotEntitledException> { service.request(userId, siteId) }
+        verify(exactly = 0) { scanRepository.existsBySiteIdAndStatusIn(any(), any()) }
+        verify(exactly = 0) { scanQueue.enqueue(any(), any(), any()) }
+    }
+
+    @Test
+    fun `a site with a live scan is a 409, not a second queued crawl`() {
+        stubSite(site())
+        stubLiveScan(true)
+
+        assertThrows<ScanAlreadyInProgressException> { service.request(userId, siteId) }
+        verify(exactly = 0) { scanQueue.enqueue(any(), any(), any()) }
+    }
+
+    @Test
+    fun `another user's site is a 404, never a 403`() {
+        stubSite(null)
+
+        assertThrows<SiteNotFoundException> { service.request(userId, siteId) }
+        // Not even the entitlement is consulted — nothing about the caller's plan leaks on a foreign id.
+        verify(exactly = 0) { entitlementService.requireOnDemandRescan(any()) }
+        verify(exactly = 0) { scanQueue.enqueue(any(), any(), any()) }
+    }
+
+    @Test
+    fun `an archived site is a 404 — it has no widget and nothing to keep current`() {
+        stubSite(site(status = SiteStatus.ARCHIVED))
+
+        assertThrows<SiteNotFoundException> { service.request(userId, siteId) }
+        verify(exactly = 0) { scanQueue.enqueue(any(), any(), any()) }
+    }
+}

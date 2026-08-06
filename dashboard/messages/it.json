@@ -4,7 +4,10 @@
     "tagline": "Consenso ai cookie GDPR, fatto bene"
   },
   "common": {
-    "close": "Chiudi"
+    "close": "Chiudi",
+    "lockedFeature": {
+      "upgrade": "Aggiorna"
+    }
   },
   "marketing": {
     "hero": {
@@ -101,6 +104,8 @@
       "EMAIL_NOT_VERIFIED": "Verifica prima il tuo indirizzo e-mail",
       "DOMAIN_ALREADY_REGISTERED": "Questo dominio è già registrato",
       "INVALID_DOMAIN": "Inserisci un dominio valido, ad es. www.esempio.eu",
+      "ON_DEMAND_RESCAN_NOT_ENTITLED": "Le scansioni on demand sono disponibili nei piani Pro e Business",
+      "SCAN_ALREADY_IN_PROGRESS": "È già in corso una scansione per questo sito",
       "GENERIC": "Qualcosa è andato storto. Riprova."
     },
     "login": {
@@ -206,7 +211,40 @@
       "bannerCta": "Personalizza banner",
       "consentLogTitle": "Registro dei consensi",
       "consentLogDescription": "Esplora ed esporta le scelte di consenso registrate per questo sito.",
-      "consentLogCta": "Vedi registro"
+      "consentLogCta": "Vedi registro",
+      "verify": {
+        "title": "Verifica il tuo dominio",
+        "description": "Dimostra di controllare questo dominio per pubblicare la tua informativa sui cookie ospitata e sbloccare le scansioni complete multipagina.",
+        "cta": "Verifica ora",
+        "checking": "Verifica in corso…",
+        "success": "Hai dimostrato il controllo di questo dominio. La tua pagina dell'informativa ospitata è attiva e le scansioni complete sono sbloccate.",
+        "verifiedVia": {
+          "snippet": "Verificato tramite il widget Complyr installato.",
+          "dns_txt": "Verificato tramite un record DNS TXT."
+        },
+        "methodSnippet": {
+          "title": "Opzione 1 — installa il widget",
+          "description": "Aggiungi questo snippet prima del tag di chiusura </head> nella tua homepage, poi verifica. È lo stesso snippet che esegue il tuo banner."
+        },
+        "methodDns": {
+          "title": "Opzione 2 — aggiungi un record DNS TXT",
+          "description": "Crea questo record TXT presso il tuo provider DNS, poi verifica. Le modifiche DNS possono richiedere un po' di tempo per propagarsi.",
+          "nameLabel": "Nome del record",
+          "valueLabel": "Valore del record"
+        },
+        "failure": {
+          "snippet_not_found": "Non abbiamo ancora trovato il tuo snippet Complyr né un record DNS corrispondente. Aggiungi una delle opzioni qui sopra, poi riprova.",
+          "unreachable": "Non siamo riusciti a raggiungere il tuo dominio. Verifica che sia online e accessibile pubblicamente, poi riprova."
+        },
+        "error": "Al momento non è stato possibile completare la verifica. Riprova tra qualche istante."
+      },
+      "rescan": {
+        "label": "Riesegui scansione",
+        "locked": "Le scansioni on demand sono disponibili nei piani Pro e Business.",
+        "starting": "Avvio…",
+        "started": "Nuova scansione avviata. I risultati si aggiorneranno automaticamente.",
+        "inProgress": "È già in corso una scansione per questo sito."
+      }
     }
   },
   "dashboard": {
@@ -228,6 +266,14 @@
       "running": "In corso",
       "done": "Completato",
       "failed": "Non riuscito"
+    },
+    "errors": {
+      "internal_error": "La scansione non è riuscita in modo imprevisto. Riprova.",
+      "domain_not_verified": "La scansione è stata saltata perché il dominio non era verificato.",
+      "blocked_target": "Non è stato possibile scansionare questo dominio per motivi di sicurezza.",
+      "dns_failure": "Impossibile trovare questo dominio. Verifica che sia scritto correttamente e risolvibile pubblicamente.",
+      "timeout": "La scansione ha impiegato troppo tempo ed è stata interrotta. Riprova.",
+      "unreachable": "Non siamo riusciti a raggiungere questo sito. Verifica che sia online e accessibile pubblicamente."
     },
     "categories": {
       "necessary": "Necessari",
@@ -312,6 +358,11 @@
       "embedTitle": "Incorpora nel tuo sito",
       "embedDescription": "Incolla questo HTML dove vuoi che l'informativa appaia sulle tue pagine.",
       "copyHtml": "Copia HTML"
+    },
+    "unverifiedNotice": {
+      "title": "La tua pagina ospitata non è ancora attiva",
+      "description": "Questo link mostra \"Informativa non trovata\" finché non verifichi di controllare {domain}. L'anteprima qui sotto mostra già la pagina finale.",
+      "cta": "Verifica il tuo dominio"
     },
     "preview": {
       "title": "Anteprima",

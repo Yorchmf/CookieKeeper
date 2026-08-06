@@ -160,6 +160,39 @@ class EntitlementServiceTest {
     }
 
     @Test
+    fun `requireOnDemandRescan allows a plan that includes it`() {
+        stubUser(createdAt = now)
+        every { subscriptionRepository.findByUserId(userId) } returns subscription(Plan.PRO)
+
+        service.requireOnDemandRescan(userId) // must not throw
+    }
+
+    @Test
+    fun `requireOnDemandRescan refuses Starter, which re-scans on its scheduled cadence instead`() {
+        stubUser(createdAt = now)
+        every { subscriptionRepository.findByUserId(userId) } returns subscription(Plan.STARTER)
+
+        assertThrows<OnDemandRescanNotEntitledException> { service.requireOnDemandRescan(userId) }
+    }
+
+    @Test
+    fun `requireOnDemandRescan refuses a trial account`() {
+        // The trial is Starter-shaped: it exists to prove the product, not to hand out the paid action.
+        stubUser(createdAt = now.minusSeconds(3600))
+        every { subscriptionRepository.findByUserId(userId) } returns null
+
+        assertThrows<OnDemandRescanNotEntitledException> { service.requireOnDemandRescan(userId) }
+    }
+
+    @Test
+    fun `requireOnDemandRescan freezes the action for an expired account`() {
+        stubUser(createdAt = now.minus(trialPeriod).minusSeconds(1))
+        every { subscriptionRepository.findByUserId(userId) } returns null
+
+        assertThrows<OnDemandRescanNotEntitledException> { service.requireOnDemandRescan(userId) }
+    }
+
+    @Test
     fun `requireCanAddSite freezes new sites for an expired account`() {
         // Expired entitlements cap sites at 0, so even a zero-site account can't add one.
         stubUser(createdAt = now.minus(trialPeriod).minusSeconds(1))

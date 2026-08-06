@@ -15,7 +15,11 @@ enum class ScanFailureReason(
     /** Catch-all: an unexpected server-side error the customer can do nothing about. */
     INTERNAL("internal_error"),
 
-    /** The site's domain is not verified yet, so we refuse to crawl it (SSRF posture, §4.4). */
+    /**
+     * No longer produced. Verification once gated crawling outright; since ADR-17 it only selects
+     * crawl depth ([CrawlMode.QUICK] vs [CrawlMode.FULL]), so nothing throws this. Retained because
+     * historical `scans.error` rows still carry the code and the dashboard must keep rendering them.
+     */
     DOMAIN_NOT_VERIFIED("domain_not_verified"),
 
     /** The domain resolves to a private/reserved/link-local address and was refused (SSRF block). */

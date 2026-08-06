@@ -1,7 +1,12 @@
 /**
  * Typed client for the cookie-policy endpoints:
  * - authenticated management under `/api/v1/sites/{siteId}/policy` (generate + read current)
+ * - the authenticated owner preview `/api/v1/sites/{siteId}/policy/preview`
  * - the public hosted read `/api/v1/public/policy/{publicId}` the `/p/{publicId}` page renders.
+ *
+ * The preview and the hosted read return the identical payload but differ in what gates them: the
+ * hosted page 404s until the site's domain is verified (ADR-17), while the preview is reached behind
+ * the JWT so the owner can see what they are about to publish *before* verifying.
  *
  * Mirrors the backend DTOs in `com.complyr.policy.dto` (PolicyDtos.kt).
  */
@@ -74,6 +79,23 @@ export async function generatePolicy(
   const { data } = await apiFetch<PolicyGenerated>(
     `/api/v1/sites/${encodeURIComponent(siteId)}/policy`,
     { method: "POST", body: JSON.stringify(input) },
+  );
+  return data;
+}
+
+/**
+ * The owner's preview of their published policy, by site id. Same payload as the hosted page and the
+ * same language resolution, but ungated by domain verification — see the module header. Throws
+ * {@link ApiError} with status 404 when nothing has been generated yet, or when the site isn't the
+ * caller's (the usual anti-enumeration 404).
+ */
+export async function getPolicyPreview(
+  siteId: string,
+  lang?: string,
+): Promise<PublicPolicy> {
+  const query = lang ? `?lang=${encodeURIComponent(lang)}` : "";
+  const { data } = await apiFetch<PublicPolicy>(
+    `/api/v1/sites/${encodeURIComponent(siteId)}/policy/preview${query}`,
   );
   return data;
 }

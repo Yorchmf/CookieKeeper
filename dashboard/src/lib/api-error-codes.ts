@@ -13,6 +13,8 @@ export const KNOWN_ERROR_CODES = [
   "EMAIL_NOT_VERIFIED",
   "DOMAIN_ALREADY_REGISTERED",
   "INVALID_DOMAIN",
+  "ON_DEMAND_RESCAN_NOT_ENTITLED",
+  "SCAN_ALREADY_IN_PROGRESS",
 ] as const;
 
 export type KnownErrorCode = (typeof KNOWN_ERROR_CODES)[number];

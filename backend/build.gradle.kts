@@ -43,6 +43,14 @@ dependencies {
     // (-javaagent + SENTRY_AUTO_INIT=false) — unneeded weight for MVP error capture. logback-classic
     // is already on the classpath via the Spring Boot logging starter.
     implementation("io.sentry:sentry-logback:8.51.0")
+    // Domain verification (ADR-17). A spec-compliant HTML5 tokenizer for SnippetMatcher, which decides
+    // whether a customer's homepage really carries our embed snippet. A hand-rolled tag scan was tried
+    // first and rejected: without an HTML context model it accepted the snippet from inside comments,
+    // JSON islands, <title>/<textarea>/<noscript>/CDATA and other elements' attribute values, any of
+    // which an attacker can plant as user-generated content on a domain they do not own. Matching a
+    // browser's parse is the whole security property, so we use a parser browsers agree with rather
+    // than re-implement the tokenizer. Zero transitive dependencies, MIT.
+    implementation("org.jsoup:jsoup:1.21.1")
     implementation("org.flywaydb:flyway-database-postgresql")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("tools.jackson.module:jackson-module-kotlin")
@@ -113,6 +121,25 @@ val coverageClassPatterns =
         // Cookie classification (W4 slice 3): pure matcher + the classifier that drives it.
         "com/complyr/scan/CookieSignatureMatcher*",
         "com/complyr/scan/CookieClassifier*",
+        // Domain verification (ADR-17). The fetcher is the only app-initiated outbound request to a
+        // customer-controlled host, and the matcher is what an attacker would try to forge — both are
+        // security-critical enough that a coverage regression should fail the build.
+        "com/complyr/site/SiteVerificationFetcher*",
+        "com/complyr/site/SnippetMatcher*",
+        "com/complyr/site/DnsTxtLookup*",
+        "com/complyr/site/SiteVerificationService*",
+        "com/complyr/site/CdnHost*",
+        // On-demand re-scan: the entitlement gate and the one-live-scan-per-site throttle are the whole
+        // protection on a customer-triggered crawl, so a coverage regression should fail the build.
+        "com/complyr/scan/ScanRequestService*",
+        // The hosted policy page is public and gated only here: this is what stops an unverified
+        // customer publishing a Complyr-hosted page for a domain they don't control (ADR-17).
+        "com/complyr/policy/PolicyReadService*",
+        "com/complyr/policy/PolicyVersionSelector*",
+        // Scheduled re-scan: the job is what makes every plan's rescanFrequency real, so a Starter site
+        // is never stuck with its single signup scan. Its due/skip logic (skip Expired, per-plan cadence)
+        // is the whole correctness surface and must stay covered.
+        "com/complyr/scan/ScheduledRescanJob*",
     )
 
 tasks.jacocoTestReport {

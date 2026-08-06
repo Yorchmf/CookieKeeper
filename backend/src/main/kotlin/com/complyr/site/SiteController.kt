@@ -8,6 +8,7 @@ import com.complyr.site.dto.ArchiveResponse
 import com.complyr.site.dto.CreateSiteRequest
 import com.complyr.site.dto.SiteDetailResponse
 import com.complyr.site.dto.SiteResponse
+import com.complyr.site.dto.SiteVerificationResponse
 import com.complyr.site.dto.UpdateSiteRequest
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -27,6 +28,7 @@ import java.util.UUID
 @RequestMapping("/api/v1/sites")
 class SiteController(
     private val siteService: SiteService,
+    private val siteVerificationService: SiteVerificationService,
 ) {
     @GetMapping
     fun list(
@@ -55,6 +57,18 @@ class SiteController(
         @PathVariable id: UUID,
         @Valid @RequestBody request: UpdateSiteRequest,
     ): ApiResponse<SiteDetailResponse> = ApiResponse.success(siteService.update(CurrentUser.id(), id, request.domain))
+
+    /**
+     * Attempt to prove control of the site's domain (ADR-17). Deliberately a **200 with
+     * `verified: false`** on a miss rather than a 4xx: not-installed-yet is the expected first answer,
+     * and the dashboard renders it as persistent inline instructions instead of a dismissible error.
+     * Rate-limited by its own tight tier — it makes an app-initiated outbound request (see
+     * [com.complyr.common.AuthenticatedRateLimitFilter]).
+     */
+    @PostMapping("/{id}/verify")
+    fun verify(
+        @PathVariable id: UUID,
+    ): ApiResponse<SiteVerificationResponse> = ApiResponse.success(siteVerificationService.verify(CurrentUser.id(), id))
 
     @DeleteMapping("/{id}")
     fun archive(

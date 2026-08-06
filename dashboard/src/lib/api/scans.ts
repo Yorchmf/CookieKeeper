@@ -55,6 +55,26 @@ export async function listScans(
   return { scans: data, total: meta?.total ?? data.length };
 }
 
+/** Acknowledgement of an accepted re-scan (ScanRequestedResponse) — the queued scan's id and status. */
+export interface ScanRequested {
+  scanId: string;
+  status: ScanStatus;
+}
+
+/**
+ * Enqueue an on-demand re-scan for a site (Pro/Business). Returns only the queued scan's id — the
+ * dashboard invalidates its scan list and lets the existing 3s poll surface progress. The backend
+ * enforces the entitlement (403 `ON_DEMAND_RESCAN_NOT_ENTITLED`) and the single-in-flight rule
+ * (409 `SCAN_ALREADY_IN_PROGRESS`); both surface as an `ApiError` the caller handles.
+ */
+export async function requestScan(siteId: string): Promise<ScanRequested> {
+  const { data } = await apiFetch<ScanRequested>(
+    `/api/v1/sites/${encodeURIComponent(siteId)}/scans`,
+    { method: "POST" },
+  );
+  return data;
+}
+
 export async function getScan(
   siteId: string,
   scanId: string,

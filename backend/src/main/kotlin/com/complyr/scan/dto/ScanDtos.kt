@@ -2,6 +2,7 @@ package com.complyr.scan.dto
 
 import com.complyr.scan.ScanCookieEntity
 import com.complyr.scan.ScanEntity
+import com.complyr.scan.ScanStatus
 import java.time.Instant
 import java.util.UUID
 
@@ -26,6 +27,16 @@ data class ScanCookieResponse(
             )
     }
 }
+
+/**
+ * Acknowledgement of an accepted re-scan request: the scan row exists and is `queued`, but the crawl has
+ * not started. The dashboard invalidates its scan list on this and lets the existing 3s poll show the
+ * scan progress, so nothing beyond the id is needed here.
+ */
+data class ScanRequestedResponse(
+    val scanId: UUID,
+    val status: String = ScanStatus.QUEUED.dbValue,
+)
 
 /** A scan as it appears in a site's scan history list — status/counts only, no cookie payload. */
 data class ScanSummaryResponse(

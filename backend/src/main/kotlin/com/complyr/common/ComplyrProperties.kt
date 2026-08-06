@@ -13,6 +13,7 @@ data class ComplyrProperties(
     val cors: Cors = Cors(),
     val consent: Consent = Consent(),
     val scan: Scan = Scan(),
+    val verification: Verification = Verification(),
     val billing: Billing = Billing(),
     val mail: Mail = Mail(),
     val observability: Observability = Observability(),
@@ -87,6 +88,12 @@ data class ComplyrProperties(
         // call is a live Stripe API round-trip, so one account looping checkout/portal could burn the
         // shared Stripe rate budget for all tenants. Normal use is a handful of clicks per session.
         val authBillingPerMinute: Long = DEFAULT_AUTH_BILLING_PER_MINUTE,
+        // Requests per minute per authenticated user on `POST /api/v1/sites/{id}/verify`. Tightest of
+        // the three: it is the only authed endpoint that dials a *customer-supplied* host synchronously
+        // on a Tomcat request thread (ADR-17), so it bounds both request-thread occupancy and the
+        // outbound requests an account can aim at third parties. A real activation takes a handful of
+        // attempts in total, not per minute, and a verified site short-circuits before any I/O.
+        val authVerifyPerMinute: Long = DEFAULT_AUTH_VERIFY_PER_MINUTE,
         // Requests per minute per authenticated user on all other authed `/api/v1/**` endpoints. A
         // generous backstop a real dashboard session never reaches, bounding amplification abuse
         // (e.g. `POST /api/v1/sites` enqueues a Chromium crawl; consent-log reads fan across monthly
@@ -96,13 +103,14 @@ data class ComplyrProperties(
         // Hard cap on distinct keys each in-memory bucket registry tracks before it evicts (idle-first)
         // to bound memory — see [com.complyr.common.RateLimitBuckets]. Sized with headroom for the
         // authenticated registry's fan-out: it keys by `tier|userId`, so an active tenant can hold up
-        // to 2 keys (billing + general). The default covers well past MVP scale; raise it before the
-        // active-user count approaches half this value, or steady-state traffic keeps the map at cap
-        // and turns eviction from a rare safety valve into a per-new-key cost.
+        // to 3 keys (billing + verify + general). The default covers well past MVP scale; raise it
+        // before the active-user count approaches half this value, or steady-state traffic keeps the
+        // map at cap and turns eviction from a rare safety valve into a per-new-key cost.
         val maxTrackedKeys: Int = DEFAULT_MAX_TRACKED_KEYS,
     ) {
         init {
             require(authBillingPerMinute > 0) { "complyr.rate-limit.auth-billing-per-minute must be > 0" }
+            require(authVerifyPerMinute > 0) { "complyr.rate-limit.auth-verify-per-minute must be > 0" }
             require(authGeneralPerMinute > 0) { "complyr.rate-limit.auth-general-per-minute must be > 0" }
             require(maxTrackedKeys > 0) { "complyr.rate-limit.max-tracked-keys must be > 0" }
         }
@@ -113,6 +121,7 @@ data class ComplyrProperties(
             const val DEFAULT_PUBLIC_SCAN_PER_MINUTE = 10L
             const val DEFAULT_PUBLIC_POLICY_PER_MINUTE = 120L
             const val DEFAULT_AUTH_BILLING_PER_MINUTE = 20L
+            const val DEFAULT_AUTH_VERIFY_PER_MINUTE = 5L
             const val DEFAULT_AUTH_GENERAL_PER_MINUTE = 300L
             const val DEFAULT_MAX_TRACKED_KEYS = 50_000
         }
@@ -285,6 +294,15 @@ data class ComplyrProperties(
         // one batch, small enough to stay vacuum-friendly. The prune schedule is the raw
         // `complyr.scan.public-scan-prune-cron` property read by `@Scheduled`, not typed here.
         val publicScanPruneBatchSize: Int = DEFAULT_PUBLIC_SCAN_PRUNE_BATCH_SIZE,
+        // Scheduled re-scan job tuning (ADR-17; see [com.complyr.scan.ScheduledRescanJob]).
+        // [rescanBatchSize] caps how many candidate sites one nightly run examines (oldest-scanned
+        // first), so a backlog drains across successive nights instead of dumping a burst on the single
+        // Chromium worker. [rescanJitterWindow] is the span across which the run spreads each enqueued
+        // job's `available_at` (via a per-run SecureRandom), so a batch of due sites doesn't all arrive
+        // at the worker the instant the job fires. The cron itself is the raw
+        // `complyr.scan.rescan-cron` property read by `@Scheduled`, not typed here.
+        val rescanBatchSize: Int = DEFAULT_RESCAN_BATCH_SIZE,
+        val rescanJitterWindow: Duration = Duration.ofHours(DEFAULT_RESCAN_JITTER_WINDOW_HOURS),
     ) {
         init {
             require(!visibilityTimeout.isZero && !visibilityTimeout.isNegative) {
@@ -313,6 +331,16 @@ data class ComplyrProperties(
             // refuse it at startup rather than silently disabling the retention prune.
             require(publicScanPruneBatchSize > 0) {
                 "complyr.scan.public-scan-prune-batch-size must be positive (was $publicScanPruneBatchSize)"
+            }
+            // A non-positive batch would make the scheduled re-scan job examine (and thus enqueue)
+            // nothing, silently freezing all scheduled re-scans; refuse it at startup.
+            require(rescanBatchSize > 0) {
+                "complyr.scan.rescan-batch-size must be positive (was $rescanBatchSize)"
+            }
+            // Zero is legitimate (enqueue every due site at `now`, no spread); only a negative window is
+            // nonsense — it would make the jitter offset negative and back-date `available_at`.
+            require(!rescanJitterWindow.isNegative) {
+                "complyr.scan.rescan-jitter-window must not be negative (was $rescanJitterWindow)"
             }
             // The queue redelivers a job once its visibility lease lapses; if a healthy crawl could run
             // longer than that lease it would be double-claimed (ADR-4 invariant). The job budget is
@@ -347,6 +375,122 @@ data class ComplyrProperties(
             // cookies bounds the transaction's row churn while still clearing a normal day's expiries
             // in a single batch.
             const val DEFAULT_PUBLIC_SCAN_PRUNE_BATCH_SIZE = 500
+
+            // Candidate sites examined per nightly re-scan run. Comfortably above the MVP site count so
+            // one run drains the whole due set in steady state, yet bounded so a large backlog (or a bug)
+            // can't enqueue an unbounded burst at the single Chromium worker in one tick.
+            const val DEFAULT_RESCAN_BATCH_SIZE = 200
+
+            // Spread the batch's `available_at` across 2h so a nightly wave of due sites trickles into the
+            // worker instead of arriving as one thundering herd. Offset from the crawl budget (§4.4 caps a
+            // job at 10min), so even a full batch clears well within the window.
+            const val DEFAULT_RESCAN_JITTER_WINDOW_HOURS = 2L
+        }
+    }
+
+    /**
+     * Domain-verification tuning (ADR-17) for the app-initiated outbound fetch in
+     * [com.complyr.site.SiteVerificationFetcher] and the TXT lookup in
+     * [com.complyr.site.DnsTxtLookup].
+     *
+     * Unlike the scanner, this request originates from the `api` container, which *does* have routes to
+     * internal services — so every bound here is load-bearing, not cosmetic. [totalBudget] caps the HTTP
+     * half of a verify operation (a synchronous request a user is waiting on, holding a Tomcat thread);
+     * [requestTimeout] caps one hop; [maxRedirects] bounds a redirect chain that would otherwise let a
+     * hostile host walk us around the SSRF checks; [maxBodyBytes] bounds the response we buffer, so a
+     * multi-gigabyte or endless body cannot exhaust heap.
+     *
+     * [dnsTimeout] bounds the TXT lookup, and it sits *outside* [totalBudget] — the two halves are
+     * separate operations. Its real cost is also worse than its face value: the JDK's DNS provider
+     * applies the timeout per nameserver per retry and falls back to TCP on a truncated answer, so a
+     * lookup can cost roughly `2 × dnsTimeout × (nameservers in /etc/resolv.conf)`. Budget a verify at
+     * `totalBudget + ~6 × dnsTimeout` when sizing the Tomcat pool and the endpoint's rate-limit tier.
+     *
+     * **Every bound below has a ceiling as well as a floor.** These values are env-tunable, they decide
+     * how long a user-triggered request may hold one of 50 Tomcat threads, and this is the one endpoint
+     * an unauthenticated-ish attacker can aim at a host that never answers. A fat-fingered
+     * `total-budget: 10m` is therefore not a slow endpoint, it is an outage — so it fails at startup
+     * instead. The ceilings are deliberately generous; they exist to catch a wrong *unit*, not to tune.
+     */
+    data class Verification(
+        val connectTimeout: Duration = Duration.ofSeconds(DEFAULT_CONNECT_TIMEOUT_SECONDS),
+        val requestTimeout: Duration = Duration.ofSeconds(DEFAULT_REQUEST_TIMEOUT_SECONDS),
+        val totalBudget: Duration = Duration.ofSeconds(DEFAULT_TOTAL_BUDGET_SECONDS),
+        val maxRedirects: Int = DEFAULT_MAX_REDIRECTS,
+        val maxBodyBytes: Int = DEFAULT_MAX_BODY_BYTES,
+        val dnsTimeout: Duration = Duration.ofSeconds(DEFAULT_DNS_TIMEOUT_SECONDS),
+    ) {
+        init {
+            requireInRange("connect-timeout", connectTimeout, MAX_TIMEOUT)
+            requireInRange("request-timeout", requestTimeout, MAX_TIMEOUT)
+            // A zero/negative budget would abort every verification before the first hop.
+            requireInRange("total-budget", totalBudget, MAX_TOTAL_BUDGET)
+            // One hop must fit inside the whole operation, or the per-hop timeout is unreachable and the
+            // budget is the only real bound — a misconfig that silently changes which limit applies.
+            require(requestTimeout <= totalBudget) {
+                "complyr.verification.request-timeout ($requestTimeout) must not exceed total-budget ($totalBudget)"
+            }
+            // Likewise: a connect that may outlast the whole operation makes the budget the only bound.
+            require(connectTimeout <= totalBudget) {
+                "complyr.verification.connect-timeout ($connectTimeout) must not exceed total-budget ($totalBudget)"
+            }
+            // Negative would be nonsense; 0 is legitimate (refuse to follow redirects at all). The ceiling
+            // matters for a subtler reason too: SiteVerificationFetcher loops `maxRedirects + 1` times, so
+            // Int.MAX_VALUE overflows to a negative count and silently performs *zero* hops.
+            require(maxRedirects in 0..MAX_REDIRECTS_CEILING) {
+                "complyr.verification.max-redirects must be between 0 and $MAX_REDIRECTS_CEILING (was $maxRedirects)"
+            }
+            // A non-positive cap would read an empty body and fail every snippet check; the ceiling keeps a
+            // hostile endless body from being buffered toward 2GB on a 4GB box.
+            require(maxBodyBytes in 1..MAX_BODY_BYTES_CEILING) {
+                "complyr.verification.max-body-bytes must be between 1 and $MAX_BODY_BYTES_CEILING (was $maxBodyBytes)"
+            }
+            // Validated in milliseconds, not as a Duration, because milliseconds is what reaches the JNDI
+            // provider: PT0.0009S is a positive Duration whose toMillis() is 0, and 0 makes the provider's
+            // `Selector.select(0)` block *forever* — one dropped DNS reply would then pin a Tomcat thread
+            // permanently. At the other end, a value past Int.MAX_VALUE ms makes the provider's internal
+            // Integer.parseInt throw an unchecked exception straight past DnsTxtLookup's catch.
+            require(dnsTimeout.toMillis() in MIN_DNS_TIMEOUT_MILLIS..MAX_DNS_TIMEOUT_MILLIS) {
+                "complyr.verification.dns-timeout must be between ${MIN_DNS_TIMEOUT_MILLIS}ms and " +
+                    "${MAX_DNS_TIMEOUT_MILLIS}ms (was $dnsTimeout)"
+            }
+        }
+
+        private fun requireInRange(
+            name: String,
+            value: Duration,
+            ceiling: Duration,
+        ) {
+            require(!value.isZero && !value.isNegative && value <= ceiling) {
+                "complyr.verification.$name must be a positive duration of at most $ceiling (was $value)"
+            }
+        }
+
+        companion object {
+            const val DEFAULT_CONNECT_TIMEOUT_SECONDS = 5L
+            const val DEFAULT_REQUEST_TIMEOUT_SECONDS = 5L
+
+            // A user is waiting on this synchronously, so the whole thing must resolve well inside a
+            // patience window — and it holds a Tomcat thread for its duration (the pool is 50 on a CX22).
+            const val DEFAULT_TOTAL_BUDGET_SECONDS = 10L
+
+            // Enough for the usual apex→www / http→https hops, few enough to bound a redirect walk.
+            const val DEFAULT_MAX_REDIRECTS = 3
+
+            // The snippet lives in <head>, so 512KB reaches it on any real page while bounding what a
+            // hostile host can make us buffer. Truncation is safe: it can only cause a false negative.
+            const val DEFAULT_MAX_BODY_BYTES = 512 * 1024
+
+            const val DEFAULT_DNS_TIMEOUT_SECONDS = 2L
+
+            // Ceilings. Not tuning knobs — sanity bounds that turn a wrong unit into a startup failure
+            // rather than a Tomcat pool that drains under a handful of hostile verifications.
+            val MAX_TIMEOUT: Duration = Duration.ofSeconds(30)
+            val MAX_TOTAL_BUDGET: Duration = Duration.ofSeconds(30)
+            const val MAX_REDIRECTS_CEILING = 10
+            const val MAX_BODY_BYTES_CEILING = 8 * 1024 * 1024
+            const val MIN_DNS_TIMEOUT_MILLIS = 100L
+            const val MAX_DNS_TIMEOUT_MILLIS = 30_000L
         }
     }
 

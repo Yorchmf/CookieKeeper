@@ -7,6 +7,7 @@ import {
   getSite,
   listSites,
   updateSite,
+  verifySite,
   type SiteStatus,
 } from "@/lib/api/sites";
 
@@ -42,6 +43,21 @@ export function useUpdateSite(id: string) {
     mutationFn: (input: { domain?: string }) => updateSite(id, input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: SITES_QUERY_KEY });
+    },
+  });
+}
+
+/**
+ * Trigger a domain-verification attempt for a site. On success invalidate this site's detail query so
+ * the verified/unverified badge and the verify card re-render from fresh server state — the mutation
+ * result itself is only the attempt outcome, not the full site payload.
+ */
+export function useVerifySite(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => verifySite(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [...SITES_QUERY_KEY, id] });
     },
   });
 }

@@ -15,9 +15,9 @@ import java.util.UUID
  *
  * Deliberately does NOT touch the consent-ingestion path. Recording a visitor's consent is append-only
  * audit evidence and must never be gated by billing (CLAUDE.md constraint #3): the trial
- * [Entitlements.consentEventCap] is a dashboard signal, not an ingestion block. Enforcement for
- * on-demand rescan, CSV export, retention pruning, and widget branding attaches to those features as
- * they land — each is a single [resolve]`(userId).entitlements` read away.
+ * [Entitlements.consentEventCap] is a dashboard signal, not an ingestion block. On-demand rescan
+ * ([requireOnDemandRescan]) and CSV export ([requireCsvExport]) are enforced here; retention pruning and
+ * widget branding attach as they land — each is a single [resolve]`(userId).entitlements` read away.
  */
 @Service
 class EntitlementService(
@@ -33,6 +33,24 @@ class EntitlementService(
     fun resolve(userId: UUID): AccountEntitlement {
         val user = userRepository.findById(userId).orElseThrow { UnauthenticatedException() }
         return planResolver.resolve(user.createdAt, subscriptionRepository.findByUserId(userId))
+    }
+
+    /**
+     * Batch-resolve the billing state of many accounts in two queries (one user fetch, one subscription
+     * fetch), for callers that hold a set of userIds and must not N+1 — the scheduled re-scan job
+     * ([com.complyr.scan.ScheduledRescanJob]) resolves a whole candidate batch this way.
+     *
+     * Unlike [resolve], a missing user row is silently dropped rather than throwing: a batch of
+     * background candidates isn't a single authenticated request, and a since-deleted account is simply
+     * not entitled to anything. Callers get no entry for such ids and skip them.
+     */
+    fun resolveAll(userIds: Collection<UUID>): Map<UUID, AccountEntitlement> {
+        if (userIds.isEmpty()) return emptyMap()
+        val distinct = userIds.toSet()
+        val subscriptionsByUser = subscriptionRepository.findAllByUserIdIn(distinct).associateBy { it.userId }
+        return userRepository
+            .findAllById(distinct)
+            .associate { it.id to planResolver.resolve(it.createdAt, subscriptionsByUser[it.id]) }
     }
 
     /**
@@ -71,6 +89,19 @@ class EntitlementService(
      */
     fun requireCsvExport(userId: UUID) {
         if (!resolve(userId).entitlements.csvExport) throw CsvExportNotEntitledException()
+    }
+
+    /**
+     * Guard the "Re-scan now" action against the plan's [Entitlements.onDemandRescan] flag (Pro and
+     * Business). Throws [OnDemandRescanNotEntitledException] (403) otherwise, which also freezes it for an
+     * Expired account. Read-only — the scan queue's own advisory lock is what serializes the enqueue, so
+     * no lock is taken here.
+     *
+     * Gates *immediacy* only: every plan keeps its [Entitlements.rescanFrequency] scheduled re-scan, so a
+     * Starter site is never stuck with the single scan it got at signup.
+     */
+    fun requireOnDemandRescan(userId: UUID) {
+        if (!resolve(userId).entitlements.onDemandRescan) throw OnDemandRescanNotEntitledException()
     }
 
     // Fold the 128-bit user id into the 64-bit key pg_advisory_xact_lock takes (mirrors PolicyService);

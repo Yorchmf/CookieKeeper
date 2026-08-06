@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -41,11 +42,23 @@ class ScanQueue(
      * Create a queued scan and its pending job in one transaction, returning the new scan id. Called
      * synchronously inside the site-creation transaction (see [ScanEnqueueListener]) so a rolled-back
      * site never leaves an orphan scan, and a committed site always has exactly one queued scan.
+     *
+     * [availableAt] is when the job first becomes claimable. The interactive callers (site-added,
+     * "Re-scan now") pass the current instant; the scheduled re-scan job passes a jittered future one so a
+     * nightly batch of due sites doesn't arrive at the single-Chromium worker as one burst. The `scans`
+     * row is created `queued` either way, so the dashboard shows the pending scan straight away
+     * regardless of when the crawl actually starts.
+     *
+     * Deliberately NOT a Kotlin default parameter: this is a proxied `@Transactional` method, and the
+     * synthetic `enqueue$default` bridge Kotlin generates for defaults is static, so it evaluates the
+     * default expression against the CGLIB proxy's own (uninitialized) fields — a null-`clock` NPE at the
+     * first call, not a compile error.
      */
     @Transactional
     fun enqueue(
         siteId: UUID,
         trigger: ScanTrigger,
+        availableAt: Instant,
     ): UUID {
         val now = clock.instant()
         val scan =
@@ -58,7 +71,7 @@ class ScanQueue(
                 payload = mapOf(PAYLOAD_SCAN_ID to scan.id.toString()),
                 status = JobStatus.PENDING,
                 maxAttempts = properties.scan.maxAttempts,
-                availableAt = now,
+                availableAt = availableAt,
                 createdAt = now,
                 updatedAt = now,
             ),

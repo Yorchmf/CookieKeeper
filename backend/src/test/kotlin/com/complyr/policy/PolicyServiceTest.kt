@@ -44,11 +44,16 @@ class PolicyServiceTest {
     private val bannerConfigService = mockk<BannerConfigService>()
     private val properties = mockk<ComplyrProperties>()
 
+    // Real, not mocked: preview delegates its whole payload to it, and the point of the preview is that
+    // it resolves exactly what the hosted page would.
+    private val policyReadService = PolicyReadService(policyRepository, policySettingsRepository, siteRepository)
+
     private val service =
         PolicyService(
             siteRepository,
             policyRepository,
             policySettingsRepository,
+            policyReadService,
             bannerConfigService,
             PolicyContextBuilder(scanRepository, scanCookieRepository, clock),
             properties,
@@ -230,6 +235,7 @@ class PolicyServiceTest {
                 siteRepository,
                 policyRepository,
                 policySettingsRepository,
+                policyReadService,
                 bannerConfigService,
                 PolicyContextBuilder(scanRepository, scanCookieRepository, dayTwo),
                 properties,
@@ -383,5 +389,64 @@ class PolicyServiceTest {
         assertEquals(2, response.version)
         assertEquals(listOf("de", "fr"), response.languages)
         assertEquals("https://app.complyr.eu/p/$publicId", response.hostedUrl)
+    }
+
+    /** Owned site with a published version in [languages]; deliberately never verified. */
+    private fun stubPublishedForPreview(vararg languages: String) {
+        every { siteRepository.findByIdAndUserId(siteId, userId) } returns site()
+        every { policySettingsRepository.findById(siteId) } returns
+            Optional.of(
+                PolicySettingsEntity(
+                    siteId = siteId,
+                    details = PolicyDetails("Acme GmbH", "privacy@acme.example.com", "https://acme.example.com"),
+                    createdAt = now,
+                    updatedAt = now,
+                ),
+            )
+        val rows =
+            languages.map {
+                PolicyEntity(siteId = siteId, version = 3, language = it, html = "<p lang=\"$it\"/>", publishedAt = now)
+            }
+        every { policyRepository.findFirstBySiteIdAndPublishedAtIsNotNullOrderByVersionDesc(siteId) } returns rows.first()
+        every { policyRepository.findBySiteIdAndVersion(siteId, 3) } returns rows
+    }
+
+    @Test
+    fun `preview renders the owner's policy even though the domain is not verified`() {
+        // The whole reason the preview exists: the hosted page is gated on verification, so if the
+        // preview were gated too the customer could never see what they are about to publish.
+        stubPublishedForPreview("en", "de")
+
+        val response = service.preview(userId, siteId, "de")
+
+        assertEquals("de", response.language)
+        assertEquals(listOf("de", "en"), response.availableLanguages)
+        assertEquals("Acme GmbH", response.companyName)
+        assertTrue(response.html.contains("lang=\"de\""))
+        // The gate belongs to the public read; preview must never consult the site's verification state.
+        verify(exactly = 0) { siteRepository.findById(any()) }
+    }
+
+    @Test
+    fun `preview falls back to the default language exactly as the hosted page would`() {
+        stubPublishedForPreview("en", "de")
+
+        assertEquals("en", service.preview(userId, siteId, "it").language)
+    }
+
+    @Test
+    fun `preview of another user's site is the same 404 as an unknown site`() {
+        every { siteRepository.findByIdAndUserId(siteId, userId) } returns null
+
+        assertThrows<SiteNotFoundException> { service.preview(userId, siteId, "en") }
+        verify(exactly = 0) { policySettingsRepository.findById(any()) }
+    }
+
+    @Test
+    fun `preview is a policy not-found before anything has been generated`() {
+        every { siteRepository.findByIdAndUserId(siteId, userId) } returns site()
+        every { policySettingsRepository.findById(siteId) } returns Optional.empty()
+
+        assertThrows<PolicyNotFoundException> { service.preview(userId, siteId, "en") }
     }
 }

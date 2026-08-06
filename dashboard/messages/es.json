@@ -4,7 +4,10 @@
     "tagline": "Consentimiento de cookies RGPD, bien hecho"
   },
   "common": {
-    "close": "Cerrar"
+    "close": "Cerrar",
+    "lockedFeature": {
+      "upgrade": "Mejorar plan"
+    }
   },
   "marketing": {
     "hero": {
@@ -101,6 +104,8 @@
       "EMAIL_NOT_VERIFIED": "Primero verifica tu dirección de correo",
       "DOMAIN_ALREADY_REGISTERED": "Este dominio ya está registrado",
       "INVALID_DOMAIN": "Introduce un dominio válido, p. ej. www.ejemplo.eu",
+      "ON_DEMAND_RESCAN_NOT_ENTITLED": "Los análisis bajo demanda están disponibles en los planes Pro y Business",
+      "SCAN_ALREADY_IN_PROGRESS": "Ya hay un análisis en curso para este sitio",
       "GENERIC": "Algo ha salido mal. Inténtalo de nuevo."
     },
     "login": {
@@ -206,7 +211,40 @@
       "bannerCta": "Personalizar banner",
       "consentLogTitle": "Registro de consentimientos",
       "consentLogDescription": "Consulta y exporta las decisiones de consentimiento registradas para este sitio.",
-      "consentLogCta": "Ver registro"
+      "consentLogCta": "Ver registro",
+      "verify": {
+        "title": "Verifica tu dominio",
+        "description": "Demuestra que controlas este dominio para publicar tu política de cookies alojada y desbloquear los análisis completos de varias páginas.",
+        "cta": "Verificar ahora",
+        "checking": "Comprobando…",
+        "success": "Has demostrado el control de este dominio. Tu página de política alojada está activa y los análisis completos están desbloqueados.",
+        "verifiedVia": {
+          "snippet": "Verificado mediante tu widget de Complyr instalado.",
+          "dns_txt": "Verificado mediante un registro DNS TXT."
+        },
+        "methodSnippet": {
+          "title": "Opción 1 — instalar el widget",
+          "description": "Añade este fragmento antes de la etiqueta de cierre </head> en tu página de inicio y luego verifica. Es el mismo fragmento que ejecuta tu banner."
+        },
+        "methodDns": {
+          "title": "Opción 2 — añadir un registro DNS TXT",
+          "description": "Crea este registro TXT en tu proveedor de DNS y luego verifica. Los cambios de DNS pueden tardar un poco en propagarse.",
+          "nameLabel": "Nombre del registro",
+          "valueLabel": "Valor del registro"
+        },
+        "failure": {
+          "snippet_not_found": "Todavía no hemos encontrado tu fragmento de Complyr ni un registro DNS coincidente. Añade una de las opciones anteriores y vuelve a intentarlo.",
+          "unreachable": "No pudimos acceder a tu dominio. Comprueba que está en línea y es accesible públicamente, y vuelve a intentarlo."
+        },
+        "error": "La verificación no se pudo completar en este momento. Inténtalo de nuevo en un momento."
+      },
+      "rescan": {
+        "label": "Analizar de nuevo",
+        "locked": "Los análisis bajo demanda están disponibles en los planes Pro y Business.",
+        "starting": "Iniciando…",
+        "started": "Nuevo análisis iniciado. Los resultados se actualizarán automáticamente.",
+        "inProgress": "Ya hay un análisis en curso para este sitio."
+      }
     }
   },
   "dashboard": {
@@ -228,6 +266,14 @@
       "running": "En curso",
       "done": "Completado",
       "failed": "Fallido"
+    },
+    "errors": {
+      "internal_error": "El análisis falló de forma inesperada. Inténtalo de nuevo.",
+      "domain_not_verified": "El análisis se omitió porque el dominio no estaba verificado.",
+      "blocked_target": "Este dominio no se pudo analizar por motivos de seguridad.",
+      "dns_failure": "No se pudo encontrar este dominio. Comprueba que está bien escrito y es resoluble públicamente.",
+      "timeout": "El análisis tardó demasiado y se detuvo. Inténtalo de nuevo.",
+      "unreachable": "No pudimos acceder a este sitio. Comprueba que está en línea y es accesible públicamente."
     },
     "categories": {
       "necessary": "Necesarias",
@@ -312,6 +358,11 @@
       "embedTitle": "Insertar en tu sitio",
       "embedDescription": "Pega este HTML donde quieras que aparezca la política en tus propias páginas.",
       "copyHtml": "Copiar HTML"
+    },
+    "unverifiedNotice": {
+      "title": "Tu página alojada aún no está activa",
+      "description": "Este enlace muestra \"Política no encontrada\" hasta que verifiques que controlas {domain}. La vista previa de abajo ya muestra la página final.",
+      "cta": "Verificar tu dominio"
     },
     "preview": {
       "title": "Vista previa",

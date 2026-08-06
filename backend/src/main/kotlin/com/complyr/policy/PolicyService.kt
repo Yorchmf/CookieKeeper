@@ -5,6 +5,7 @@ import com.complyr.common.ComplyrProperties
 import com.complyr.policy.dto.PolicyCurrentResponse
 import com.complyr.policy.dto.PolicyGenerationRequest
 import com.complyr.policy.dto.PolicyGenerationResponse
+import com.complyr.policy.dto.PublicPolicyResponse
 import com.complyr.site.SiteEntity
 import com.complyr.site.SiteNotFoundException
 import com.complyr.site.SiteRepository
@@ -28,6 +29,7 @@ class PolicyService(
     private val siteRepository: SiteRepository,
     private val policyRepository: PolicyRepository,
     private val policySettingsRepository: PolicySettingsRepository,
+    private val policyReadService: PolicyReadService,
     private val bannerConfigService: BannerConfigService,
     private val contextBuilder: PolicyContextBuilder,
     private val properties: ComplyrProperties,
@@ -141,6 +143,26 @@ class PolicyService(
             languages = languages,
             publishedAt = latest.publishedAt,
         )
+    }
+
+    /**
+     * The owner's preview of their current published policy — the same payload the hosted page serves,
+     * but reached by site id behind the JWT instead of by public id.
+     *
+     * It exists because the hosted page is gated on domain verification (ADR-17) while the preview must
+     * not be: a customer has to see exactly what they are about to publish *before* they can prove they
+     * control the domain, and [PolicyCurrentResponse] carries no HTML. Ownership is the gate here, so a
+     * foreign site id is the usual [SiteNotFoundException] 404 and the verification state is irrelevant.
+     */
+    @Transactional(readOnly = true)
+    fun preview(
+        userId: UUID,
+        siteId: UUID,
+        language: String?,
+    ): PublicPolicyResponse {
+        requireOwnedSite(userId, siteId)
+        val settings = policySettingsRepository.findById(siteId).orElseThrow { PolicyNotFoundException() }
+        return policyReadService.readBySite(settings, language)
     }
 
     private fun requireOwnedSite(

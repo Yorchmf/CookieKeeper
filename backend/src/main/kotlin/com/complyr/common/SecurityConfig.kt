@@ -46,9 +46,11 @@ class SecurityConfig(
         http
             .cors { cors -> cors.configurationSource(publicWidgetCorsSource) }
             // CSRF tokens are deliberately not used: auth cookies are SameSite=Lax, every
-            // state-changing endpoint is JSON-only POST/PATCH/DELETE (cross-site form posts
-            // can't set Content-Type: application/json), and there are no state-changing GETs.
-            // Those are two independent layers against cross-site request forgery.
+            // state-changing endpoint is POST/PATCH/DELETE, and there are no state-changing GETs.
+            // SameSite=Lax is the load-bearing layer — it withholds the cookie from every cross-site
+            // POST, including the bodyless ones (`/sites/{id}/verify`, `/sites/{id}/scans`) that a
+            // cross-site form could otherwise shape. The JSON-only content type of the body-carrying
+            // endpoints (a cross-site form can't send `application/json`) is a second layer on top.
             .csrf { csrf -> csrf.disable() }
             .sessionManagement { session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests { auth ->

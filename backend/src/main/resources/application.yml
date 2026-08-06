@@ -111,6 +111,23 @@ complyr:
     # truncate over-long names before persistence so one scan can't bloat scan_cookies.
     max-cookies: ${SCAN_MAX_COOKIES:500}
     max-cookie-name-length: ${SCAN_MAX_COOKIE_NAME_LENGTH:256}
+  verification:
+    # Domain verification (ADR-17). This is the ONE app-initiated outbound request to a
+    # customer-controlled host from the `api` container, and it runs synchronously while a user waits
+    # on a Tomcat thread — so these are safety bounds, not tuning knobs. Every value is range-checked
+    # at startup (a fat-fingered `total-budget: 10m` is an outage, not a slow endpoint).
+    connect-timeout: ${VERIFICATION_CONNECT_TIMEOUT:5s}
+    # Per-hop read timeout; must be <= total-budget or it is unreachable.
+    request-timeout: ${VERIFICATION_REQUEST_TIMEOUT:5s}
+    # Whole-operation budget for the HTTP half, redirects included.
+    total-budget: ${VERIFICATION_TOTAL_BUDGET:10s}
+    # Redirect hops beyond the first request. Each hop is re-validated (SSRF guards run per hop).
+    max-redirects: ${VERIFICATION_MAX_REDIRECTS:3}
+    # Bytes of homepage HTML buffered before truncation. Truncation can only cause a false negative.
+    max-body-bytes: ${VERIFICATION_MAX_BODY_BYTES:524288}
+    # TXT-lookup timeout for the DNS fallback. Sits OUTSIDE total-budget, and the JDK applies it per
+    # nameserver per retry — a lookup can cost ~2 x this x (nameservers in resolv.conf).
+    dns-timeout: ${VERIFICATION_DNS_TIMEOUT:2s}
   billing:
     # Stripe credentials. No defaults here on purpose: dev/prd fail fast at startup if unset, and each
     # environment MUST supply its own — local/dev use Stripe TEST-mode keys+prices (sk_test_/test-mode
