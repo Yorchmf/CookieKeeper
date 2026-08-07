@@ -64,6 +64,10 @@ object ScanCookieMapper {
             name = cookie.name.take(maxNameLength),
             domain = cookie.domain,
             expiry = formatExpiry(cookie.expires),
+            // Playwright's flags are nullable Boxed Booleans; a null (flag absent) means the cookie does
+            // not carry that protection, so fail closed to false rather than treating absent as set.
+            secure = cookie.secure == true,
+            httpOnly = cookie.httpOnly == true,
         )
 
     /**

@@ -113,7 +113,13 @@ data class ScanDetailResponse(
                     ),
                 needsReview = unrecognized.map(ScanCookieResponse::from),
                 // Only a completed crawl has meaningful findings; an in-flight/failed scan carries no score.
-                compliance = if (scan.status == ScanStatus.DONE) ComplianceAnalyzer.analyze(cookies, now) else null,
+                // A null persisted count (historical/in-flight row) scores as 0 trackers.
+                compliance =
+                    if (scan.status == ScanStatus.DONE) {
+                        ComplianceAnalyzer.analyze(cookies, now, scan.marketingTrackerCount ?: 0)
+                    } else {
+                        null
+                    },
             )
         }
     }

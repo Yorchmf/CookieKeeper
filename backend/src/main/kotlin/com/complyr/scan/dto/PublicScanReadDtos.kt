@@ -1,8 +1,10 @@
 package com.complyr.scan.dto
 
+import com.complyr.scan.ComplianceAnalyzer
 import com.complyr.scan.PublicScanCookieEntity
 import com.complyr.scan.PublicScanEntity
 import com.complyr.scan.ScanStatus
+import java.time.Instant
 
 /**
  * The coarse, ungated "teaser" of an anonymous scan: enough to prove there is something worth seeing
@@ -22,33 +24,49 @@ data class PublicScanTeaserResponse(
         fun from(
             scan: PublicScanEntity,
             cookies: List<PublicScanCookieEntity>,
+            now: Instant,
         ): PublicScanTeaserResponse =
             PublicScanTeaserResponse(
                 status = scan.status.dbValue,
                 domain = scan.domain,
-                verdict = if (scan.status == ScanStatus.DONE) PublicScanVerdict.from(cookies) else null,
+                verdict =
+                    if (scan.status == ScanStatus.DONE) {
+                        PublicScanVerdict.from(cookies, now, scan.marketingTrackerCount ?: 0)
+                    } else {
+                        null
+                    },
             )
     }
 }
 
 /**
- * The free headline result: counts only. [cookiesByCategory] maps each canonical
- * [com.complyr.banner.ConsentCategory] key to how many classified cookies fell in it (the site
- * localizes the key), and [needsReviewCount] is how many the signature DB did not recognize. Counts,
- * never names — the detail is the gated upsell.
+ * The free headline result: counts plus the indicative [compliance] score/issue list.
+ * [cookiesByCategory] maps each canonical [com.complyr.banner.ConsentCategory] key to how many
+ * classified cookies fell in it (the site localizes the key), and [needsReviewCount] is how many the
+ * signature DB did not recognize. Counts, never names — the per-cookie detail stays the gated upsell.
+ *
+ * [compliance] is the same [ComplianceReport] the authenticated per-site scan surfaces: a 0–100 score
+ * and severity-ranked issue *codes* with counts, but no cookie names — so it motivates the fix
+ * ("here is what's wrong and how bad") without giving away the gated detail.
  */
 data class PublicScanVerdict(
     val totalCookies: Int,
     val cookiesByCategory: Map<String, Int>,
     val needsReviewCount: Int,
+    val compliance: ComplianceReport,
 ) {
     companion object {
-        fun from(cookies: List<PublicScanCookieEntity>): PublicScanVerdict {
+        fun from(
+            cookies: List<PublicScanCookieEntity>,
+            now: Instant,
+            marketingTrackerCount: Int,
+        ): PublicScanVerdict {
             val (classified, unrecognized) = cookies.partition { it.isKnown && it.category != null }
             return PublicScanVerdict(
                 totalCookies = cookies.size,
                 cookiesByCategory = classified.groupingBy { requireNotNull(it.category) }.eachCount(),
                 needsReviewCount = unrecognized.size,
+                compliance = ComplianceAnalyzer.analyze(cookies, now, marketingTrackerCount),
             )
         }
     }
@@ -92,6 +110,7 @@ data class PublicScanReportResponse(
         fun from(
             scan: PublicScanEntity,
             cookies: List<PublicScanCookieEntity>,
+            now: Instant,
         ): PublicScanReportResponse {
             // Same classifier invariant as ScanDetailResponse: isKnown ⇒ category set; anything else is
             // a needs-review item so a cookie can never silently vanish from the report.
@@ -99,7 +118,7 @@ data class PublicScanReportResponse(
             return PublicScanReportResponse(
                 status = scan.status.dbValue,
                 domain = scan.domain,
-                verdict = PublicScanVerdict.from(cookies),
+                verdict = PublicScanVerdict.from(cookies, now, scan.marketingTrackerCount ?: 0),
                 cookiesByCategory =
                     classified.groupBy(
                         { requireNotNull(it.category) },

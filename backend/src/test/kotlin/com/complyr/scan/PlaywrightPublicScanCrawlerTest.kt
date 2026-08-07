@@ -37,6 +37,7 @@ class PlaywrightPublicScanCrawlerTest {
 
     private val cookieWriter = mockk<PublicScanCookieWriter>(relaxed = true)
     private val classifier = mockk<CookieClassifier>()
+    private val trackerClassifier = mockk<TrackerClassifier>()
 
     private val publicScanId: UUID = UUID.randomUUID()
     private val claim =
@@ -68,16 +69,21 @@ class PlaywrightPublicScanCrawlerTest {
     }
 
     private fun crawlerWith(engine: FakeScanEngine): PublicScanCrawler =
-        PlaywrightPublicScanCrawler(cookieWriter, classifier, engine, properties)
+        PlaywrightPublicScanCrawler(cookieWriter, classifier, trackerClassifier, engine, properties)
 
     @Test
-    fun `crawls the claim's domain in QUICK mode and propagates the page count`() {
+    fun `crawls the claim's domain in QUICK mode and propagates the page and tracker counts`() {
         every { classifier.classify(any()) } answers { firstArg() }
-        val engine = FakeScanEngine(EngineCrawlResult(pagesCrawled = 1, cookies = emptyList()))
+        every { trackerClassifier.countMarketingTrackers(setOf("ad.doubleclick.net")) } returns 2
+        val engine =
+            FakeScanEngine(
+                EngineCrawlResult(pagesCrawled = 1, cookies = emptyList(), thirdPartyHosts = setOf("ad.doubleclick.net")),
+            )
 
         val result = crawlerWith(engine).crawl(claim)
 
         assertEquals(1, result.pagesCrawled, "the engine's page count flows through to the scan result")
+        assertEquals(2, result.marketingTrackerCount, "the tracker classifier's count of the observed hosts flows through")
         assertEquals("acme.example", engine.lastDomain, "the crawler uses the claim's visitor-supplied domain")
         assertEquals(CrawlMode.QUICK, engine.lastMode, "the anonymous funnel is a single-page quick crawl")
         assertEquals(1, engine.callCount)
@@ -92,8 +98,9 @@ class PlaywrightPublicScanCrawlerTest {
                 it.copy(category = "statistics", provider = "Google Analytics", isKnown = true)
             }
         }
+        every { trackerClassifier.countMarketingTrackers(any()) } returns 0
         val cookies = listOf(Cookie("_ga", "GA1.2").setDomain(".acme.example"))
-        val engine = FakeScanEngine(EngineCrawlResult(pagesCrawled = 1, cookies = cookies))
+        val engine = FakeScanEngine(EngineCrawlResult(pagesCrawled = 1, cookies = cookies, thirdPartyHosts = emptySet()))
         val persisted = slot<List<PublicScanCookieEntity>>()
 
         crawlerWith(engine).crawl(claim)

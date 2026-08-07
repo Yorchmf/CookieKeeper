@@ -330,6 +330,8 @@
         "pre_consent_tracking": "{count, plural, one {# non-essential cookie was set before consent} other {# non-essential cookies were set before consent}}",
         "marketing_cookies": "{count, plural, one {# marketing cookie was set before consent} other {# marketing cookies were set before consent}}",
         "long_lived_cookies": "{count, plural, one {# non-essential cookie lasts longer than a year} other {# non-essential cookies last longer than a year}}",
+        "insecure_cookies": "{count, plural, one {# non-essential cookie is set without the Secure and HttpOnly flags} other {# non-essential cookies are set without the Secure and HttpOnly flags}}",
+        "third_party_trackers": "{count, plural, one {# third-party marketing tracker loads before consent} other {# third-party marketing trackers load before consent}}",
         "unclassified_cookies": "{count, plural, one {# cookie could not be classified and needs review} other {# cookies could not be classified and need review}}"
       }
     }

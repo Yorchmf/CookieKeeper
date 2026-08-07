@@ -1,8 +1,13 @@
 package com.complyr.scan
 
-/** Outcome of crawling one site: what the queue needs to record a successful scan. */
+/**
+ * Outcome of crawling one site: what the queue needs to record a successful scan. [marketingTrackerCount]
+ * is the number of distinct marketing third-party trackers the crawl observed (count only — the raw
+ * hosts are never persisted), which the compliance report turns into a `third_party_trackers` finding.
+ */
 data class ScanCrawlResult(
     val pagesCrawled: Int,
+    val marketingTrackerCount: Int,
 )
 
 /**

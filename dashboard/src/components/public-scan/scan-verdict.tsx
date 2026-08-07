@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { ComplianceReport } from "@/components/scans/compliance-report";
 import { orderedCategories } from "@/components/scans/cookie-table";
 import { Badge } from "@/components/ui/badge";
 import type { PublicScanVerdict } from "@/lib/api/public-scan";
@@ -18,9 +19,10 @@ const CATEGORY_DOT: Record<string, string> = {
 };
 
 /**
- * The free headline of a completed scan: one dominant numeral (total cookies) carrying the hierarchy,
- * a colour-coded per-category breakdown, and a needs-review flag. Counts only — the cookie-level
- * detail is the email-gated upsell rendered separately by the report.
+ * The free headline of a completed scan: the indicative compliance score and what pulled it down (the
+ * motivating signal — "here's what's wrong and how bad"), then a dominant total-cookie numeral, a
+ * colour-coded per-category breakdown, and a needs-review flag. Counts and issue codes only — the
+ * cookie-level detail is the email-gated upsell rendered separately by the report.
  */
 export function ScanVerdict({
   verdict,
@@ -35,6 +37,8 @@ export function ScanVerdict({
 
   return (
     <div className="flex flex-col gap-6">
+      <ComplianceReport report={verdict.compliance} />
+
       <div className="flex items-end gap-4">
         <span className="text-6xl leading-none font-semibold tracking-tight tabular-nums sm:text-7xl">
           {verdict.totalCookies}

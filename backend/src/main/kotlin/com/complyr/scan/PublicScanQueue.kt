@@ -105,6 +105,9 @@ class PublicScanQueue(
                     status = ScanStatus.DONE,
                     publicToken = OpaqueTokens.generate(),
                     ipHash = ipHash,
+                    // Carry the cached crawl's tracker count onto the per-visitor copy so the reused
+                    // verdict scores identically to the original crawl (it copies the cookies too).
+                    marketingTrackerCount = cached.marketingTrackerCount,
                     createdAt = now,
                     updatedAt = now,
                     expiresAt = now.plus(RESULT_TTL),
@@ -164,15 +167,20 @@ class PublicScanQueue(
         )
     }
 
-    /** Terminal success: mark the job done and the scan done. */
+    /** Terminal success: mark the job done and the scan done with its marketing-tracker count. */
     @Transactional
-    fun markSucceeded(claim: ClaimedPublicScan) {
+    fun markSucceeded(
+        claim: ClaimedPublicScan,
+        marketingTrackerCount: Int,
+    ) {
         val job = jobRepository.findById(claim.jobId).orElse(null) ?: return
         if (!ownsClaim(job, claim)) return
         val now = clock.instant()
         jobRepository.save(job.copy(status = JobStatus.DONE, lockedUntil = null, lastError = null, updatedAt = now))
         publicScanRepository.findById(claim.publicScanId).ifPresent {
-            publicScanRepository.save(it.copy(status = ScanStatus.DONE, error = null, updatedAt = now))
+            publicScanRepository.save(
+                it.copy(status = ScanStatus.DONE, marketingTrackerCount = marketingTrackerCount, error = null, updatedAt = now),
+            )
         }
     }
 

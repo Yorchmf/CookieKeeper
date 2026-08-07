@@ -17,9 +17,13 @@ import java.time.Instant
  * frames it that way. Issues carry stable machine [ComplianceIssue.code]s and a [ComplianceIssue.count];
  * all user-facing wording is localized in the dashboard (i18n from day one — no English strings here).
  *
- * Deliberately **not** emitted, to avoid a fabricated score, because the current scan schema persists no
- * backing data for them: missing-consent-banner, insecure cookie flags (Secure/HttpOnly), and
- * third-party request trackers. Adding those requires the scan engine to persist the signals first.
+ * Third-party marketing trackers are scored from [marketingTrackerCount] — the crawl observes off-site
+ * request hosts and the caller persists the matched-marketing count on the scan row (count only; the raw
+ * hosts are never stored). Missing-consent-banner is still deliberately **not** emitted, to avoid a
+ * fabricated score: the scan schema persists no backing signal for it yet.
+ *
+ * Scores any [ScanCookieView] — the same logic grades both the authenticated per-site scan and the
+ * anonymous free-scan funnel (whose verdict now carries this report too).
  *
  * Pure and stateless: the caller supplies `now` (from the injected `Clock`) so the retention check is
  * deterministic under test.
@@ -45,8 +49,9 @@ object ComplianceAnalyzer {
         )
 
     fun analyze(
-        cookies: List<ScanCookieEntity>,
+        cookies: List<ScanCookieView>,
         now: Instant,
+        marketingTrackerCount: Int = 0,
     ): ComplianceReport {
         val (classified, unclassified) = cookies.partition { it.isKnown && it.category != null }
         val nonNecessary = classified.filter { it.category != ConsentCategory.NECESSARY.key }
@@ -54,8 +59,12 @@ object ComplianceAnalyzer {
         val marketing = nonNecessary.filter { it.category == ConsentCategory.MARKETING.key }
         val otherPreConsent = nonNecessary.filter { it.category != ConsentCategory.MARKETING.key }
         val longLived = nonNecessary.filter { isLongLived(it.expiry, now) }
+        // A non-essential cookie carrying neither Secure nor HttpOnly is sent over plaintext and readable
+        // from page script. Scoped to classified non-necessary cookies (unclassified ones are already
+        // their own finding, and necessary cookies aren't the concern here) — mirrors the reference scan.
+        val insecure = nonNecessary.filter { !it.secure && !it.httpOnly }
 
-        // Ordered most-severe first: two criticals, then the warning, then the info.
+        // Ordered most-severe first: the two criticals, then the warnings, then the info.
         val issues =
             buildList {
                 if (otherPreConsent.isNotEmpty()) {
@@ -66,6 +75,12 @@ object ComplianceAnalyzer {
                 }
                 if (longLived.isNotEmpty()) {
                     add(ComplianceIssue("long_lived_cookies", "warning", longLived.size))
+                }
+                if (insecure.isNotEmpty()) {
+                    add(ComplianceIssue("insecure_cookies", "warning", insecure.size))
+                }
+                if (marketingTrackerCount > 0) {
+                    add(ComplianceIssue("third_party_trackers", "warning", marketingTrackerCount))
                 }
                 if (unclassified.isNotEmpty()) {
                     add(ComplianceIssue("unclassified_cookies", "info", unclassified.size))

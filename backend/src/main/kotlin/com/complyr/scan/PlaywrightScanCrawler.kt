@@ -31,6 +31,7 @@ class PlaywrightScanCrawler(
     private val siteRepository: SiteRepository,
     private val cookieWriter: ScanCookieWriter,
     private val classifier: CookieClassifier,
+    private val trackerClassifier: TrackerClassifier,
     private val engine: ScanEngine,
     private val properties: ComplyrProperties,
 ) : ScanCrawler {
@@ -50,9 +51,16 @@ class PlaywrightScanCrawler(
 
         val outcome = engine.crawl(site.domain, mode)
         val recorded = persistCookies(claim.scanId, outcome.cookies)
-        // Log the count actually persisted after de-dup/cap, not the raw observed count.
-        log.info("Scan {} crawled {} page(s), recorded {} cookie(s)", claim.scanId, outcome.pagesCrawled, recorded)
-        return ScanCrawlResult(pagesCrawled = outcome.pagesCrawled)
+        val marketingTrackers = trackerClassifier.countMarketingTrackers(outcome.thirdPartyHosts)
+        // Log counts only — never attacker-controlled cookie names or tracker hosts (§4 no-PII/injection).
+        log.info(
+            "Scan {} crawled {} page(s), recorded {} cookie(s), {} marketing tracker(s)",
+            claim.scanId,
+            outcome.pagesCrawled,
+            recorded,
+            marketingTrackers,
+        )
+        return ScanCrawlResult(pagesCrawled = outcome.pagesCrawled, marketingTrackerCount = marketingTrackers)
     }
 
     /** Persists the classified cookie rows and returns how many were recorded (post de-dup/cap). */

@@ -123,6 +123,10 @@ val coverageClassPatterns =
         "com/complyr/scan/CookieClassifier*",
         // Compliance report: pure scoring/issue logic over a completed scan's classified cookies.
         "com/complyr/scan/ComplianceAnalyzer*",
+        // Third-party marketing tracker detection: pure host matcher + the classifier that counts distinct
+        // marketing signatures from the crawl's observed off-site hosts (drives the third_party_trackers finding).
+        "com/complyr/scan/TrackerSignatureMatcher*",
+        "com/complyr/scan/TrackerClassifier*",
         // Domain verification (ADR-17). The fetcher is the only app-initiated outbound request to a
         // customer-controlled host, and the matcher is what an attacker would try to forge — both are
         // security-critical enough that a coverage regression should fail the build.

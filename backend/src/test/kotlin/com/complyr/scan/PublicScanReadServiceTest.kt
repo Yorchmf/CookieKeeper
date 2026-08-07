@@ -14,6 +14,7 @@ import java.time.ZoneOffset
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * The public, token-scoped read side: the coarse teaser, the email-gated report unlock, and — the
@@ -77,6 +78,27 @@ class PublicScanReadServiceTest {
         assertEquals(4, verdict.totalCookies)
         assertEquals(mapOf("statistics" to 2, "marketing" to 1), verdict.cookiesByCategory)
         assertEquals(1, verdict.needsReviewCount)
+    }
+
+    @Test
+    fun `the teaser verdict carries the indicative compliance report`() {
+        // The free verdict now surfaces the same ComplianceAnalyzer output that grades the authenticated
+        // scan — a score plus severity-ranked issue codes (no cookie names) — so the funnel can show the
+        // visitor what's wrong and how bad, not just a raw count.
+        val done = scan("tok_score", ScanStatus.DONE)
+        every { repository.findByPublicToken("tok_score") } returns done
+        every { cookieRepository.findByPublicScanId(done.id) } returns
+            listOf(
+                cookie(done.id, "_ga", "statistics", isKnown = true),
+                cookie(done.id, "_fbp", "marketing", isKnown = true),
+            )
+
+        val verdict = requireNotNull(service.teaser("tok_score").verdict)
+
+        val compliance = verdict.compliance
+        assertTrue(compliance.score < 100, "pre-consent findings must pull the score below a clean 100")
+        assertTrue(compliance.issues.any { it.code == "pre_consent_tracking" })
+        assertTrue(compliance.issues.any { it.code == "marketing_cookies" })
     }
 
     @Test

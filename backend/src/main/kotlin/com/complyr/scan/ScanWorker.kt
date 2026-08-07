@@ -54,7 +54,7 @@ class ScanWorker(
     private fun runScan(claim: ClaimedScan) {
         try {
             val result = crawler.crawl(claim)
-            scanQueue.markSucceeded(claim, result.pagesCrawled)
+            scanQueue.markSucceeded(claim, result.pagesCrawled, result.marketingTrackerCount)
             log.info("Scan {} done: {} page(s)", claim.scanId, result.pagesCrawled)
         } catch (ex: ScanTargetException) {
             // The crawler classified this failure into a customer-safe reason code (unverified domain,
@@ -83,7 +83,7 @@ class ScanWorker(
     private fun runPublicScan(claim: ClaimedPublicScan) {
         try {
             val result = publicCrawler.crawl(claim)
-            publicScanQueue.markSucceeded(claim)
+            publicScanQueue.markSucceeded(claim, result.marketingTrackerCount)
             log.info("Public scan {} done: {} page(s)", claim.publicScanId, result.pagesCrawled)
         } catch (ex: ScanTargetException) {
             // Same discipline as the paid path: only the customer-safe reason code reaches the scan

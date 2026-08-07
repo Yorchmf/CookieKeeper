@@ -29,14 +29,19 @@ data class PublicScanCookieEntity(
     val domain: String? = null,
     // Kept as text (session flag or epoch expiry, not a DB timestamp) — mirrors ScanCookieEntity.
     @Column
-    val expiry: String? = null,
+    override val expiry: String? = null,
     @Column
-    val category: String? = null,
+    override val category: String? = null,
     @Column
     val provider: String? = null,
     @Column(name = "is_known", nullable = false)
-    val isKnown: Boolean = false,
-)
+    override val isKnown: Boolean = false,
+    // Transport flags — mirrors ScanCookieEntity (V17); scored identically by [ComplianceAnalyzer].
+    @Column(nullable = false)
+    override val secure: Boolean = false,
+    @Column(name = "http_only", nullable = false)
+    override val httpOnly: Boolean = false,
+) : ScanCookieView
 
 interface PublicScanCookieRepository : JpaRepository<PublicScanCookieEntity, UUID> {
     fun findByPublicScanId(publicScanId: UUID): List<PublicScanCookieEntity>

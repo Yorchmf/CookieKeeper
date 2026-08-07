@@ -23,6 +23,7 @@ import java.util.UUID
 class PlaywrightPublicScanCrawler(
     private val cookieWriter: PublicScanCookieWriter,
     private val classifier: CookieClassifier,
+    private val trackerClassifier: TrackerClassifier,
     private val engine: ScanEngine,
     private val properties: ComplyrProperties,
 ) : PublicScanCrawler {
@@ -31,14 +32,16 @@ class PlaywrightPublicScanCrawler(
     override fun crawl(claim: ClaimedPublicScan): ScanCrawlResult {
         val outcome = engine.crawl(claim.domain, CrawlMode.QUICK)
         val recorded = persistCookies(claim.publicScanId, outcome.cookies)
-        // Count only — never the crawled domain's cookie names (§4 no attacker-controlled data in logs).
+        val marketingTrackers = trackerClassifier.countMarketingTrackers(outcome.thirdPartyHosts)
+        // Count only — never the crawled domain's cookie names or tracker hosts (§4 no attacker data in logs).
         log.info(
-            "Public scan {} crawled {} page(s), recorded {} cookie(s)",
+            "Public scan {} crawled {} page(s), recorded {} cookie(s), {} marketing tracker(s)",
             claim.publicScanId,
             outcome.pagesCrawled,
             recorded,
+            marketingTrackers,
         )
-        return ScanCrawlResult(pagesCrawled = outcome.pagesCrawled)
+        return ScanCrawlResult(pagesCrawled = outcome.pagesCrawled, marketingTrackerCount = marketingTrackers)
     }
 
     /**
@@ -77,5 +80,7 @@ class PlaywrightPublicScanCrawler(
             category = category,
             provider = provider,
             isKnown = isKnown,
+            secure = secure,
+            httpOnly = httpOnly,
         )
 }

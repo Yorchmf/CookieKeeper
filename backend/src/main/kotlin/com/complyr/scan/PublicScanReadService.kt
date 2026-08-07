@@ -41,7 +41,7 @@ class PublicScanReadService(
     @Transactional(readOnly = true)
     fun teaser(token: String): PublicScanTeaserResponse {
         val scan = liveScan(token)
-        return PublicScanTeaserResponse.from(scan, cookiesFor(scan))
+        return PublicScanTeaserResponse.from(scan, cookiesFor(scan), clock.instant())
     }
 
     /**
@@ -56,7 +56,7 @@ class PublicScanReadService(
     ): PublicScanReportResponse {
         val scan = liveScan(token)
         val updated = publicScanRepository.save(scan.copy(email = request.email, updatedAt = clock.instant()))
-        return PublicScanReportResponse.from(updated, cookiesFor(updated))
+        return PublicScanReportResponse.from(updated, cookiesFor(updated), clock.instant())
     }
 
     /** Resolve a token to a live scan, or fail generically if it is unknown or past its retention TTL. */

@@ -8,19 +8,22 @@
  * `apiFetch` surfaces as an {@link import("@/lib/api").ApiError}.
  */
 import { apiFetch } from "@/lib/api";
-import type { ScanCookie, ScanStatus } from "@/lib/api/scans";
+import type { ComplianceReport, ScanCookie, ScanStatus } from "@/lib/api/scans";
 
 /** A public-scan cookie has the same shape as an owned-scan cookie (PublicScanCookieResponse). */
 export type PublicScanCookie = ScanCookie;
 
 /**
- * The free, counts-only headline once a scan is done (PublicScanVerdict). `cookiesByCategory` is
- * keyed by the backend's canonical consent-category token — the UI localizes the key.
+ * The free headline once a scan is done (PublicScanVerdict). `cookiesByCategory` is keyed by the
+ * backend's canonical consent-category token — the UI localizes the key. `compliance` is the same
+ * indicative score/issue report the authenticated scan surfaces (codes + counts, never cookie
+ * names) — it motivates the fix without giving away the email-gated per-cookie detail.
  */
 export interface PublicScanVerdict {
   totalCookies: number;
   cookiesByCategory: Record<string, number>;
   needsReviewCount: number;
+  compliance: ComplianceReport;
 }
 
 /** Ungated teaser: the poll `status`, plus the verdict once the scan reaches `done` (null before). */

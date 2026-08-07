@@ -30,14 +30,20 @@ data class ScanCookieEntity(
     // Kept as text: the source value is a session flag or an epoch expiry, not a DB timestamp — we
     // store it verbatim for display and defer any parsing to the classification/UI layer.
     @Column
-    val expiry: String? = null,
+    override val expiry: String? = null,
     @Column
-    val category: String? = null,
+    override val category: String? = null,
     @Column
     val provider: String? = null,
     @Column(name = "is_known", nullable = false)
-    val isKnown: Boolean = false,
-)
+    override val isKnown: Boolean = false,
+    // Transport flags observed by the crawl (V17). A non-essential cookie missing both is served in the
+    // clear and script-readable — an insecure-flag finding in [ComplianceAnalyzer].
+    @Column(nullable = false)
+    override val secure: Boolean = false,
+    @Column(name = "http_only", nullable = false)
+    override val httpOnly: Boolean = false,
+) : ScanCookieView
 
 interface ScanCookieRepository : JpaRepository<ScanCookieEntity, UUID> {
     fun findByScanId(scanId: UUID): List<ScanCookieEntity>

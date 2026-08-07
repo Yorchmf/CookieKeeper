@@ -18,6 +18,7 @@ import org.springframework.stereotype.Component
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * The production crawl engine (ARCHITECTURE ADR-5): a headless Chromium via Playwright-for-Java, run
@@ -71,12 +72,21 @@ class PlaywrightScanEngine(
                     // Bounds page.evaluate()/context.cookies() too — without it a hostile page could hang
                     // the worker inside DOM extraction, past the between-pages job budget (§4.4 hard cap).
                     context.setDefaultTimeout(pageTimeoutMillis)
-                    context.route("**/*") { route -> guardRequest(route, domain) }
+                    // Distinct off-site request hosts observed during the crawl — transient telemetry the
+                    // caller turns into a marketing-tracker count. Concurrent because Playwright fires route
+                    // callbacks off its own dispatcher; bounded (see [guardRequest]) so a hostile page that
+                    // fans out to thousands of hosts can't grow this without limit.
+                    val thirdPartyHosts = ConcurrentHashMap.newKeySet<String>()
+                    context.route("**/*") { route -> guardRequest(route, domain, thirdPartyHosts) }
                     // context.route covers HTTP(S) only; a WebSocket handshake needs its own guard, or
                     // ws://<internal-ip>/ opened from page JS would reach a private range unchecked.
                     context.routeWebSocket("**/*") { wsRoute -> guardWebSocket(wsRoute) }
                     val pages = crawlPages(context, domain, maxPages)
-                    return EngineCrawlResult(pagesCrawled = pages, cookies = context.cookies())
+                    return EngineCrawlResult(
+                        pagesCrawled = pages,
+                        cookies = context.cookies(),
+                        thirdPartyHosts = thirdPartyHosts.toSet(),
+                    )
                 }
             }
         }
@@ -196,11 +206,15 @@ class PlaywrightScanEngine(
 
     /**
      * The per-request SSRF guard installed on the browser context. Runs for every network request the
-     * page makes; see the class docs for the navigation vs. sub-resource policy.
+     * page makes; see the class docs for the navigation vs. sub-resource policy. As a side effect it
+     * records the distinct off-site hosts a request was *allowed* to reach into [thirdPartyHosts] — this
+     * is only crawl telemetry (the caller derives a tracker count) and never changes the allow/deny
+     * decision, which stays governed solely by the SSRF checks below.
      */
     private fun guardRequest(
         route: Route,
         domain: String,
+        thirdPartyHosts: MutableSet<String>,
     ) {
         val request = route.request()
         val url = request.url()
@@ -222,7 +236,28 @@ class PlaywrightScanEngine(
             } else {
                 !validator.isDisallowedIpLiteral(host)
             }
-        if (allowed) route.resume() else route.abort()
+        if (allowed) {
+            recordThirdPartyHost(host, domain, thirdPartyHosts)
+            route.resume()
+        } else {
+            route.abort()
+        }
+    }
+
+    /**
+     * Record an *allowed* request's host as third-party telemetry when it is off the crawl's own host
+     * family, capping the set so a page that fans out to thousands of distinct hosts cannot grow it
+     * unbounded. First-party (same-host-family) hosts are ignored — only off-site trackers matter here.
+     */
+    private fun recordThirdPartyHost(
+        host: String,
+        domain: String,
+        thirdPartyHosts: MutableSet<String>,
+    ) {
+        if (ScanCrawlPolicy.sameHostFamily(host, domain)) return
+        if (host.length > MAX_HOST_LENGTH) return
+        if (thirdPartyHosts.size >= MAX_THIRD_PARTY_HOSTS) return
+        thirdPartyHosts.add(host)
     }
 
     /**
@@ -240,4 +275,16 @@ class PlaywrightScanEngine(
     }
 
     private fun withinJobBudget(start: Instant): Boolean = Duration.between(start, clock.instant()) < properties.scan.jobTimeout
+
+    private companion object {
+        // Bounds the transient third-party host set: a legitimate page touches a handful of trackers,
+        // so this only trips for a pathological/hostile fan-out. A soft cap — a benign race on the
+        // size check can overshoot by a few, which is harmless for telemetry.
+        const val MAX_THIRD_PARTY_HOSTS = 500
+
+        // Per-host length cap (defense-in-depth): a real hostname maxes at 253 chars, so anything longer
+        // is malformed/hostile and cannot be a real tracker — drop it before it enters the set rather than
+        // trust the browser to bound the string. Keeps the attacker-influenced host confined and small.
+        const val MAX_HOST_LENGTH = 253
+    }
 }

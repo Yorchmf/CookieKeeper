@@ -43,6 +43,10 @@ data class PublicScanEntity(
     // Rotating-salt hash of the requester IP for abuse analysis (never the raw IP — CLAUDE.md #4).
     @Column(name = "ip_hash")
     val ipHash: String? = null,
+    // Distinct marketing third-party trackers observed by the crawl (count only — raw hosts never
+    // stored). Null until the scan completes; read as 0 by [ComplianceAnalyzer] on in-flight rows.
+    @Column(name = "marketing_tracker_count")
+    val marketingTrackerCount: Int? = null,
     @Column(name = "error")
     val error: String? = null,
     @Column(name = "created_at", nullable = false, updatable = false)

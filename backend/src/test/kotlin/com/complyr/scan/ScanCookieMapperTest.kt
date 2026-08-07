@@ -141,4 +141,26 @@ class ScanCookieMapperTest {
 
         assertEquals("short", rows.first().name)
     }
+
+    @Test
+    fun `carries the Secure and HttpOnly flags when Playwright reports them set`() {
+        val cookie = Cookie("_ga", "v").setDomain("example.com").setSecure(true).setHttpOnly(true)
+
+        val row = ScanCookieMapper.toEntities(scanId, listOf(cookie), caps).rows.first()
+
+        assertTrue(row.secure)
+        assertTrue(row.httpOnly)
+    }
+
+    @Test
+    fun `defaults absent transport flags to false, failing closed`() {
+        // Playwright's flags are nullable Boxed Booleans; an absent flag means the cookie does not carry
+        // that protection, so it must map to false (never treated as if it were set).
+        val cookie = Cookie("_ga", "v").setDomain("example.com") // secure/httpOnly left unset (null)
+
+        val row = ScanCookieMapper.toEntities(scanId, listOf(cookie), caps).rows.first()
+
+        assertFalse(row.secure)
+        assertFalse(row.httpOnly)
+    }
 }

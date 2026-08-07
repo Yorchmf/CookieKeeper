@@ -12,17 +12,24 @@ enum class CrawlMode {
 }
 
 /**
- * Raw output of crawling a bare domain: how many pages opened and the cookies observed.
+ * Raw output of crawling a bare domain: how many pages opened, the cookies observed, and the distinct
+ * third-party request hosts seen ([thirdPartyHosts]).
  *
  * [cookies] is Playwright's own [Cookie] type — a deliberate coupling, not a leak to paper over: the
  * sole production engine is Playwright and [ScanCookieMapper] already consumes [Cookie] directly, so
  * an intermediate DTO would buy nothing today (YAGNI) while forcing every fake/alternative engine to
  * fabricate Playwright objects. If a genuinely non-Playwright engine ever lands, introduce an
  * `ObservedCookie` value type here and map at each engine edge.
+ *
+ * [thirdPartyHosts] are the off-site hosts the page issued requests to (host lower-cased, never a
+ * same-host-family or private-range host, bounded to a cap so a hostile page can't unbound the set).
+ * They are transient crawl telemetry only — the caller ([PlaywrightScanCrawler] via [TrackerClassifier])
+ * derives a marketing-tracker *count* from them and nothing else; the raw hosts are never persisted.
  */
 data class EngineCrawlResult(
     val pagesCrawled: Int,
     val cookies: List<Cookie>,
+    val thirdPartyHosts: Set<String>,
 )
 
 /**

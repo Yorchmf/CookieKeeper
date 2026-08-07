@@ -88,6 +88,10 @@ data class ScanEntity(
     val finishedAt: Instant? = null,
     @Column(name = "pages_crawled")
     val pagesCrawled: Int? = null,
+    // Distinct marketing third-party trackers observed by the crawl (count only — raw hosts never
+    // stored). Null until a scan completes; read as 0 by [ComplianceAnalyzer] on historical/in-flight rows.
+    @Column(name = "marketing_tracker_count")
+    val marketingTrackerCount: Int? = null,
     @Column(name = "error")
     val error: String? = null,
     @Column(name = "created_at", nullable = false, updatable = false)

@@ -84,9 +84,11 @@ class PublicScanQueueTest {
         assertEquals(ScanStatus.RUNNING, publicScanRepository.findById(scanId).orElseThrow().status)
         assertEquals(JobStatus.RUNNING, onlyPublicJob().status)
 
-        publicScanQueue.markSucceeded(claim)
+        publicScanQueue.markSucceeded(claim, marketingTrackerCount = 2)
 
-        assertEquals(ScanStatus.DONE, publicScanRepository.findById(scanId).orElseThrow().status)
+        val done = publicScanRepository.findById(scanId).orElseThrow()
+        assertEquals(ScanStatus.DONE, done.status)
+        assertEquals(2, done.marketingTrackerCount, "the observed marketing-tracker count lands on the scan row")
         assertEquals(JobStatus.DONE, onlyPublicJob().status)
     }
 
@@ -128,14 +130,14 @@ class PublicScanQueueTest {
         assertEquals(2, live.attempt, "the redelivery is a fresh attempt that now owns the job")
 
         // The stale worker finishes late: its completion must be ignored, not clobber the live claim.
-        publicScanQueue.markSucceeded(stale)
+        publicScanQueue.markSucceeded(stale, marketingTrackerCount = 9)
         assertEquals(
             ScanStatus.RUNNING,
             publicScanRepository.findById(scanId).orElseThrow().status,
             "a stale success must not mark the scan done",
         )
 
-        publicScanQueue.markSucceeded(live)
+        publicScanQueue.markSucceeded(live, marketingTrackerCount = 1)
         assertEquals(ScanStatus.DONE, publicScanRepository.findById(scanId).orElseThrow().status)
     }
 
@@ -148,6 +150,7 @@ class PublicScanQueueTest {
                     domain = "acme.example",
                     status = ScanStatus.DONE,
                     publicToken = "tok_cached",
+                    marketingTrackerCount = 3,
                     createdAt = now,
                     updatedAt = now,
                     expiresAt = now.plus(Duration.ofDays(7)),
@@ -165,6 +168,7 @@ class PublicScanQueueTest {
         assertEquals(ScanStatus.DONE, copy.status)
         assertEquals("acme.example", copy.domain)
         assertEquals("hash_2", copy.ipHash)
+        assertEquals(3, copy.marketingTrackerCount, "the cached crawl's tracker count carries onto the reused row")
         assertNull(copy.email, "a fresh, empty lead slot — never the cached row's email")
 
         // The cached findings are copied onto the new row with fresh keys; the source row keeps its own.

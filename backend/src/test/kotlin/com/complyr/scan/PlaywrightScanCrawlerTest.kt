@@ -41,6 +41,7 @@ class PlaywrightScanCrawlerTest {
     private val siteRepository = mockk<SiteRepository>()
     private val cookieWriter = mockk<ScanCookieWriter>(relaxed = true)
     private val classifier = mockk<CookieClassifier>()
+    private val trackerClassifier = mockk<TrackerClassifier>()
 
     private val siteId: UUID = UUID.randomUUID()
     private val claim =
@@ -85,12 +86,12 @@ class PlaywrightScanCrawlerTest {
         )
 
     private fun crawlerWith(engine: FakeScanEngine): PlaywrightScanCrawler =
-        PlaywrightScanCrawler(siteRepository, cookieWriter, classifier, engine, properties)
+        PlaywrightScanCrawler(siteRepository, cookieWriter, classifier, trackerClassifier, engine, properties)
 
     @Test
     fun `unknown site fails as an internal error and never crawls`() {
         every { siteRepository.findById(siteId) } returns Optional.empty()
-        val engine = FakeScanEngine(EngineCrawlResult(pagesCrawled = 0, cookies = emptyList()))
+        val engine = FakeScanEngine(EngineCrawlResult(pagesCrawled = 0, cookies = emptyList(), thirdPartyHosts = emptySet()))
 
         val ex = assertThrows<ScanTargetException> { crawlerWith(engine).crawl(claim) }
 
@@ -101,7 +102,7 @@ class PlaywrightScanCrawlerTest {
     @Test
     fun `archived site fails as an internal error and never crawls`() {
         every { siteRepository.findById(siteId) } returns Optional.of(site(status = SiteStatus.ARCHIVED))
-        val engine = FakeScanEngine(EngineCrawlResult(pagesCrawled = 0, cookies = emptyList()))
+        val engine = FakeScanEngine(EngineCrawlResult(pagesCrawled = 0, cookies = emptyList(), thirdPartyHosts = emptySet()))
 
         val ex = assertThrows<ScanTargetException> { crawlerWith(engine).crawl(claim) }
 
@@ -113,7 +114,8 @@ class PlaywrightScanCrawlerTest {
     fun `unverified site still crawls, in QUICK mode (ADR-17 - verification buys depth, not permission)`() {
         every { siteRepository.findById(siteId) } returns Optional.of(site(verifiedAt = null))
         every { classifier.classify(any()) } answers { firstArg() }
-        val engine = FakeScanEngine(EngineCrawlResult(pagesCrawled = 1, cookies = emptyList()))
+        every { trackerClassifier.countMarketingTrackers(any()) } returns 0
+        val engine = FakeScanEngine(EngineCrawlResult(pagesCrawled = 1, cookies = emptyList(), thirdPartyHosts = emptySet()))
 
         val result = crawlerWith(engine).crawl(claim)
 
@@ -124,19 +126,25 @@ class PlaywrightScanCrawlerTest {
     }
 
     @Test
-    fun `verified site crawls its own domain in FULL mode, classifies, and propagates the page count`() {
+    fun `verified site crawls its own domain in FULL mode, classifies, and propagates the counts`() {
         every { siteRepository.findById(siteId) } returns Optional.of(site())
         // Classifier is identity here — we assert wiring, not signature matching (covered elsewhere).
         every { classifier.classify(any()) } answers { firstArg() }
+        every { trackerClassifier.countMarketingTrackers(setOf("ad.doubleclick.net")) } returns 5
         val cookies = listOf(Cookie("_ga", "GA1.2").setDomain(".example.com"))
-        val engine = FakeScanEngine(EngineCrawlResult(pagesCrawled = 3, cookies = cookies))
+        val engine =
+            FakeScanEngine(
+                EngineCrawlResult(pagesCrawled = 3, cookies = cookies, thirdPartyHosts = setOf("ad.doubleclick.net")),
+            )
 
         val result = crawlerWith(engine).crawl(claim)
 
         assertEquals(3, result.pagesCrawled, "the engine's page count flows through to the scan result")
+        assertEquals(5, result.marketingTrackerCount, "the tracker classifier's count of the observed hosts flows through")
         assertEquals("example.com", engine.lastDomain, "the crawler must use the site's own domain")
         assertEquals(CrawlMode.FULL, engine.lastMode, "the authenticated path is a full multi-page crawl")
         verify(exactly = 1) { classifier.classify(any()) }
+        verify(exactly = 1) { trackerClassifier.countMarketingTrackers(setOf("ad.doubleclick.net")) }
         verify(exactly = 1) { cookieWriter.replace(claim.scanId, any()) }
     }
 }

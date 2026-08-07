@@ -132,11 +132,12 @@ class ScanQueue(
         )
     }
 
-    /** Terminal success: mark the job done and the scan done with its page count. */
+    /** Terminal success: mark the job done and the scan done with its page and marketing-tracker counts. */
     @Transactional
     fun markSucceeded(
         claim: ClaimedScan,
         pagesCrawled: Int,
+        marketingTrackerCount: Int,
     ) {
         val job = jobRepository.findById(claim.jobId).orElse(null) ?: return
         if (!ownsClaim(job, claim)) return
@@ -144,7 +145,14 @@ class ScanQueue(
         jobRepository.save(job.copy(status = JobStatus.DONE, lockedUntil = null, lastError = null, updatedAt = now))
         scanRepository.findById(claim.scanId).ifPresent {
             scanRepository.save(
-                it.copy(status = ScanStatus.DONE, finishedAt = now, pagesCrawled = pagesCrawled, error = null, updatedAt = now),
+                it.copy(
+                    status = ScanStatus.DONE,
+                    finishedAt = now,
+                    pagesCrawled = pagesCrawled,
+                    marketingTrackerCount = marketingTrackerCount,
+                    error = null,
+                    updatedAt = now,
+                ),
             )
         }
     }

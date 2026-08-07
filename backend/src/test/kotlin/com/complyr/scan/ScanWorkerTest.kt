@@ -53,18 +53,18 @@ class ScanWorkerTest {
         every { publicScanQueue.claimNext() } returnsMany listOf(free, null)
         every { crawler.crawl(paid) } answers {
             order.add("paid")
-            ScanCrawlResult(pagesCrawled = 3)
+            ScanCrawlResult(pagesCrawled = 3, marketingTrackerCount = 4)
         }
         every { publicCrawler.crawl(free) } answers {
             order.add("free")
-            ScanCrawlResult(pagesCrawled = 1)
+            ScanCrawlResult(pagesCrawled = 1, marketingTrackerCount = 2)
         }
 
         worker(maxJobsPerPoll = 10).poll()
 
         assertEquals(listOf("paid", "free"), order, "the paid scan must run before the free one is even claimed")
-        verify(exactly = 1) { scanQueue.markSucceeded(paid, 3) }
-        verify(exactly = 1) { publicScanQueue.markSucceeded(free) }
+        verify(exactly = 1) { scanQueue.markSucceeded(paid, 3, 4) }
+        verify(exactly = 1) { publicScanQueue.markSucceeded(free, 2) }
     }
 
     @Test
@@ -72,20 +72,20 @@ class ScanWorkerTest {
         val free = publicClaim()
         every { scanQueue.claimNext() } returns null
         every { publicScanQueue.claimNext() } returnsMany listOf(free, null)
-        every { publicCrawler.crawl(free) } returns ScanCrawlResult(pagesCrawled = 1)
+        every { publicCrawler.crawl(free) } returns ScanCrawlResult(pagesCrawled = 1, marketingTrackerCount = 0)
 
         worker(maxJobsPerPoll = 10).poll()
 
         verify(exactly = 0) { crawler.crawl(any()) }
         verify(exactly = 1) { publicCrawler.crawl(free) }
-        verify(exactly = 1) { publicScanQueue.markSucceeded(free) }
+        verify(exactly = 1) { publicScanQueue.markSucceeded(free, 0) }
     }
 
     @Test
     fun `stops after the per-tick cap even when more work remains`() {
         // Both queues are effectively bottomless; the cap is the only thing that ends the tick.
         every { scanQueue.claimNext() } answers { paidClaim() }
-        every { crawler.crawl(any()) } returns ScanCrawlResult(pagesCrawled = 1)
+        every { crawler.crawl(any()) } returns ScanCrawlResult(pagesCrawled = 1, marketingTrackerCount = 0)
 
         worker(maxJobsPerPoll = 2).poll()
 
@@ -116,7 +116,7 @@ class ScanWorkerTest {
 
         // Only the customer-safe reason code reaches the queue; the host-bearing message stays server-side.
         verify(exactly = 1) { publicScanQueue.markFailed(free, ScanFailureReason.BLOCKED_TARGET.code) }
-        verify(exactly = 0) { publicScanQueue.markSucceeded(any()) }
+        verify(exactly = 0) { publicScanQueue.markSucceeded(any(), any()) }
     }
 
     @Test
