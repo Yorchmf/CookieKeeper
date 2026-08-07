@@ -68,7 +68,8 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --no-frozen-lockfile
+      # Frozen: this build is what ships to the CDN — it must resolve the reviewed tree.
+      - run: pnpm install --frozen-lockfile
         working-directory: widget
       - run: pnpm build && pnpm size
         working-directory: widget

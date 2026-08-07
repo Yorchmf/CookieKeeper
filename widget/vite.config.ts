@@ -34,4 +34,7 @@ export default defineConfig({
     },
     include: ['test/**/*.test.ts'],
   },
+  server: {
+    allowedHosts: true,
+  },
 });

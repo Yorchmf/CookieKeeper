@@ -2,6 +2,7 @@ package com.complyr.billing
 
 import com.complyr.auth.UserEntity
 import com.complyr.auth.UserRepository
+import com.complyr.common.ComplyrProperties
 import com.complyr.notify.BestEffortEmailDelivery
 import com.complyr.notify.ComposedEmail
 import com.complyr.notify.EmailSender
@@ -11,6 +12,7 @@ import io.mockk.mockk
 import io.mockk.runs
 import io.mockk.verify
 import org.junit.jupiter.api.Test
+import java.time.Duration
 import java.time.Instant
 import java.util.Optional
 import java.util.UUID
@@ -19,9 +21,30 @@ class BillingNotifierTest {
     private val composer = mockk<BillingEmailComposer>()
     private val sender = mockk<EmailSender>()
     private val userRepository = mockk<UserRepository>()
-    private val notifier = BillingNotifier(composer, BestEffortEmailDelivery(sender), userRepository)
+
+    private val trialPeriod: Duration = Duration.ofDays(14)
+
+    private val properties =
+        ComplyrProperties(
+            auth =
+                ComplyrProperties.Auth(
+                    jwtSecret = "unit-test-jwt-secret-0123456789-abcdefghijklmnop",
+                    accessTokenTtl = Duration.ofMinutes(15),
+                    refreshTokenTtl = Duration.ofDays(30),
+                    verificationTokenTtl = Duration.ofHours(24),
+                    resetTokenTtl = Duration.ofHours(1),
+                ),
+            billing = ComplyrProperties.Billing(trialPeriod = trialPeriod),
+            appBaseUrl = "https://app.complyr.eu",
+            cdnBaseUrl = "https://cdn.complyr.eu",
+            mailFrom = "no-reply@complyr.eu",
+        )
+
+    private val notifier =
+        BillingNotifier(composer, BestEffortEmailDelivery(sender), userRepository, properties)
 
     private val userId: UUID = UUID.randomUUID()
+    private val signupAt: Instant = Instant.parse("2026-08-01T12:00:00Z")
 
     private fun user(locale: String = "de") =
         UserEntity(
@@ -29,8 +52,8 @@ class BillingNotifierTest {
             email = "alice@example.com",
             passwordHash = "hash",
             locale = locale,
-            createdAt = Instant.parse("2026-08-01T12:00:00Z"),
-            verifiedAt = Instant.parse("2026-08-01T12:00:00Z"),
+            createdAt = signupAt,
+            verifiedAt = signupAt,
         )
 
     @Test
@@ -55,12 +78,28 @@ class BillingNotifierTest {
         verify { sender.send("alice@example.com", "subject", "body") }
     }
 
+    /**
+     * The end date is DERIVED at send time (`created_at + trial-period`) rather than carried on the
+     * event, so it can never disagree with what [PlanResolver] shows the same user in the dashboard.
+     */
+    @Test
+    fun `derives the trial end date from the signup date and the configured trial period`() {
+        every { userRepository.findById(userId) } returns Optional.of(user(locale = "it"))
+        every { composer.trialEndingEmail("it", signupAt.plus(trialPeriod)) } returns ComposedEmail("subject", "body")
+        every { sender.send(any(), any(), any()) } just runs
+
+        notifier.sendTrialEnding(userId)
+
+        verify { sender.send("alice@example.com", "subject", "body") }
+    }
+
     @Test
     fun `sends nothing when the user no longer exists`() {
         every { userRepository.findById(userId) } returns Optional.empty()
 
         notifier.sendSubscriptionActivated(userId, Plan.BUSINESS)
         notifier.sendPaymentIssue(userId)
+        notifier.sendTrialEnding(userId)
 
         verify(exactly = 0) { sender.send(any(), any(), any()) }
     }

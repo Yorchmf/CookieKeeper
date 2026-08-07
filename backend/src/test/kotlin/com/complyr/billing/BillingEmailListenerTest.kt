@@ -30,4 +30,13 @@ class BillingEmailListenerTest {
 
         verify(exactly = 1) { notifier.sendPaymentIssue(userId) }
     }
+
+    @Test
+    fun `trial-ending events are dispatched to the notifier`() {
+        every { notifier.sendTrialEnding(userId) } just runs
+
+        listener.onBillingEmailRequested(TrialEnding(userId))
+
+        verify(exactly = 1) { notifier.sendTrialEnding(userId) }
+    }
 }

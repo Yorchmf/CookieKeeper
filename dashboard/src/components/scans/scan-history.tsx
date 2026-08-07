@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useEntitlement } from "@/hooks/use-billing";
 import { useScans } from "@/hooks/use-scans";
 import { Link } from "@/i18n/navigation";
 import type { ScanSummary } from "@/lib/api/scans";
@@ -66,6 +67,11 @@ function ScanRow({ siteId, scan }: { siteId: string; scan: ScanSummary }) {
 export function ScanHistory({ siteId }: { siteId: string }) {
   const t = useTranslations("scans");
   const scans = useScans(siteId, HISTORY_LIMIT);
+  // The plan decides how often the scheduler comes back. Stating it here answers the question this
+  // card actually raises ("when does the next one run?") and explains a history that looks stale.
+  // Rendered only once the entitlement has loaded — a wrong cadence is worse than a missing line.
+  const entitlement = useEntitlement();
+  const cadence = entitlement.data?.limits.rescanFrequency;
 
   return (
     <Card>
@@ -73,7 +79,12 @@ export function ScanHistory({ siteId }: { siteId: string }) {
         <CardTitle role="heading" aria-level={2}>
           {t("history.title")}
         </CardTitle>
-        <CardDescription>{t("history.subtitle")}</CardDescription>
+        <CardDescription>
+          {t("history.subtitle")}
+          {cadence ? (
+            <span className="block">{t(`history.cadence.${cadence}`)}</span>
+          ) : null}
+        </CardDescription>
         <CardAction>
           <RescanButton siteId={siteId} />
         </CardAction>

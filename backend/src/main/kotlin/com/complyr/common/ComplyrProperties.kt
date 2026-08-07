@@ -542,6 +542,10 @@ data class ComplyrProperties(
         // `stripe_events` inbox retention + prune batch (see [com.complyr.billing.StripeWebhookReaper]).
         val stripeEventRetention: Duration = Duration.ofDays(DEFAULT_STRIPE_EVENT_RETENTION_DAYS),
         val stripeEventPruneBatchSize: Int = DEFAULT_STRIPE_EVENT_PRUNE_BATCH_SIZE,
+        // How far ahead of the trial's end the "ending soon" reminder goes out, and how many accounts
+        // one nightly run will remind (see [com.complyr.billing.TrialEndingReminderJob]).
+        val trialReminderLeadTime: Duration = Duration.ofDays(DEFAULT_TRIAL_REMINDER_LEAD_DAYS),
+        val trialReminderBatchSize: Int = DEFAULT_TRIAL_REMINDER_BATCH_SIZE,
     ) {
         init {
             require(!trialPeriod.isZero && !trialPeriod.isNegative) {
@@ -558,6 +562,18 @@ data class ComplyrProperties(
             // A non-positive batch size makes the reaper delete nothing and loop until its per-run cap.
             require(stripeEventPruneBatchSize > 0) {
                 "complyr.billing.stripe-event-prune-batch-size must be positive (was $stripeEventPruneBatchSize)"
+            }
+            // A zero/negative lead makes the candidate window empty, so the reminder would silently never
+            // fire; a lead longer than the trial itself would mail people on their signup day.
+            require(!trialReminderLeadTime.isZero && !trialReminderLeadTime.isNegative) {
+                "complyr.billing.trial-reminder-lead-time must be a positive duration (was $trialReminderLeadTime)"
+            }
+            require(trialReminderLeadTime < trialPeriod) {
+                "complyr.billing.trial-reminder-lead-time ($trialReminderLeadTime) must be shorter than " +
+                    "trial-period ($trialPeriod)"
+            }
+            require(trialReminderBatchSize > 0) {
+                "complyr.billing.trial-reminder-batch-size must be positive (was $trialReminderBatchSize)"
             }
         }
 
@@ -590,6 +606,14 @@ data class ComplyrProperties(
             // Rows per prune transaction. Steady-state webhook volume is tiny, so this only matters
             // when draining a backlog; kept small for short, vacuum-friendly DELETEs.
             const val DEFAULT_STRIPE_EVENT_PRUNE_BATCH_SIZE = 500
+
+            // Three days before the 14-day trial lapses: long enough to act on (a small business needs to
+            // find a card and get sign-off), short enough that the deadline still feels real.
+            const val DEFAULT_TRIAL_REMINDER_LEAD_DAYS = 3L
+
+            // Accounts reminded per nightly run. Well above any plausible signup cohort at MVP scale, so
+            // it is a runaway guard rather than a throttle we expect to hit.
+            const val DEFAULT_TRIAL_REMINDER_BATCH_SIZE = 500
         }
     }
 

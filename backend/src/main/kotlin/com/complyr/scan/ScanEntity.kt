@@ -124,6 +124,19 @@ interface ScanRepository : JpaRepository<ScanEntity, UUID> {
     ): ScanEntity?
 
     /**
+     * The site's most recent scan in a given status STRICTLY OLDER than [createdAt] — the previous-result
+     * baseline [ScanCompletionNotifier] diffs a just-finished scan against. The upper bound is what makes
+     * it "previous": that notifier runs after the completion commit, so the scan it is reporting on is
+     * itself already `done`, and the unbounded sibling above would hand back that same row. Rides
+     * `idx_scans_site_id_created_at` (V7); null when the site has no earlier scan in that status.
+     */
+    fun findFirstBySiteIdAndStatusAndCreatedAtLessThanOrderByCreatedAtDesc(
+        siteId: UUID,
+        status: ScanStatus,
+        createdAt: Instant,
+    ): ScanEntity?
+
+    /**
      * Whether the site already has a live (queued or running) scan — the one-live-scan-per-site rule
      * behind [ScanAlreadyInProgressException]. Backed by the partial `idx_scans_site_id_live` (V16), so it
      * costs an index probe over the handful of live rows rather than a walk of the site's whole history.

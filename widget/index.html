@@ -18,10 +18,22 @@
     <script
       type="module"
       src="/src/main.ts"
-      data-complyr="pk_m5cNgONrK2oU0PYYUFLkFpHKRlvdmq2Z"
+      data-complyr="pk_YLOYit9M9jHDivl26P5cbBwAq2sKr7r8"
       data-complyr-api="http://localhost:8080"
       data-complyr-cdn="http://localhost:8080"
       data-complyr-debug
+    ></script>
+
+    <!--
+      LOCAL VERIFICATION TEST ONLY — remove before committing.
+      Absolute src host must equal the backend `complyr.cdn-base-url` host
+      (localhost); the src is never fetched, only host-matched. The relative
+      `/src/main.ts` above cannot verify (no host). data-complyr = the site key.
+    -->
+    <script
+      async
+      src="http://localhost:8081/v1.js"
+      data-complyr="pk_YLOYit9M9jHDivl26P5cbBwAq2sKr7r8"
     ></script>
 
     <!--pk_test_local -->

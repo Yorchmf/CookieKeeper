@@ -352,6 +352,10 @@
     "history": {
       "title": "Scan-Verlauf",
       "subtitle": "Cookie-Scans für diese Website, neueste zuerst",
+      "cadence": {
+        "monthly": "Automatische Scans laufen einmal im Monat.",
+        "weekly": "Automatische Scans laufen einmal pro Woche."
+      },
       "empty": "Noch keine Scans. Der erste Scan startet kurz nach dem Hinzufügen einer Website.",
       "loadError": "Der Scan-Verlauf konnte nicht geladen werden. Bitte versuchen Sie es erneut.",
       "pagesCrawled": "{count, plural, one {# Seite} other {# Seiten}}"
@@ -560,7 +564,12 @@
     },
     "usage": {
       "sitesLabel": "Websites",
-      "sites": "{used} von {max} aktiven Websites"
+      "sites": "{used} von {max} aktiven Websites",
+      "rescanLabel": "Automatische Scans",
+      "rescan": {
+        "monthly": "Einmal im Monat",
+        "weekly": "Einmal pro Woche"
+      }
     },
     "manage": {
       "button": "Abonnement verwalten",

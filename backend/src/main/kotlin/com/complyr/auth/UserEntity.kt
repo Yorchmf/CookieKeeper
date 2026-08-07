@@ -4,7 +4,9 @@ import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import java.time.Instant
@@ -31,6 +33,11 @@ data class UserEntity(
     val failedLoginAttempts: Int = 0,
     @Column(name = "locked_until")
     val lockedUntil: Instant? = null,
+    // When the "your trial ends soon" reminder was sent (V19). Null = not yet reminded. The no-card trial
+    // is derived from [createdAt], not stored, so there is no subscription row to hang send-once state
+    // off; this column is it. Claimed atomically by [UserRepository.markTrialEndingEmailSent].
+    @Column(name = "trial_ending_email_sent_at")
+    val trialEndingEmailSentAt: Instant? = null,
 )
 
 interface UserRepository : JpaRepository<UserEntity, UUID> {
@@ -51,4 +58,74 @@ interface UserRepository : JpaRepository<UserEntity, UUID> {
     fun acquireUserLoginLock(
         @Param("key") key: Long,
     ): Long
+
+    /**
+     * Non-blocking run-wide advisory lock for [com.complyr.billing.TrialEndingReminderJob]'s candidate
+     * read: a second replica firing on the same cron exits immediately instead of duplicating the sweep.
+     * Efficiency only — send-once correctness is [markTrialEndingEmailSent]'s compare-and-set, not this.
+     * Mirrors [com.complyr.scan.ScanRepository.tryAcquireAdvisoryXactLock].
+     */
+    @Query(value = "SELECT pg_try_advisory_xact_lock(:key)", nativeQuery = true)
+    fun tryAcquireAdvisoryXactLock(
+        @Param("key") key: Long,
+    ): Boolean
+
+    /**
+     * Accounts whose no-card trial ends inside the reminder lead window and who have not been reminded
+     * yet. The trial is derived (`created_at + complyr.billing.trial-period`, see
+     * [com.complyr.billing.PlanResolver]), so the window is inverted by the caller into a `created_at`
+     * range rather than expressed as date arithmetic here — that keeps the trial-period config out of SQL
+     * and lets the query ride `idx_users_trial_reminder_pending` (V19).
+     *
+     * Unverified accounts are excluded: someone who never confirmed their email is not an account we
+     * should be nudging about payment. So are accounts with a live subscription — [activeStatuses] is
+     * passed in from [com.complyr.billing.SubscriptionEntity.ACTIVE_STATUSES] rather than inlined, so the
+     * definition of "active" lives in exactly one place.
+     *
+     * Ordered oldest-first (closest to trial end) and bounded by [pageable] so a backlog drains over
+     * successive runs instead of arriving at the mail provider as one burst.
+     */
+    @Query(
+        """
+        SELECT u FROM UserEntity u
+        WHERE u.verifiedAt IS NOT NULL
+          AND u.trialEndingEmailSentAt IS NULL
+          AND u.createdAt > :createdAtAfter
+          AND u.createdAt <= :createdAtUpTo
+          AND NOT EXISTS (
+              SELECT 1 FROM SubscriptionEntity s
+              WHERE s.userId = u.id AND s.status IN :activeStatuses
+          )
+        ORDER BY u.createdAt ASC
+        """,
+    )
+    fun findTrialEndingCandidates(
+        @Param("createdAtAfter") createdAtAfter: Instant,
+        @Param("createdAtUpTo") createdAtUpTo: Instant,
+        @Param("activeStatuses") activeStatuses: Collection<String>,
+        pageable: Pageable,
+    ): List<UserEntity>
+
+    /**
+     * Claim the trial-ending reminder for one account, returning 1 when this caller won and 0 when the
+     * account was already claimed. A conditional UPDATE rather than a read-then-write is what makes the
+     * reminder send-once without any lock: two replicas racing the same account both issue this statement,
+     * Postgres serializes them on the row, and only the first sees `trial_ending_email_sent_at IS NULL`.
+     * The caller publishes the email event only on a 1.
+     *
+     * Note the ordering this implies: the marker is committed BEFORE the mail is attempted, so a mail
+     * provider outage loses that account's reminder rather than re-sending it daily. At-most-once is the
+     * right failure mode for a nudge — the dashboard already shows the trial countdown.
+     */
+    @Modifying
+    @Query(
+        """
+        UPDATE UserEntity u SET u.trialEndingEmailSentAt = :sentAt
+        WHERE u.id = :userId AND u.trialEndingEmailSentAt IS NULL
+        """,
+    )
+    fun markTrialEndingEmailSent(
+        @Param("userId") userId: UUID,
+        @Param("sentAt") sentAt: Instant,
+    ): Int
 }

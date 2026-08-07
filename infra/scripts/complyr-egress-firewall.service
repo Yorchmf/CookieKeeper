@@ -1,0 +1,27 @@
+# Reapplies the container egress firewall (ADR-18). Install to
+# /etc/systemd/system/complyr-egress-firewall.service — see server-setup.md §2.1.
+#
+# WantedBy=docker.service rather than multi-user.target: a docker daemon restart
+# recreates DOCKER-USER and silently drops our jump, so the rules have to be
+# reinstalled with docker, not only at boot. Deliberately NOT RemainAfterExit —
+# the unit must stay re-runnable, both by docker starting again and by the paired
+# timer. Applying is idempotent (the rules are rebuilt into a spare chain and the
+# jump is moved only once the build succeeded), so a redundant run costs nothing.
+#
+# A failure here means the firewall may be stale, so make it visible: the launch
+# checklist runs `complyr-egress-firewall verify`, and `systemctl --failed`
+# should be part of whatever alerting the box has.
+[Unit]
+Description=Complyr container egress firewall (ADR-18)
+After=docker.service
+Requires=docker.service
+# Deliberately NO ConditionPathExists on the script: a missing binary would be
+# reported as a *clean skip*, so a botched install would look green in
+# `systemctl status` while nothing filters. Let it fail loudly instead.
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/complyr-egress-firewall apply
+
+[Install]
+WantedBy=docker.service

@@ -2,6 +2,7 @@ package com.complyr.scan
 
 import com.complyr.common.ComplyrProperties
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
@@ -35,6 +36,7 @@ class ScanQueue(
     private val jobRepository: JobRepository,
     private val properties: ComplyrProperties,
     private val clock: Clock,
+    private val eventPublisher: ApplicationEventPublisher,
 ) {
     private val log = LoggerFactory.getLogger(ScanQueue::class.java)
 
@@ -132,7 +134,15 @@ class ScanQueue(
         )
     }
 
-    /** Terminal success: mark the job done and the scan done with its page and marketing-tracker counts. */
+    /**
+     * Terminal success: mark the job done and the scan done with its page and marketing-tracker counts.
+     *
+     * Publishes [ScanCompleted] for the scan-complete email. The event is raised inside this transaction
+     * but only *delivered* after it commits ([ScanEmailListener]), so a mail failure can never roll the
+     * terminal transition back — a rolled-back `markSucceeded` would leave the job leased and let a worker
+     * re-crawl a site that was already scanned. Only published when the `scans` row was actually found and
+     * moved: a stale claim (rejected above) or a vanished scan owes nobody an email.
+     */
     @Transactional
     fun markSucceeded(
         claim: ClaimedScan,
@@ -144,16 +154,18 @@ class ScanQueue(
         val now = clock.instant()
         jobRepository.save(job.copy(status = JobStatus.DONE, lockedUntil = null, lastError = null, updatedAt = now))
         scanRepository.findById(claim.scanId).ifPresent {
-            scanRepository.save(
-                it.copy(
-                    status = ScanStatus.DONE,
-                    finishedAt = now,
-                    pagesCrawled = pagesCrawled,
-                    marketingTrackerCount = marketingTrackerCount,
-                    error = null,
-                    updatedAt = now,
-                ),
-            )
+            val done =
+                scanRepository.save(
+                    it.copy(
+                        status = ScanStatus.DONE,
+                        finishedAt = now,
+                        pagesCrawled = pagesCrawled,
+                        marketingTrackerCount = marketingTrackerCount,
+                        error = null,
+                        updatedAt = now,
+                    ),
+                )
+            eventPublisher.publishEvent(ScanCompleted(scanId = done.id, siteId = done.siteId, trigger = done.trigger))
         }
     }
 

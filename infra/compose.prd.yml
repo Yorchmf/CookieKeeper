@@ -34,8 +34,14 @@ services:
     expose:
       - "8080"
     networks:
-      - default
-      - caddy-net
+      # Explicit priority, not sort order: the highest-priority network provides
+      # the default route, so outbound fetches leave with a `default` source
+      # address. The egress firewall (ADR-18) exempts far less on the shared
+      # caddy-net, and which interface egress uses must not be an accident.
+      default:
+        priority: 100
+      caddy-net:
+        priority: 10
     depends_on:
       postgres:
         condition: service_healthy
@@ -63,8 +69,10 @@ services:
     expose:
       - "3000"
     networks:
-      - default
-      - caddy-net
+      default:
+        priority: 100
+      caddy-net:
+        priority: 10
     depends_on:
       - api
 
@@ -74,3 +82,12 @@ volumes:
 networks:
   caddy-net:
     external: true
+  # Pinned so the egress firewall (ADR-18, infra/scripts/egress-firewall.sh) keeps
+  # matching after a `compose up` recreates the network — the rules are written per
+  # source subnet, and a renumbered subnet would silently stop being filtered.
+  # 10.31.x is outside docker's default allocation pool, so it cannot collide with
+  # an auto-assigned network. dev uses 10.31.10.0/24.
+  default:
+    ipam:
+      config:
+        - subnet: 10.31.20.0/24

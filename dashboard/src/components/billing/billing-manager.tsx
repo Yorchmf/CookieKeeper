@@ -129,6 +129,12 @@ function CurrentPlanCard({ entitlement }: { entitlement: Entitlement }) {
             })}
           </span>
         </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-medium">{t("usage.rescanLabel")}</span>
+          <span className="text-sm text-muted-foreground">
+            {t(`usage.rescan.${entitlement.limits.rescanFrequency}`)}
+          </span>
+        </div>
         {entitlement.state === "trial" && entitlement.trialEndsAt ? (
           <p className="text-sm text-muted-foreground">
             {t("trial.endsOn", {

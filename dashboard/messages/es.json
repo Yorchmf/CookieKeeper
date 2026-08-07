@@ -352,6 +352,10 @@
     "history": {
       "title": "Historial de escaneos",
       "subtitle": "Escaneos de cookies de este sitio, del más reciente al más antiguo",
+      "cadence": {
+        "monthly": "Los escaneos automáticos se ejecutan una vez al mes.",
+        "weekly": "Los escaneos automáticos se ejecutan una vez a la semana."
+      },
       "empty": "Aún no hay escaneos. El primer escaneo se ejecuta poco después de añadir un sitio.",
       "loadError": "No se pudo cargar el historial de escaneos. Inténtalo de nuevo.",
       "pagesCrawled": "{count, plural, one {# página} other {# páginas}}"
@@ -560,7 +564,12 @@
     },
     "usage": {
       "sitesLabel": "Sitios",
-      "sites": "{used} de {max} sitios activos"
+      "sites": "{used} de {max} sitios activos",
+      "rescanLabel": "Escaneos automáticos",
+      "rescan": {
+        "monthly": "Una vez al mes",
+        "weekly": "Una vez a la semana"
+      }
     },
     "manage": {
       "button": "Gestionar suscripción",

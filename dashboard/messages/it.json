@@ -352,6 +352,10 @@
     "history": {
       "title": "Cronologia scansioni",
       "subtitle": "Scansioni dei cookie per questo sito, dalla più recente",
+      "cadence": {
+        "monthly": "Le scansioni automatiche vengono eseguite una volta al mese.",
+        "weekly": "Le scansioni automatiche vengono eseguite una volta alla settimana."
+      },
       "empty": "Nessuna scansione ancora. La prima scansione parte poco dopo l'aggiunta di un sito.",
       "loadError": "Impossibile caricare la cronologia delle scansioni. Riprova.",
       "pagesCrawled": "{count, plural, one {# pagina} other {# pagine}}"
@@ -560,7 +564,12 @@
     },
     "usage": {
       "sitesLabel": "Siti",
-      "sites": "{used} di {max} siti attivi"
+      "sites": "{used} di {max} siti attivi",
+      "rescanLabel": "Scansioni automatiche",
+      "rescan": {
+        "monthly": "Una volta al mese",
+        "weekly": "Una volta alla settimana"
+      }
     },
     "manage": {
       "button": "Gestisci abbonamento",

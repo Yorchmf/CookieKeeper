@@ -15,10 +15,17 @@ export type PlanId = "STARTER" | "PRO" | "BUSINESS";
 /** The account's effective billing state (EntitlementResponse.state). */
 export type BillingState = "trial" | "subscribed" | "expired";
 
+/**
+ * How often the scheduler re-scans a site on this plan. Serialized lowercase from the backend's
+ * `RescanFrequency` enum (BillingDtos.kt), and used as an i18n key suffix — so it is a closed union,
+ * not a free string.
+ */
+export type RescanFrequency = "monthly" | "weekly";
+
 /** The concrete limits for the resolved entitlement (EntitlementLimits). */
 export interface EntitlementLimits {
   maxSites: number;
-  rescanFrequency: string;
+  rescanFrequency: RescanFrequency;
   onDemandRescan: boolean;
   priorityScan: boolean;
   removeBranding: boolean;

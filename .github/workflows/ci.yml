@@ -38,10 +38,12 @@ jobs:
             dashboard:
               - 'dashboard/**'
               - 'pnpm-workspace.yaml'
+              - 'pnpm-lock.yaml'
               - '.github/workflows/ci.yml'
             widget:
               - 'widget/**'
               - 'pnpm-workspace.yaml'
+              - 'pnpm-lock.yaml'
               - '.github/workflows/ci.yml'
 
   # Spring Boot (Kotlin) — lint, static analysis, tests (Testcontainers uses
@@ -80,8 +82,9 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      # TODO: switch to --frozen-lockfile once the workspace lockfile settles.
-      - run: pnpm install --no-frozen-lockfile
+      # Frozen: CI must fail on a lockfile that doesn't match the manifests rather than
+      # silently resolving a different tree than the one reviewed.
+      - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm run --if-present test
       - run: pnpm build
@@ -103,8 +106,9 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      # TODO: switch to --frozen-lockfile once the workspace lockfile settles.
-      - run: pnpm install --no-frozen-lockfile
+      # Frozen: see the dashboard job — a widget dep must never resolve differently in CI
+      # than it did locally, or the 20KB gate below is measuring a tree nobody reviewed.
+      - run: pnpm install --frozen-lockfile
       - run: pnpm test
       - run: pnpm build
       # size-limit exits non-zero over 20KB gzipped → fails the build (by design)

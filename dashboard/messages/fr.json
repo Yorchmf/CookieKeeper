@@ -352,6 +352,10 @@
     "history": {
       "title": "Historique des scans",
       "subtitle": "Scans de cookies pour ce site, du plus récent au plus ancien",
+      "cadence": {
+        "monthly": "Les scans automatiques ont lieu une fois par mois.",
+        "weekly": "Les scans automatiques ont lieu une fois par semaine."
+      },
       "empty": "Aucun scan pour le moment. Le premier scan démarre peu après l'ajout d'un site.",
       "loadError": "L'historique des scans n'a pas pu être chargé. Veuillez réessayer.",
       "pagesCrawled": "{count, plural, one {# page} other {# pages}}"
@@ -560,7 +564,12 @@
     },
     "usage": {
       "sitesLabel": "Sites",
-      "sites": "{used} sur {max} sites actifs"
+      "sites": "{used} sur {max} sites actifs",
+      "rescanLabel": "Scans automatiques",
+      "rescan": {
+        "monthly": "Une fois par mois",
+        "weekly": "Une fois par semaine"
+      }
     },
     "manage": {
       "button": "Gérer l'abonnement",

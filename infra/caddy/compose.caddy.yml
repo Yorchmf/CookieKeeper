@@ -20,7 +20,12 @@ services:
       - caddy-data:/data # TLS certificates
       - caddy-config:/config
     networks:
-      - caddy-net
+      caddy-net:
+        # Pinned: the egress firewall (ADR-18) lets ONLY this address open a
+        # connection inside caddy-net. Upstreams answer Caddy (ESTABLISHED) and
+        # never initiate — which is what stops a rebound scanner from reaching
+        # the other environment's containers over this shared network.
+        ipv4_address: 10.31.30.2
 
 volumes:
   caddy-data:

@@ -21,6 +21,7 @@ class BillingEmailListener(
         when (event) {
             is SubscriptionActivated -> notifier.sendSubscriptionActivated(event.userId, event.plan)
             is PaymentIssue -> notifier.sendPaymentIssue(event.userId)
+            is TrialEnding -> notifier.sendTrialEnding(event.userId)
         }
     }
 }

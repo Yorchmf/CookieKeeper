@@ -22,6 +22,121 @@ ufw enable
 Harden SSH: `PasswordAuthentication no`, `PermitRootLogin prohibit-password`
 in `/etc/ssh/sshd_config`, then `systemctl reload ssh`.
 
+Note this only covers **inbound**. `ufw` filters the host's own traffic; container
+traffic is forwarded, not local, so `default allow outgoing` says nothing about
+what a container may reach. Container egress is §2.1 — do it after Docker is
+installed and the networks exist.
+
+## 2.1 Container egress firewall (ADR-18, blocking gate)
+
+The scanner crawls domains nobody has proved they own. `ScanTargetValidator`
+resolves and rejects private targets in the app, but it cannot win a DNS-rebind
+race against the browser's own resolution — so the *packet-level* denial is the
+guarantee, and ADR-18 makes it a blocking deploy requirement.
+
+`egress-firewall.sh` installs **two** chains, because one hook is not enough:
+
+| Chain | Hooked into | Covers |
+|-------|-------------|--------|
+| `COMPLYR-EGRESS-{A,B}` | `DOCKER-USER` | container → anywhere else (routed traffic) |
+| `COMPLYR-EGRESS-HOST-{A,B}` | `INPUT` position 1 | container → **this host** |
+
+The `INPUT` half is not optional. A packet addressed to a host-local address —
+the bridge gateway (host sshd), any public address of the box, anything
+`docker-proxy` publishes on `0.0.0.0` — is delivered locally and *never reaches
+`FORWARD`*, so `DOCKER-USER` rules cannot see it, let alone drop it. Without this
+chain a container can ssh to the host, and can aim a crawl at this box's own
+public address (or any hostname pointed straight at it) and land back inside
+Caddy. The jump must sit at `INPUT` position 1, above ufw's chains, or
+`ufw allow 22` wins — the script inserts it there.
+
+> `ufw reload` (and `ufw enable`) rebuilds `INPUT` from ufw's own rule set and
+> takes our jump with it. That is not a crisis — the timer reapplies within two
+> minutes — but if you have just touched ufw, run `apply` rather than waiting.
+
+Net effect: a container may reach the public internet and the containers its own
+environment wires it to. Cloud metadata (`169.254.169.254`), RFC1918, CGNAT,
+loopback, this host, the *other* environment and everything else behind the
+shared Caddy are unreachable.
+
+Two properties worth knowing before you change anything:
+
+- **The DROPs match the bridge interface (`br-+`), not a source subnet.** A
+  network that is renamed, renumbered or created behind our back is filtered too
+  — unknown traffic fails closed instead of falling through to the internet.
+  Only the narrow RETURN exemptions are subnet-scoped, and those subnets are
+  pinned in `infra/compose.*.yml` and in `docker network create` (§4). Keep the
+  script's `MESH_SUBNETS` / `INGRESS_SUBNETS` defaults in sync with them.
+- **`caddy-net` is shared by dev and prd, so only Caddy may open connections on
+  it** (`10.31.30.2`, pinned in `compose.caddy.yml`). Upstreams answer Caddy and
+  never initiate. A blanket intra-subnet allow there would let a rebound scanner
+  reach every vhost — and let dev containers reach prd ones. Note what this is
+  worth: the exemption keys on a *source address* on a shared L2 segment, so a
+  container with `CAP_NET_RAW` could forge it. It raises the cost of dev→prd
+  lateral movement; it is not a trust boundary you may lean on. The real
+  boundary is that the two environments share no other network and no
+  credentials.
+
+Install it **root-owned and outside `/opt/complyr`**, which CI rsyncs into: the
+deploy key must not be able to rewrite the thing that constrains it.
+
+```bash
+# from a repo checkout on the server (or scp the three files up)
+install -o root -g root -m 0755 infra/scripts/egress-firewall.sh \
+  /usr/local/sbin/complyr-egress-firewall
+install -o root -g root -m 0644 infra/scripts/complyr-egress-firewall.service \
+  infra/scripts/complyr-egress-firewall.timer /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now complyr-egress-firewall.service complyr-egress-firewall.timer
+```
+
+The service is `WantedBy=docker.service` because a docker daemon restart
+recreates `DOCKER-USER` and drops the jump; the timer re-applies on a wall-clock
+schedule every 2 min, which also retries a run that *failed* (dockerd rewrites
+iptables constantly, so an xtables lock collision is routine). Applying is
+idempotent and atomic: the rules are built into a spare chain and the jump moves
+only once the build succeeded, so a half-finished run leaves the previous rules
+in force rather than an empty chain that filters nothing.
+
+Prove it, don't assume it — `verify` attaches a throwaway container to each
+filtered network and tries the connections that must fail *and* the ones that
+must work. Every negative probe targets something that genuinely answers with
+the firewall removed (host sshd, this box's TLS port, the other environment's
+postgres), so it cannot pass vacuously; the positive probes catch an
+over-blocking rule set, which breaks every crawl and is just as bad:
+
+```bash
+/usr/local/sbin/complyr-egress-firewall verify
+```
+
+Host-level prerequisites the rules depend on:
+
+- **DNS must not be private.** Containers resolve via docker's embedded server,
+  which forwards from inside the container — a private upstream would be dropped
+  by these rules. Use the EU public resolvers (also the right answer for data
+  residency) in `/etc/docker/daemon.json`, then `systemctl restart docker`:
+  `{"dns": ["185.12.64.1", "185.12.64.2"]}`. `verify` asserts resolution still
+  works from inside each filtered network.
+- **`net.bridge.bridge-nf-call-iptables=1`** (the default once `br_netfilter` is
+  loaded, which docker does — set it in `/etc/sysctl.d/` so it survives a module
+  reload). Container-to-container frames *on the same bridge* only reach
+  netfilter when this is on; with it off the `caddy-net` policy is silently not
+  enforced and nothing looks any different. `verify` asserts it.
+- **`"userland-proxy": false`** in the same `daemon.json`. Not load-bearing —
+  the `INPUT` chain already blocks a container from reaching a published port on
+  the host — but with the proxy on, that traffic is re-originated from the host
+  namespace and shows up as the host talking to itself, which is confusing to
+  audit. Off, published ports are pure DNAT and stay visible in `FORWARD`.
+- **`net.netfilter.nf_conntrack_helper=0`** (the modern default — assert it in
+  `/etc/sysctl.d/`). With helpers on, a hostile server the scanner connects to
+  can create a conntrack expectation and get a `RELATED` exemption to an
+  arbitrary address. The rules only exempt `RELATED` for ICMP, but the sysctl is
+  the belt to that suspenders.
+- **Leave IPv6 off on the docker networks** (the default). The script installs a
+  v6 backstop that drops all forwarded/host-bound traffic from docker bridges,
+  so enabling v6 fails closed rather than routing silently around the v4 rules —
+  but the supported configuration is still v4-only.
+
 ## 3. Install Docker
 
 ```bash
@@ -30,11 +145,27 @@ curl -fsSL https://get.docker.com | sh
 
 ## 4. Directory layout + shared network
 
+`caddy-net` gets a pinned subnet for the same reason the compose files pin
+theirs — the egress rules' RETURN exemptions are written per subnet (§2.1), and
+an auto-assigned one moves under a `compose up`.
+
+`--ip-range` matters as much as `--subnet`. Docker's dynamic pool otherwise
+starts at `.2` — the address `compose.caddy.yml` pins for Caddy and the one the
+egress rules exempt. Whichever container comes up first would take it, and then
+Caddy fails to start (`Address already in use`, exit 125) *or*, worse, some
+other container is holding the one address allowed to initiate connections on
+this network. Confining the pool to the upper half keeps `.2` reserved:
+
 ```bash
 mkdir -p /opt/complyr/{dev,prd,caddy,backups}
 mkdir -p /srv/cdn/{dev,prd}
-docker network create caddy-net
+docker network create --subnet 10.31.30.0/24 --ip-range 10.31.30.128/25 caddy-net
 ```
+
+If `caddy-net` already exists without an `--ip-range`, recreate it — the setting
+cannot be changed in place. Stop everything attached (`docker compose down` in
+`/opt/complyr/{dev,prd,caddy}`), `docker network rm caddy-net`, run the command
+above, then bring the stacks back up.
 
 Each env dir gets: its compose file (rsynced by CI), a hand-maintained `.env`
 (copy from repo `.env.example`, fill real secrets), and `.env.deploy`
@@ -67,7 +198,9 @@ GitHub repo → Settings → Secrets and variables → Actions:
 
 Copy `infra/scripts/deploy.sh`, `backup.sh`, `restore-drill.sh`, and
 `uptime-check.sh` to `/opt/complyr/` and `chmod +x` them (the deploy workflow
-also rsyncs them on every deploy).
+also rsyncs `deploy.sh` on every deploy). `egress-firewall.sh` is deliberately
+**not** among them — it lives root-owned in `/usr/local/sbin` (§2.1), out of
+reach of anything the deploy key can write.
 
 ## 6. DNS (Cloudflare)
 
@@ -196,6 +329,9 @@ age -d -i /dev/shm/id.txt complyr-prd-<ts>.sql.gz.age \
 - [ ] `curl -I https://dev.complyr.eu` → 200
 - [ ] `curl -I https://cdn.dev.complyr.eu/v1.js` → 200 with `max-age=3600` (NOT immutable — deploys overwrite v1.js in place)
 - [ ] Postgres port NOT reachable from outside (`nmap -p 5432 <ip>`)
+- [ ] Container egress firewall installed and **`complyr-egress-firewall verify` PASSED** (ADR-18 blocking gate — metadata / host sshd / this box's public IP / the other environment's postgres all closed; public internet and DNS still open)
+- [ ] `daemon.json` has the EU resolvers **and** `"userland-proxy": false`; `net.bridge.bridge-nf-call-iptables=1` and `net.netfilter.nf_conntrack_helper=0` in `/etc/sysctl.d/`; IPv6 off on all docker networks (§2.1 prerequisites)
+- [ ] `caddy-net` was created with `--ip-range 10.31.30.128/25` so Caddy keeps `.2` (`docker network inspect caddy-net` → `IPRange` set; §4)
 - [ ] Backup cron produced an **encrypted** dump (`*.sql.gz.age` + `.sha256`), it appears in the EU off-site bucket, and `restore-drill.sh` PASSED
 - [ ] Load smoke test (`infra/load/README.md`) run against dev — reads p95 < 500ms, no 5xx; thread/pool defaults confirmed for the CX22
 - [ ] Uptime monitoring live (`infra/monitoring/uptime.md`): external checks on api health + dashboard + widget CDN, and `uptime-check.sh` heartbeat cron pinging green

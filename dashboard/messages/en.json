@@ -352,6 +352,10 @@
     "history": {
       "title": "Scan history",
       "subtitle": "Cookie scans for this site, newest first",
+      "cadence": {
+        "monthly": "Automatic re-scans run once a month.",
+        "weekly": "Automatic re-scans run once a week."
+      },
       "empty": "No scans yet. The first scan runs shortly after a site is added.",
       "loadError": "Scan history could not be loaded. Please try again.",
       "pagesCrawled": "{count, plural, one {# page} other {# pages}}"
@@ -560,7 +564,12 @@
     },
     "usage": {
       "sitesLabel": "Sites",
-      "sites": "{used} of {max} active sites"
+      "sites": "{used} of {max} active sites",
+      "rescanLabel": "Automatic re-scans",
+      "rescan": {
+        "monthly": "Once a month",
+        "weekly": "Once a week"
+      }
     },
     "manage": {
       "button": "Manage subscription",
