@@ -44,7 +44,8 @@
       "verdict": {
         "title": "Analyse terminée",
         "totalLabel": "cookies et traceurs trouvés sur {domain}",
-        "needsReview": "{count, plural, one {# cookie à examiner} other {# cookies à examiner}}"
+        "needsReview": "{count, plural, one {# cookie à examiner} other {# cookies à examiner}}",
+        "categoriesLabel": "Cookies par catégorie"
       },
       "gate": {
         "title": "Débloquer le rapport complet",
@@ -60,6 +61,12 @@
         "empty": {
           "title": "Aucun cookie trouvé",
           "description": "Cette analyse n'a détecté aucun cookie sur votre site."
+        },
+        "filter": {
+          "label": "Filtrer les cookies",
+          "all": "Tous les cookies",
+          "thirdParty": "Tiers uniquement",
+          "emptyThirdParty": "Aucun cookie tiers dans ce scan."
         }
       },
       "cta": {
@@ -67,7 +74,62 @@
         "description": "Complyr bloque ces cookies jusqu'au consentement des visiteurs et conserve des journaux prêts pour un audit. Commencez gratuitement, sans carte.",
         "action": "Commencer gratuitement"
       },
-      "reset": "Analyser un autre site"
+      "reset": "Analyser un autre site",
+      "comparison": {
+        "title": "Voici ce que nous avons trouvé — et comment Complyr le corrige",
+        "columns": {
+          "issue": "Problème",
+          "without": "Sans Complyr",
+          "with": "Avec Complyr"
+        },
+        "rows": {
+          "pre_consent_tracking": {
+            "label": "Traçage avant le consentement",
+            "without": "Des cookies non essentiels se déposent avant l'accord du visiteur — une violation ePrivacy.",
+            "with": "Les scripts restent bloqués jusqu'au consentement ; rien de non essentiel ne s'exécute avant."
+          },
+          "marketing_cookies": {
+            "label": "Cookies marketing avant consentement",
+            "without": "Des cookies publicitaires déposés sans base légale.",
+            "with": "Le marketing reste désactivé jusqu'à l'opt-in, avec le Consent Mode v2 réglé sur « refusé » par défaut."
+          },
+          "long_lived_cookies": {
+            "label": "Cookies à durée excessive",
+            "without": "Des cookies persistent plus d'un an, en violation de la minimisation des données.",
+            "with": "Les durées d'expiration sont exposées et contrôlées par catégorie."
+          },
+          "insecure_cookies": {
+            "label": "Cookies mal sécurisés",
+            "without": "Des cookies sans Secure ni HttpOnly — lisibles en clair et par le script de la page.",
+            "with": "Signalés pour que vous puissiez les renforcer avant toute fuite."
+          },
+          "third_party_trackers": {
+            "label": "Traceurs tiers",
+            "without": "Des traceurs de régies publicitaires se chargent avant le consentement.",
+            "with": "Bloqués avant le consentement ; ils ne se chargent qu'après l'opt-in."
+          },
+          "unclassified_cookies": {
+            "label": "Cookies non classés",
+            "without": "Des cookies que vous ne pouvez pas encore expliquer à une autorité.",
+            "with": "Classés et documentés dans votre politique cookies."
+          },
+          "banner": {
+            "label": "Bandeau de consentement",
+            "without": "Absent ou non conforme.",
+            "with": "Un bandeau conforme au RGPD à vos couleurs, en cinq langues."
+          },
+          "policy": {
+            "label": "Politique cookies",
+            "without": "Manuelle ou absente.",
+            "with": "Générée automatiquement, versionnée et hébergée pour vous."
+          },
+          "logs": {
+            "label": "Preuves de consentement",
+            "without": "Aucune piste d'audit.",
+            "with": "Un journal de consentement inaltérable, conservé jusqu'à cinq ans."
+          }
+        }
+      }
     }
   },
   "nav": {

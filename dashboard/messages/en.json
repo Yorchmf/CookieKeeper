@@ -44,7 +44,8 @@
       "verdict": {
         "title": "Scan complete",
         "totalLabel": "cookies & trackers found on {domain}",
-        "needsReview": "{count, plural, one {# cookie needs review} other {# cookies need review}}"
+        "needsReview": "{count, plural, one {# cookie needs review} other {# cookies need review}}",
+        "categoriesLabel": "Cookies by category"
       },
       "gate": {
         "title": "Unlock the full report",
@@ -60,6 +61,12 @@
         "empty": {
           "title": "No cookies found",
           "description": "This scan didn't detect any cookies on your site."
+        },
+        "filter": {
+          "label": "Filter cookies",
+          "all": "All cookies",
+          "thirdParty": "Third-party only",
+          "emptyThirdParty": "No third-party cookies in this scan."
         }
       },
       "cta": {
@@ -67,7 +74,62 @@
         "description": "Complyr blocks these cookies until visitors consent — and keeps audit-ready logs. Start free, no card required.",
         "action": "Get started free"
       },
-      "reset": "Scan another site"
+      "reset": "Scan another site",
+      "comparison": {
+        "title": "Here's what we found — and how Complyr fixes it",
+        "columns": {
+          "issue": "Issue",
+          "without": "Without Complyr",
+          "with": "With Complyr"
+        },
+        "rows": {
+          "pre_consent_tracking": {
+            "label": "Tracking before consent",
+            "without": "Non-essential cookies fire before the visitor agrees — an ePrivacy breach.",
+            "with": "Scripts stay blocked until the visitor consents; nothing non-essential runs first."
+          },
+          "marketing_cookies": {
+            "label": "Marketing cookies pre-consent",
+            "without": "Advertising cookies set with no legal basis.",
+            "with": "Marketing stays off until opt-in, with Consent Mode v2 defaulting to denied."
+          },
+          "long_lived_cookies": {
+            "label": "Cookies that outstay their welcome",
+            "without": "Cookies persist beyond a year, breaching data minimisation.",
+            "with": "Expiries are surfaced and controlled per category."
+          },
+          "insecure_cookies": {
+            "label": "Insecurely-set cookies",
+            "without": "Cookies without Secure and HttpOnly — readable over plaintext and by page script.",
+            "with": "Flagged so you can harden them before they leak."
+          },
+          "third_party_trackers": {
+            "label": "Third-party trackers",
+            "without": "Ad-network trackers load before consent.",
+            "with": "Blocked before consent; they only fire after opt-in."
+          },
+          "unclassified_cookies": {
+            "label": "Unclassified cookies",
+            "without": "Cookies you can't yet explain to a regulator.",
+            "with": "Categorised and documented in your cookie policy."
+          },
+          "banner": {
+            "label": "Consent banner",
+            "without": "Missing or non-compliant.",
+            "with": "A GDPR-ready banner in your brand, in five languages."
+          },
+          "policy": {
+            "label": "Cookie policy",
+            "without": "Manual or missing.",
+            "with": "Auto-generated, versioned and hosted for you."
+          },
+          "logs": {
+            "label": "Consent records",
+            "without": "No audit trail.",
+            "with": "A tamper-proof consent log, retained up to five years."
+          }
+        }
+      }
     }
   },
   "nav": {

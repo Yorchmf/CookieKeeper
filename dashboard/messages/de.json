@@ -44,7 +44,8 @@
       "verdict": {
         "title": "Scan abgeschlossen",
         "totalLabel": "Cookies & Tracker auf {domain} gefunden",
-        "needsReview": "{count, plural, one {# Cookie muss geprüft werden} other {# Cookies müssen geprüft werden}}"
+        "needsReview": "{count, plural, one {# Cookie muss geprüft werden} other {# Cookies müssen geprüft werden}}",
+        "categoriesLabel": "Cookies nach Kategorie"
       },
       "gate": {
         "title": "Vollständigen Bericht freischalten",
@@ -60,6 +61,12 @@
         "empty": {
           "title": "Keine Cookies gefunden",
           "description": "Bei diesem Scan wurden keine Cookies auf Ihrer Website erkannt."
+        },
+        "filter": {
+          "label": "Cookies filtern",
+          "all": "Alle Cookies",
+          "thirdParty": "Nur Drittanbieter",
+          "emptyThirdParty": "Keine Drittanbieter-Cookies in diesem Scan."
         }
       },
       "cta": {
@@ -67,7 +74,62 @@
         "description": "Complyr blockiert diese Cookies bis Besucher einwilligen – und führt prüfsichere Protokolle. Kostenlos starten, ohne Karte.",
         "action": "Kostenlos loslegen"
       },
-      "reset": "Andere Website scannen"
+      "reset": "Andere Website scannen",
+      "comparison": {
+        "title": "Das haben wir gefunden — und so behebt es Complyr",
+        "columns": {
+          "issue": "Problem",
+          "without": "Ohne Complyr",
+          "with": "Mit Complyr"
+        },
+        "rows": {
+          "pre_consent_tracking": {
+            "label": "Tracking vor der Einwilligung",
+            "without": "Nicht notwendige Cookies werden gesetzt, bevor der Besucher zustimmt — ein Verstoß gegen die ePrivacy-Richtlinie.",
+            "with": "Skripte bleiben blockiert, bis der Besucher einwilligt; nichts Nicht-Notwendiges läuft vorher."
+          },
+          "marketing_cookies": {
+            "label": "Marketing-Cookies vor der Einwilligung",
+            "without": "Werbe-Cookies ohne Rechtsgrundlage gesetzt.",
+            "with": "Marketing bleibt bis zum Opt-in aus, mit Consent Mode v2 standardmäßig auf „abgelehnt“."
+          },
+          "long_lived_cookies": {
+            "label": "Cookies mit zu langer Laufzeit",
+            "without": "Cookies bestehen länger als ein Jahr und verletzen die Datenminimierung.",
+            "with": "Ablaufzeiten werden je Kategorie sichtbar gemacht und gesteuert."
+          },
+          "insecure_cookies": {
+            "label": "Unsicher gesetzte Cookies",
+            "without": "Cookies ohne Secure und HttpOnly — im Klartext und per Seitenskript lesbar.",
+            "with": "Gekennzeichnet, damit Sie sie absichern können, bevor Daten abfließen."
+          },
+          "third_party_trackers": {
+            "label": "Drittanbieter-Tracker",
+            "without": "Tracker von Werbenetzwerken laden vor der Einwilligung.",
+            "with": "Vor der Einwilligung blockiert; sie laden erst nach dem Opt-in."
+          },
+          "unclassified_cookies": {
+            "label": "Nicht klassifizierte Cookies",
+            "without": "Cookies, die Sie einer Aufsichtsbehörde noch nicht erklären können.",
+            "with": "In Ihrer Cookie-Richtlinie kategorisiert und dokumentiert."
+          },
+          "banner": {
+            "label": "Consent-Banner",
+            "without": "Fehlt oder nicht konform.",
+            "with": "Ein DSGVO-fähiges Banner in Ihrem Design, in fünf Sprachen."
+          },
+          "policy": {
+            "label": "Cookie-Richtlinie",
+            "without": "Manuell oder nicht vorhanden.",
+            "with": "Automatisch erstellt, versioniert und für Sie gehostet."
+          },
+          "logs": {
+            "label": "Einwilligungsnachweise",
+            "without": "Kein Prüfprotokoll.",
+            "with": "Ein manipulationssicheres Einwilligungsprotokoll, bis zu fünf Jahre aufbewahrt."
+          }
+        }
+      }
     }
   },
   "nav": {

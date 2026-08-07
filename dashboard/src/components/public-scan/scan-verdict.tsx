@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { ComplianceReport } from "@/components/scans/compliance-report";
+import { ScanComparison } from "@/components/public-scan/scan-comparison";
 import { orderedCategories } from "@/components/scans/cookie-table";
 import { Badge } from "@/components/ui/badge";
 import type { PublicScanVerdict } from "@/lib/api/public-scan";
@@ -49,7 +50,10 @@ export function ScanVerdict({
       </div>
 
       {categories.length > 0 && (
-        <ul className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
+        <ul
+          aria-label={t("verdict.categoriesLabel")}
+          className="grid gap-x-6 gap-y-2 sm:grid-cols-2"
+        >
           {categories.map((category) => (
             <li
               key={category}
@@ -80,6 +84,8 @@ export function ScanVerdict({
           {t("verdict.needsReview", { count: verdict.needsReviewCount })}
         </Badge>
       )}
+
+      <ScanComparison report={verdict.compliance} />
     </div>
   );
 }

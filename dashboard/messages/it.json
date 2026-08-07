@@ -44,7 +44,8 @@
       "verdict": {
         "title": "Scansione completata",
         "totalLabel": "cookie e tracker trovati su {domain}",
-        "needsReview": "{count, plural, one {# cookie da verificare} other {# cookie da verificare}}"
+        "needsReview": "{count, plural, one {# cookie da verificare} other {# cookie da verificare}}",
+        "categoriesLabel": "Cookie per categoria"
       },
       "gate": {
         "title": "Sblocca il report completo",
@@ -60,6 +61,12 @@
         "empty": {
           "title": "Nessun cookie trovato",
           "description": "Questa scansione non ha rilevato alcun cookie sul tuo sito."
+        },
+        "filter": {
+          "label": "Filtra i cookie",
+          "all": "Tutti i cookie",
+          "thirdParty": "Solo terze parti",
+          "emptyThirdParty": "Nessun cookie di terze parti in questa scansione."
         }
       },
       "cta": {
@@ -67,7 +74,62 @@
         "description": "Complyr blocca questi cookie finché i visitatori non acconsentono e mantiene registri pronti per l'audit. Inizia gratis, senza carta.",
         "action": "Inizia gratis"
       },
-      "reset": "Analizza un altro sito"
+      "reset": "Analizza un altro sito",
+      "comparison": {
+        "title": "Ecco cosa abbiamo trovato — e come lo risolve Complyr",
+        "columns": {
+          "issue": "Problema",
+          "without": "Senza Complyr",
+          "with": "Con Complyr"
+        },
+        "rows": {
+          "pre_consent_tracking": {
+            "label": "Tracciamento prima del consenso",
+            "without": "Cookie non essenziali vengono impostati prima che il visitatore acconsenta, una violazione ePrivacy.",
+            "with": "Gli script restano bloccati finché il visitatore non acconsente; nulla di non essenziale viene eseguito prima."
+          },
+          "marketing_cookies": {
+            "label": "Cookie di marketing senza consenso",
+            "without": "Cookie pubblicitari impostati senza base giuridica.",
+            "with": "Il marketing resta disattivato fino all'opt-in, con Consent Mode v2 impostato su «negato» per impostazione predefinita."
+          },
+          "long_lived_cookies": {
+            "label": "Cookie con durata eccessiva",
+            "without": "Cookie che persistono oltre un anno, violando la minimizzazione dei dati.",
+            "with": "Le scadenze vengono mostrate e controllate per categoria."
+          },
+          "insecure_cookies": {
+            "label": "Cookie impostati in modo non sicuro",
+            "without": "Cookie senza Secure e HttpOnly, leggibili in chiaro e dallo script della pagina.",
+            "with": "Segnalati così puoi rafforzarli prima che si verifichino fughe di dati."
+          },
+          "third_party_trackers": {
+            "label": "Tracker di terze parti",
+            "without": "Tracker di reti pubblicitarie si caricano prima del consenso.",
+            "with": "Bloccati prima del consenso; si caricano solo dopo l'opt-in."
+          },
+          "unclassified_cookies": {
+            "label": "Cookie non classificati",
+            "without": "Cookie che non puoi ancora spiegare a un'autorità.",
+            "with": "Classificati e documentati nella tua cookie policy."
+          },
+          "banner": {
+            "label": "Banner di consenso",
+            "without": "Assente o non conforme.",
+            "with": "Un banner conforme al GDPR con il tuo marchio, in cinque lingue."
+          },
+          "policy": {
+            "label": "Cookie policy",
+            "without": "Manuale o assente.",
+            "with": "Generata automaticamente, con versioni e ospitata per te."
+          },
+          "logs": {
+            "label": "Prove di consenso",
+            "without": "Nessuna traccia di audit.",
+            "with": "Un registro dei consensi a prova di manomissione, conservato fino a cinque anni."
+          }
+        }
+      }
     }
   },
   "nav": {
