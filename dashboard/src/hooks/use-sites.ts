@@ -6,6 +6,7 @@ import {
   createSite,
   getSite,
   listSites,
+  restoreSite,
   setSiteBranding,
   updateSite,
   verifySite,
@@ -91,6 +92,22 @@ export function useArchiveSite(id: string) {
   return useMutation({
     mutationFn: () => archiveSite(id),
     onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: SITES_QUERY_KEY });
+    },
+  });
+}
+
+/**
+ * Reactivate an archived site. Seeds this site's detail cache from the authoritative response so the
+ * status badge and detail actions flip immediately, then invalidates the list so both the active and
+ * archived filtered views drop/pick up the site on their next read.
+ */
+export function useRestoreSite(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => restoreSite(id),
+    onSuccess: (site: SiteDetail) => {
+      queryClient.setQueryData([...SITES_QUERY_KEY, id], site);
       void queryClient.invalidateQueries({ queryKey: SITES_QUERY_KEY });
     },
   });

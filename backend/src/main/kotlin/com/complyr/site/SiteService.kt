@@ -124,6 +124,32 @@ class SiteService(
         siteRepository.save(site.copy(status = SiteStatus.ARCHIVED, updatedAt = clock.instant()))
     }
 
+    /**
+     * Bring an archived site back to active — the inverse of [archive], and idempotent: restoring an
+     * already-active site returns its detail without a write. Two create-time guards are re-run because a
+     * restore *is* an acquisition of an active site:
+     *  - the domain freed up while archived, so another active site may now hold it —
+     *    [ensureDomainAvailable] (plus the unique-index race check in [saveEnsuringDomainUniqueness])
+     *    surfaces the conflict as 409, exactly as create does;
+     *  - an active site consumes a plan slot, so [EntitlementService.requireCanAddSite] runs (and, under
+     *    its advisory lock, re-checks the erasure tombstone) — archive→restore must never become a way to
+     *    exceed `maxSites` after a downgrade.
+     * Verification state is preserved: archiving never disproved domain control, so a site verified before
+     * archival stays verified.
+     */
+    @Transactional
+    fun restore(
+        userId: UUID,
+        siteId: UUID,
+    ): SiteDetailResponse {
+        val site = owned(userId, siteId)
+        if (site.status == SiteStatus.ACTIVE) return detail(site)
+        ensureDomainAvailable(userId, site.domain)
+        entitlementService.requireCanAddSite(userId)
+        val restored = saveEnsuringDomainUniqueness(site.copy(status = SiteStatus.ACTIVE, updatedAt = clock.instant()))
+        return detail(restored)
+    }
+
     private fun changeDomain(
         site: SiteEntity,
         newDomain: String,

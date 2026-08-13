@@ -1,12 +1,17 @@
 "use client";
 
 import { useFormatter, useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { AddSiteDialog } from "@/components/sites/add-site-dialog";
+import {
+  parseSiteStatus,
+  SiteStatusFilter,
+} from "@/components/sites/site-status-filter";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSites } from "@/hooks/use-sites";
-import { Link } from "@/i18n/navigation";
-import type { Site } from "@/lib/api/sites";
+import { Link, usePathname, useRouter } from "@/i18n/navigation";
+import type { Site, SiteStatus } from "@/lib/api/sites";
 
 function SiteRow({ site }: { site: Site }) {
   const t = useTranslations("sites");
@@ -41,7 +46,25 @@ function SiteRow({ site }: { site: Site }) {
 
 export function SitesList() {
   const t = useTranslations("sites");
-  const sites = useSites();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const status = parseSiteStatus(searchParams.get("status"));
+  const sites = useSites(status);
+
+  const handleStatusChange = (next: SiteStatus) => {
+    const params = new URLSearchParams(searchParams);
+    // "active" is the default view — keep the URL clean by dropping the param for it.
+    if (next === "active") {
+      params.delete("status");
+    } else {
+      params.set("status", next);
+    }
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, {
+      scroll: false,
+    });
+  };
 
   return (
     <main className="flex-1 p-6" aria-busy={sites.isPending}>
@@ -61,6 +84,8 @@ export function SitesList() {
           <AddSiteDialog />
         </header>
 
+        <SiteStatusFilter value={status} onChange={handleStatusChange} />
+
         {sites.isPending ? (
           <div className="flex flex-col gap-3" aria-hidden="true">
             <Skeleton className="h-14 w-full" />
@@ -73,9 +98,9 @@ export function SitesList() {
           </p>
         ) : sites.data.sites.length === 0 ? (
           <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border p-10 text-center">
-            <p className="font-medium">{t("empty.title")}</p>
+            <p className="font-medium">{t(`empty.${status}.title`)}</p>
             <p className="max-w-md text-sm text-muted-foreground">
-              {t("empty.description")}
+              {t(`empty.${status}.description`)}
             </p>
           </div>
         ) : (

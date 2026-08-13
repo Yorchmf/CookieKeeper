@@ -93,4 +93,14 @@ class SiteController(
         siteService.archive(CurrentUser.id(), id)
         return ApiResponse.success(ArchiveResponse())
     }
+
+    /**
+     * Reactivate an archived site (the inverse of [archive]). Idempotent for an already-active site.
+     * Re-applies the site-cap guard and domain-availability check — a domain retaken by another active
+     * site is a 409, being at the plan cap is a 403 — so restore can never bypass either.
+     */
+    @PostMapping("/{id}/restore")
+    fun restore(
+        @PathVariable id: UUID,
+    ): ApiResponse<SiteDetailResponse> = ApiResponse.success(siteService.restore(CurrentUser.id(), id))
 }

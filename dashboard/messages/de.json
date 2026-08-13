@@ -429,8 +429,14 @@
       "archived": "Archiviert"
     },
     "empty": {
-      "title": "Noch keine Websites",
-      "description": "Fügen Sie Ihre erste Website hinzu, um den Einbettungscode für das Consent-Banner zu erhalten und Einwilligungen zu erfassen."
+      "active": {
+        "title": "Noch keine Websites",
+        "description": "Fügen Sie Ihre erste Website hinzu, um den Einbettungscode für das Consent-Banner zu erhalten und Einwilligungen zu erfassen."
+      },
+      "archived": {
+        "title": "Keine archivierten Websites",
+        "description": "Von Ihnen archivierte Websites erscheinen hier. Sie können sie jederzeit wiederherstellen."
+      }
     },
     "addDialog": {
       "trigger": "Website hinzufügen",
@@ -524,6 +530,17 @@
         "resetHint": "Beim Ändern der Domain wird die Verifizierung zurückgesetzt – Sie müssen die neue Domain erneut verifizieren.",
         "save": "Domain speichern",
         "saved": "Domain in {domain} geändert"
+      },
+      "restoreTitle": "Website wiederherstellen",
+      "restoreHint": "Beim Wiederherstellen wird das Banner wieder aktiviert und die Website erscheint erneut in Ihrer aktiven Liste.",
+      "restore": "Website wiederherstellen",
+      "restoredToast": "Website wiederhergestellt"
+    },
+    "filter": {
+      "legend": "Websites nach Status filtern",
+      "status": {
+        "active": "Aktiv",
+        "archived": "Archiviert"
       }
     }
   },

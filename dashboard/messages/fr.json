@@ -429,8 +429,14 @@
       "archived": "Archivé"
     },
     "empty": {
-      "title": "Aucun site pour le moment",
-      "description": "Ajoutez votre premier site pour obtenir le code d'intégration de la bannière de consentement et commencer à enregistrer les consentements."
+      "active": {
+        "title": "Aucun site pour le moment",
+        "description": "Ajoutez votre premier site pour obtenir le code d'intégration de la bannière de consentement et commencer à enregistrer les consentements."
+      },
+      "archived": {
+        "title": "Aucun site archivé",
+        "description": "Les sites que vous archivez apparaissent ici. Vous pouvez les restaurer à tout moment."
+      }
     },
     "addDialog": {
       "trigger": "Ajouter un site",
@@ -524,6 +530,17 @@
         "resetHint": "Changer de domaine réinitialise la vérification — vous devrez vérifier à nouveau le nouveau domaine.",
         "save": "Enregistrer le domaine",
         "saved": "Domaine remplacé par {domain}"
+      },
+      "restoreTitle": "Restaurer le site",
+      "restoreHint": "La restauration réactive la bannière et replace le site dans votre liste active.",
+      "restore": "Restaurer le site",
+      "restoredToast": "Site restauré"
+    },
+    "filter": {
+      "legend": "Filtrer les sites par statut",
+      "status": {
+        "active": "Actif",
+        "archived": "Archivé"
       }
     }
   },

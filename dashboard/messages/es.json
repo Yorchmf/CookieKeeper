@@ -429,8 +429,14 @@
       "archived": "Archivado"
     },
     "empty": {
-      "title": "Aún no hay sitios",
-      "description": "Añade tu primer sitio para obtener el código de inserción del banner de consentimiento y empezar a registrar consentimientos."
+      "active": {
+        "title": "Aún no hay sitios",
+        "description": "Añade tu primer sitio para obtener el código de inserción del banner de consentimiento y empezar a registrar consentimientos."
+      },
+      "archived": {
+        "title": "No hay sitios archivados",
+        "description": "Los sitios que archives aparecerán aquí. Puedes restaurarlos cuando quieras."
+      }
     },
     "addDialog": {
       "trigger": "Añadir sitio",
@@ -524,6 +530,17 @@
         "resetHint": "Cambiar el dominio reinicia la verificación: tendrás que verificar de nuevo el nuevo dominio.",
         "save": "Guardar dominio",
         "saved": "Dominio cambiado a {domain}"
+      },
+      "restoreTitle": "Restaurar sitio",
+      "restoreHint": "Al restaurarlo se reactiva el banner y el sitio vuelve a tu lista de activos.",
+      "restore": "Restaurar sitio",
+      "restoredToast": "Sitio restaurado"
+    },
+    "filter": {
+      "legend": "Filtrar sitios por estado",
+      "status": {
+        "active": "Activo",
+        "archived": "Archivado"
       }
     }
   },

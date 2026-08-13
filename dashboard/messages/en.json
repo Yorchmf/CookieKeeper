@@ -429,8 +429,14 @@
       "archived": "Archived"
     },
     "empty": {
-      "title": "No sites yet",
-      "description": "Add your first site to get the consent banner embed code and start recording consent."
+      "active": {
+        "title": "No sites yet",
+        "description": "Add your first site to get the consent banner embed code and start recording consent."
+      },
+      "archived": {
+        "title": "No archived sites",
+        "description": "Sites you archive appear here. You can restore them at any time."
+      }
     },
     "addDialog": {
       "trigger": "Add site",
@@ -524,6 +530,17 @@
         "resetHint": "Changing the domain restarts verification — you'll need to verify the new domain again.",
         "save": "Save domain",
         "saved": "Domain changed to {domain}"
+      },
+      "restoreTitle": "Restore site",
+      "restoreHint": "Restoring reactivates the banner and returns the site to your active list.",
+      "restore": "Restore site",
+      "restoredToast": "Site restored"
+    },
+    "filter": {
+      "legend": "Filter sites by status",
+      "status": {
+        "active": "Active",
+        "archived": "Archived"
       }
     }
   },

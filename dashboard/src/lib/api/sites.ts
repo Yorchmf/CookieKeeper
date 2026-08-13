@@ -122,3 +122,16 @@ export async function archiveSite(id: string): Promise<{ archived: boolean }> {
   );
   return data;
 }
+
+/**
+ * Reactivate an archived site. Returns the fresh detail (now `status: "active"`). The backend re-applies
+ * the plan site-cap and domain-availability guards, so this can reject with 403 (cap reached) or 409
+ * (the domain was re-registered by another active site while this one was archived).
+ */
+export async function restoreSite(id: string): Promise<SiteDetail> {
+  const { data } = await apiFetch<SiteDetail>(
+    `/api/v1/sites/${encodeURIComponent(id)}/restore`,
+    { method: "POST" },
+  );
+  return data;
+}

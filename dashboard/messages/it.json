@@ -429,8 +429,14 @@
       "archived": "Archiviato"
     },
     "empty": {
-      "title": "Ancora nessun sito",
-      "description": "Aggiungi il tuo primo sito per ottenere il codice di incorporamento del banner di consenso e iniziare a registrare i consensi."
+      "active": {
+        "title": "Ancora nessun sito",
+        "description": "Aggiungi il tuo primo sito per ottenere il codice di incorporamento del banner di consenso e iniziare a registrare i consensi."
+      },
+      "archived": {
+        "title": "Nessun sito archiviato",
+        "description": "I siti che archivi vengono visualizzati qui. Puoi ripristinarli in qualsiasi momento."
+      }
     },
     "addDialog": {
       "trigger": "Aggiungi sito",
@@ -524,6 +530,17 @@
         "resetHint": "La modifica del dominio riavvia la verifica: dovrai verificare di nuovo il nuovo dominio.",
         "save": "Salva dominio",
         "saved": "Dominio modificato in {domain}"
+      },
+      "restoreTitle": "Ripristina sito",
+      "restoreHint": "Il ripristino riattiva il banner e riporta il sito nel tuo elenco attivo.",
+      "restore": "Ripristina sito",
+      "restoredToast": "Sito ripristinato"
+    },
+    "filter": {
+      "legend": "Filtra i siti per stato",
+      "status": {
+        "active": "Attivo",
+        "archived": "Archiviato"
       }
     }
   },

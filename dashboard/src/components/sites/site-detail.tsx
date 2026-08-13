@@ -27,7 +27,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useArchiveSite, useSite } from "@/hooks/use-sites";
+import { useArchiveSite, useRestoreSite, useSite } from "@/hooks/use-sites";
 import { Link, useRouter } from "@/i18n/navigation";
 import { getApiErrorCode } from "@/lib/api-error-codes";
 
@@ -37,6 +37,7 @@ export function SiteDetail({ siteId }: { siteId: string }) {
   const router = useRouter();
   const site = useSite(siteId);
   const archive = useArchiveSite(siteId);
+  const restore = useRestoreSite(siteId);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   const handleArchive = async () => {
@@ -46,6 +47,15 @@ export function SiteDetail({ siteId }: { siteId: string }) {
       router.push("/sites");
     } catch (error) {
       setIsConfirmOpen(false);
+      toast.error(tErrors(getApiErrorCode(error)));
+    }
+  };
+
+  const handleRestore = async () => {
+    try {
+      await restore.mutateAsync();
+      toast.success(t("detail.restoredToast"));
+    } catch (error) {
       toast.error(tErrors(getApiErrorCode(error)));
     }
   };
@@ -193,48 +203,66 @@ export function SiteDetail({ siteId }: { siteId: string }) {
           isVerified={data.verifiedAt !== null}
         />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("detail.dangerZone")}</CardTitle>
-            <CardDescription>{t("detail.archiveHint")}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-              <DialogTrigger
-                render={
-                  <Button variant="destructive">{t("detail.archive")}</Button>
-                }
-              />
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>{t("detail.archiveConfirmTitle")}</DialogTitle>
-                  <DialogDescription>
-                    {t("detail.archiveConfirmDescription", {
-                      domain: data.domain,
-                    })}
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => setIsConfirmOpen(false)}
-                  >
-                    {t("detail.cancel")}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={() => void handleArchive()}
-                    disabled={archive.isPending}
-                  >
-                    {t("detail.archiveConfirm")}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </CardContent>
-        </Card>
+        {data.status === "archived" ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("detail.restoreTitle")}</CardTitle>
+              <CardDescription>{t("detail.restoreHint")}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                type="button"
+                onClick={() => void handleRestore()}
+                disabled={restore.isPending}
+              >
+                {t("detail.restore")}
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("detail.dangerZone")}</CardTitle>
+              <CardDescription>{t("detail.archiveHint")}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+                <DialogTrigger
+                  render={
+                    <Button variant="destructive">{t("detail.archive")}</Button>
+                  }
+                />
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>{t("detail.archiveConfirmTitle")}</DialogTitle>
+                    <DialogDescription>
+                      {t("detail.archiveConfirmDescription", {
+                        domain: data.domain,
+                      })}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setIsConfirmOpen(false)}
+                    >
+                      {t("detail.cancel")}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => void handleArchive()}
+                      disabled={archive.isPending}
+                    >
+                      {t("detail.archiveConfirm")}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </CardContent>
+          </Card>
+        )}
       </section>
     </main>
   );

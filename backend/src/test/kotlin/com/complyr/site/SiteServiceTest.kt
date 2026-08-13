@@ -212,7 +212,92 @@ class SiteServiceTest {
         assertThrows<SiteNotFoundException> { service.get(userId, foreignSiteId) }
         assertThrows<SiteNotFoundException> { service.update(userId, foreignSiteId, "new.example.com") }
         assertThrows<SiteNotFoundException> { service.archive(userId, foreignSiteId) }
+        assertThrows<SiteNotFoundException> { service.restore(userId, foreignSiteId) }
         assertThrows<SiteNotFoundException> { service.setBrandingPreference(userId, foreignSiteId, hideBranding = false) }
+    }
+
+    @Test
+    fun `restore reactivates an archived site and stamps updatedAt`() {
+        val existing = site(status = SiteStatus.ARCHIVED)
+        every { siteRepository.findByIdAndUserId(existing.id, userId) } returns existing
+        every { siteRepository.existsByUserIdAndDomainAndStatus(userId, "example.com", SiteStatus.ACTIVE) } returns false
+        val saved = slot<SiteEntity>()
+        every { siteRepository.saveAndFlush(capture(saved)) } answers { firstArg() }
+
+        val detail = service.restore(userId, existing.id)
+
+        assertEquals(SiteStatus.ACTIVE, saved.captured.status)
+        assertEquals(now, saved.captured.updatedAt)
+        assertEquals("active", detail.status)
+        // Restore is a reactivation, not a create: the banner config survived archival and the rescan job
+        // picks up ACTIVE sites on its own, so neither create-only side effect must fire again.
+        verify(exactly = 0) { bannerConfigService.createDefaultFor(any()) }
+        verify(exactly = 0) { events.publishEvent(any<SiteCreatedEvent>()) }
+    }
+
+    @Test
+    fun `restore preserves verification state — archiving never disproved control`() {
+        val existing =
+            site(status = SiteStatus.ARCHIVED)
+                .copy(verifiedAt = now.minusSeconds(3600), verificationMethod = VerificationMethod.DNS_TXT)
+        every { siteRepository.findByIdAndUserId(existing.id, userId) } returns existing
+        every { siteRepository.existsByUserIdAndDomainAndStatus(userId, "example.com", SiteStatus.ACTIVE) } returns false
+        val saved = slot<SiteEntity>()
+        every { siteRepository.saveAndFlush(capture(saved)) } answers { firstArg() }
+
+        service.restore(userId, existing.id)
+
+        assertEquals(now.minusSeconds(3600), saved.captured.verifiedAt)
+        assertEquals(VerificationMethod.DNS_TXT, saved.captured.verificationMethod)
+    }
+
+    @Test
+    fun `restore is an idempotent no-op for an already-active site`() {
+        val existing = site(status = SiteStatus.ACTIVE)
+        every { siteRepository.findByIdAndUserId(existing.id, userId) } returns existing
+
+        val detail = service.restore(userId, existing.id)
+
+        assertEquals("active", detail.status)
+        // No write, and the cap/domain guards never run — re-restoring an active site must not 403 or 409.
+        verify(exactly = 0) { siteRepository.saveAndFlush(any<SiteEntity>()) }
+        verify(exactly = 0) { entitlementService.requireCanAddSite(any()) }
+        verify(exactly = 0) { siteRepository.existsByUserIdAndDomainAndStatus(any(), any(), any()) }
+    }
+
+    @Test
+    fun `restore is rejected when the domain was re-registered while archived`() {
+        val existing = site(status = SiteStatus.ARCHIVED)
+        every { siteRepository.findByIdAndUserId(existing.id, userId) } returns existing
+        every { siteRepository.existsByUserIdAndDomainAndStatus(userId, "example.com", SiteStatus.ACTIVE) } returns true
+
+        assertThrows<DomainAlreadyRegisteredException> { service.restore(userId, existing.id) }
+
+        // Domain conflict is decided before the cap guard and before any write.
+        verify(exactly = 0) { entitlementService.requireCanAddSite(any()) }
+        verify(exactly = 0) { siteRepository.saveAndFlush(any<SiteEntity>()) }
+    }
+
+    @Test
+    fun `restore is rejected when the plan site cap is reached`() {
+        val existing = site(status = SiteStatus.ARCHIVED)
+        every { siteRepository.findByIdAndUserId(existing.id, userId) } returns existing
+        every { siteRepository.existsByUserIdAndDomainAndStatus(userId, "example.com", SiteStatus.ACTIVE) } returns false
+        every { entitlementService.requireCanAddSite(userId) } throws SiteLimitReachedException()
+
+        assertThrows<SiteLimitReachedException> { service.restore(userId, existing.id) }
+
+        verify(exactly = 0) { siteRepository.saveAndFlush(any<SiteEntity>()) }
+    }
+
+    @Test
+    fun `restore maps a domain unique-index race to the same conflict error`() {
+        val existing = site(status = SiteStatus.ARCHIVED)
+        every { siteRepository.findByIdAndUserId(existing.id, userId) } returns existing
+        every { siteRepository.existsByUserIdAndDomainAndStatus(userId, "example.com", SiteStatus.ACTIVE) } returns false
+        every { siteRepository.saveAndFlush(any<SiteEntity>()) } throws domainConflict()
+
+        assertThrows<DomainAlreadyRegisteredException> { service.restore(userId, existing.id) }
     }
 
     @Test
