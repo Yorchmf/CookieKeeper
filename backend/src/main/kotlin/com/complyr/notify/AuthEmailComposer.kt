@@ -32,6 +32,15 @@ class AuthEmailComposer(
     /** First-verification welcome; links to the localized dashboard home, no token. */
     fun welcomeEmail(locale: String): ComposedEmail = compose("welcome", locale, "${properties.appBaseUrl}/$locale")
 
+    /** Confirmation link for an email change, sent to the NEW address. */
+    fun emailChangeEmail(
+        locale: String,
+        rawToken: String,
+    ): ComposedEmail = compose("emailChange", locale, link(locale, "confirm-email-change", rawToken))
+
+    /** Post-change security notice to the OLD address; links to the localized dashboard home, no token. */
+    fun emailChangedNoticeEmail(locale: String): ComposedEmail = compose("emailChangedNotice", locale, "${properties.appBaseUrl}/$locale")
+
     private fun link(
         locale: String,
         page: String,

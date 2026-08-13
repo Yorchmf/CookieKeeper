@@ -53,9 +53,15 @@ export function HostedPolicy({ publicId }: { publicId: string }) {
           </article>
         </>
       )}
-      <footer className="mt-auto border-t border-border pt-6 text-xs text-muted-foreground">
-        {t("poweredBy", { app: "Complyr" })}
-      </footer>
+      {/* Only once the policy has actually resolved: keying off `policy.data` (not just
+          `!removeBranding`) keeps the branded footer from flashing in during loading and from
+          appearing on the not-found / error chrome, where `data` is undefined and the negation
+          would otherwise read as true. */}
+      {policy.data && !policy.data.removeBranding && (
+        <footer className="mt-auto border-t border-border pt-6 text-xs text-muted-foreground">
+          {t("poweredBy", { app: "Complyr" })}
+        </footer>
+      )}
     </main>
   );
 }

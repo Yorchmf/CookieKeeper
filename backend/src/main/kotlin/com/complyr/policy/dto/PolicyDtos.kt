@@ -58,7 +58,8 @@ data class PolicyCurrentResponse(
 /**
  * Public hosted-page payload (no auth): the rendered [html] block for one [language], plus the
  * [availableLanguages] of this version for the page's language switcher and [companyName]/[version]
- * for the page title and footer. Addressed only by the opaque public id.
+ * for the page title and footer. Addressed only by the opaque public id. [removeBranding] is the
+ * site owner's plan entitlement (paid plans only), gating the "Powered by Complyr" footer.
  */
 data class PublicPolicyResponse(
     val version: Int,
@@ -67,4 +68,5 @@ data class PublicPolicyResponse(
     val companyName: String,
     val html: String,
     val publishedAt: Instant?,
+    val removeBranding: Boolean,
 )

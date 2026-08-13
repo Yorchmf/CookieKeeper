@@ -11,19 +11,35 @@
   },
   "marketing": {
     "hero": {
-      "title": "Complyr",
-      "pitch": "Consenso ai cookie GDPR semplicissimo per le piccole imprese europee — banner conforme, scansioni dei cookie e registri di consenso pronti per l'audit da 9 €/mese.",
-      "cta": "Inizia ora",
-      "euBadge": "Sviluppato e ospitato nell'UE"
+      "title": "Consenso ai cookie GDPR, senza il mal di testa",
+      "pitch": "Il banner conforme, lo scanner di cookie e i registri di consenso pronti per l'audit di cui le piccole imprese europee hanno davvero bisogno — configurato in pochi minuti, da €9/mese.",
+      "cta": "Inizia gratis",
+      "euBadge": "Creato e ospitato nell'UE",
+      "ctaSecondary": "Vedi i prezzi",
+      "trust": "Prova gratuita di 14 giorni · Nessuna carta di credito · Disdici quando vuoi"
     },
     "nav": {
       "features": "Funzionalità",
       "pricing": "Prezzi",
-      "signIn": "Accedi"
+      "signIn": "Accedi",
+      "faq": "Domande frequenti",
+      "cta": "Inizia gratis"
     },
     "footer": {
-      "legal": "Note legali",
-      "privacy": "Privacy"
+      "legal": "Legale",
+      "privacy": "Privacy",
+      "tagline": "Consenso ai cookie GDPR semplice per le imprese europee.",
+      "product": "Prodotto",
+      "features": "Funzionalità",
+      "pricing": "Prezzi",
+      "faq": "Domande frequenti",
+      "terms": "Termini",
+      "imprint": "Note legali",
+      "account": "Account",
+      "signIn": "Accedi",
+      "cta": "Inizia gratis",
+      "rights": "© {year} Complyr. Tutti i diritti riservati.",
+      "madeIn": "Creato e ospitato nell'UE"
     },
     "scan": {
       "eyebrow": "Controllo cookie gratuito",
@@ -126,10 +142,177 @@
           "logs": {
             "label": "Prove di consenso",
             "without": "Nessuna traccia di audit.",
-            "with": "Un registro dei consensi a prova di manomissione, conservato fino a cinque anni."
+            "with": "Un registro dei consensi a prova di manomissione, conservato fino a tre anni."
           }
         }
       }
+    },
+    "theme": {
+      "label": "Cambia tema",
+      "light": "Chiaro",
+      "dark": "Scuro",
+      "system": "Sistema"
+    },
+    "problem": {
+      "eyebrow": "Perché Complyr",
+      "title": "Tutto ciò che ti serve per essere conforme. Niente di superfluo.",
+      "subtitle": "Gli strumenti di consenso enterprise sono potenti, costosi e complicati. Complyr fa il 95 % di ciò che serve davvero a una piccola impresa — e per il resto ti lascia in pace.",
+      "cards": {
+        "design": {
+          "title": "Bello di default",
+          "body": "Banner che i tuoi visitatori non odieranno. Design moderni, animazioni fluide e piena personalizzazione — senza una riga di CSS."
+        },
+        "languages": {
+          "title": "5 lingue dell'UE, altre in arrivo",
+          "body": "Rileva automaticamente la lingua del tuo visitatore. Oggi inglese, tedesco, francese, spagnolo e italiano — con altre in arrivo."
+        },
+        "scanner": {
+          "title": "Scanner automatico",
+          "body": "Analizziamo il tuo sito e rileviamo ogni cookie e tracker al posto tuo. Nessuna lista manuale, nessuna congettura."
+        },
+        "policy": {
+          "title": "Informativa generata automaticamente",
+          "body": "Un'informativa sui cookie scritta per te, sempre sincronizzata con i tracker che troviamo davvero sul tuo sito."
+        },
+        "consentMode": {
+          "title": "Consent Mode v2",
+          "body": "Google Consent Mode v2 integrato. Un solo interruttore ed è fatta — obbligatorio per Google Ads nell'UE dal 2024."
+        },
+        "logs": {
+          "title": "Registri pronti per l'audit",
+          "body": "Ogni scelta di consenso conservata come prova a prova di manomissione — 12 mesi con Starter, 3 anni con Pro e Business. La prova della tua conformità quando un'autorità lo chiede."
+        },
+        "hosting": {
+          "title": "Ospitato nell'UE",
+          "body": "I dati dei tuoi visitatori non lasciano mai l'Europa. Archiviati in data center tedeschi — piena sovranità dei dati, nessun trasferimento negli USA."
+        },
+        "performance": {
+          "title": "Velocissimo",
+          "body": "Il nostro widget pesa meno di 20 KB ed è completamente asincrono. Non rallenterà il tuo sito né intaccherà i tuoi Core Web Vitals."
+        },
+        "analytics": {
+          "title": "Statistiche incluse",
+          "body": "Tendenze di consenso, tassi di adesione per categoria e il tuo inventario di cookie — tutto dai tuoi dati. Nessun Google Analytics, nessun tracker di terze parti."
+        }
+      }
+    },
+    "how": {
+      "eyebrow": "Come funziona",
+      "title": "Conforme in tre passaggi",
+      "subtitle": "Niente sviluppatori, niente avvocati, nessun weekend perso a scrivere documentazione.",
+      "steps": {
+        "scan": {
+          "step": "01",
+          "title": "Scansiona il tuo sito",
+          "body": "Inserisci il tuo dominio e lo analizzeremo, trovando automaticamente ogni cookie e tracker."
+        },
+        "customise": {
+          "step": "02",
+          "title": "Personalizza il tuo banner",
+          "body": "Adattalo al tuo brand in pochi clic — colori, posizione, lingue, categorie. Anteprima live inclusa."
+        },
+        "embed": {
+          "step": "03",
+          "title": "Incolla una riga",
+          "body": "Aggiungi un singolo tag script prima del tag head di chiusura. Ecco fatto — sei conforme e stai raccogliendo i consensi."
+        }
+      },
+      "snippet": {
+        "label": "Aggiungi al tuo sito",
+        "copy": "Copia",
+        "copied": "Copiato!"
+      }
+    },
+    "pricing": {
+      "eyebrow": "Prezzi",
+      "title": "Prezzi semplici, nessuna sorpresa",
+      "subtitle": "Inizia con una prova gratuita di 14 giorni. Nessuna carta di credito, disdici quando vuoi. Prezzi IVA esclusa.",
+      "perMonth": "/mese",
+      "mostPopular": "Il più popolare",
+      "cta": "Inizia la prova gratuita",
+      "plans": {
+        "starter": {
+          "name": "Starter",
+          "price": "€9",
+          "tagline": "Per un singolo sito.",
+          "features": [
+            "1 sito web",
+            "Ri-scansioni automatiche mensili",
+            "Banner conforme in 5 lingue",
+            "Informativa sui cookie generata automaticamente",
+            "Consent Mode v2 integrato",
+            "Conservazione dei registri di consenso per 12 mesi"
+          ]
+        },
+        "pro": {
+          "name": "Pro",
+          "price": "€19",
+          "tagline": "Per freelance e siti in crescita.",
+          "features": [
+            "Tutto ciò che c'è in Starter",
+            "Fino a 3 siti web",
+            "Ri-scansioni settimanali + on demand",
+            "Conservazione dei registri di consenso per 3 anni",
+            "Rimuovi il branding Complyr"
+          ]
+        },
+        "business": {
+          "name": "Business",
+          "price": "€29",
+          "tagline": "Per agenzie e più brand.",
+          "features": [
+            "Tutto ciò che c'è in Pro",
+            "Fino a 10 siti web",
+            "Scansioni prioritarie",
+            "API di esportazione CSV"
+          ]
+        }
+      }
+    },
+    "faq": {
+      "eyebrow": "Domande frequenti",
+      "title": "Domande, con risposta",
+      "subtitle": "Hai ancora dubbi? Scrivici quando vuoi — ti risponderà una persona vera.",
+      "items": {
+        "compliant": {
+          "q": "Complyr è davvero conforme al GDPR?",
+          "a": "Sì. Complyr è realizzato specificamente per la conformità a GDPR ed ePrivacy. Conserviamo i registri di consenso come prova pronta per l'audit — 12 mesi con Starter, fino a 3 anni con Pro e Business —, supportiamo il consenso granulare per categoria e generiamo automaticamente informative sui cookie conformi. I dati dei tuoi visitatori sono ospitati interamente all'interno dell'UE."
+        },
+        "different": {
+          "q": "In cosa Complyr è diverso da Cookiebot o Osano?",
+          "a": "Due parole: semplicità e prezzo. Gli strumenti enterprise costano 50–500+ €/mese e richiedono formazione. Complyr fa il 95 % di ciò che fanno loro, a una frazione del prezzo, con un'interfaccia che capirai in 30 secondi."
+        },
+        "analytics": {
+          "q": "Mi serve se uso solo Google Analytics?",
+          "a": "Sì. Se il tuo sito usa Google Analytics, Facebook Pixel, contenuti YouTube incorporati o qualsiasi cookie di tracciamento, la legge dell'UE richiede il consenso preventivo. Complyr se ne occupa correttamente, con Google Consent Mode v2 integrato."
+        },
+        "consentMode": {
+          "q": "Cos'è Google Consent Mode v2?",
+          "a": "È il sistema di Google per rispettare il consenso degli utenti pur consentendo l'analytics. Da marzo 2024 è obbligatorio per gli utenti di Google Ads nell'UE. Complyr lo configura automaticamente — impostando ogni segnale su 'denied' per impostazione predefinita finché il tuo visitatore non sceglie."
+        },
+        "dataLocation": {
+          "q": "Dove vengono archiviati i miei dati?",
+          "a": "Tutti i dati dei visitatori e di consenso sono archiviati in data center dell'UE in Germania. Usiamo esclusivamente infrastrutture con sede nell'UE — nessun trasferimento di dati negli USA, nessun grattacapo Schrems II."
+        },
+        "cancel": {
+          "q": "Posso disdire quando voglio?",
+          "a": "Sì. Disdici con un clic — nessun contratto, nessuna penale di disdetta, nessun ostacolo. Mantieni l'accesso fino alla fine del tuo periodo di fatturazione."
+        },
+        "platforms": {
+          "q": "Funziona con WordPress, Shopify, Wix, ecc.?",
+          "a": "Sì. Complyr funziona su qualsiasi sito web — basta incollare una riga di codice prima del tag head di chiusura. Un plugin dedicato per WordPress è in arrivo."
+        },
+        "freePlan": {
+          "q": "Offrite un piano gratuito?",
+          "a": "Offriamo una prova gratuita di 14 giorni — senza carta di credito, fino a 1000 eventi di consenso. Al termine, scegli un piano da €9/mese per mantenere attivo il tuo banner; fino ad allora, le nuove scansioni e l'aggiunta di siti sono sospese, ma il tuo registro dei consensi non viene mai eliminato. Manteniamo i prezzi bassi per investire nel prodotto invece di sovvenzionare un piano gratuito permanente."
+        }
+      }
+    },
+    "finalCta": {
+      "title": "Pronto a smettere di preoccuparti del consenso ai cookie?",
+      "subtitle": "Configura Complyr in pochi minuti. Prova gratuita di 14 giorni, senza carta di credito.",
+      "cta": "Inizia gratis",
+      "ctaSecondary": "Scansiona il tuo sito"
     }
   },
   "nav": {
@@ -168,7 +351,11 @@
       "INVALID_DOMAIN": "Inserisci un dominio valido, ad es. www.esempio.eu",
       "ON_DEMAND_RESCAN_NOT_ENTITLED": "Le scansioni on demand sono disponibili nei piani Pro e Business",
       "SCAN_ALREADY_IN_PROGRESS": "È già in corso una scansione per questo sito",
-      "GENERIC": "Qualcosa è andato storto. Riprova."
+      "DELETE_CONFIRMATION_FAILED": "Password errata: il tuo account non è stato eliminato",
+      "CURRENT_PASSWORD_INCORRECT": "Password errata: la tua password non è stata modificata",
+      "NEW_PASSWORD_SAME_AS_CURRENT": "Scegli una password diversa da quella attuale",
+      "GENERIC": "Qualcosa è andato storto. Riprova.",
+      "NEW_EMAIL_SAME_AS_CURRENT": "Questo è già il tuo indirizzo email"
     },
     "login": {
       "title": "Accedi",
@@ -219,6 +406,16 @@
       "successTitle": "Password aggiornata",
       "successDescription": "La tua password è stata modificata. Ora puoi accedere con quella nuova.",
       "goToLogin": "Vai all'accesso"
+    },
+    "confirmEmailChange": {
+      "title": "Conferma della nuova email",
+      "confirming": "Attendi mentre confermiamo il tuo nuovo indirizzo email…",
+      "successTitle": "Indirizzo email aggiornato",
+      "successDescription": "Il tuo nuovo indirizzo email è ora quello che usi per accedere.",
+      "goToLogin": "Vai all'accesso",
+      "invalidTitle": "Conferma non riuscita",
+      "invalidDescription": "Questo link di conferma non è valido o è scaduto.",
+      "invalidHelp": "Accedi e richiedi di nuovo la modifica dalle impostazioni del tuo account."
     }
   },
   "sites": {
@@ -271,6 +468,14 @@
       "bannerTitle": "Banner di consenso",
       "bannerDescription": "Personalizza l'aspetto, il testo e le categorie del tuo banner dei cookie.",
       "bannerCta": "Personalizza banner",
+      "branding": {
+        "title": "Marchio",
+        "description": "Gestisci la dicitura «Powered by Complyr» mostrata sul tuo banner e sulla tua cookie policy.",
+        "toggleLabel": "Nascondi la dicitura Complyr",
+        "hiddenHint": "La dicitura «Powered by Complyr» è nascosta sul tuo banner e sulla tua cookie policy.",
+        "shownHint": "La dicitura «Powered by Complyr» è mostrata sul tuo banner e sulla tua cookie policy.",
+        "lockedHint": "La rimozione della dicitura Complyr è disponibile nei piani Pro e Business."
+      },
       "consentLogTitle": "Registro dei consensi",
       "consentLogDescription": "Esplora ed esporta le scelte di consenso registrate per questo sito.",
       "consentLogCta": "Vedi registro",
@@ -306,20 +511,57 @@
         "starting": "Avvio…",
         "started": "Nuova scansione avviata. I risultati si aggiorneranno automaticamente.",
         "inProgress": "È già in corso una scansione per questo sito."
-      }
+      },
+      "analyticsTitle": "Analisi",
+      "analyticsDescription": "Andamento del consenso, inventario dei cookie e stato dell'informativa per questo sito.",
+      "analyticsCta": "Vedi le analisi"
     }
   },
   "dashboard": {
     "title": "Pannello",
-    "welcome": "Benvenuto in Complyr",
-    "placeholder": "Qui appariranno i tuoi siti, le scansioni e le statistiche sui consensi.",
-    "cards": {
-      "sites": "Siti",
-      "sitesHint": "Domini registrati con il widget attivo",
+    "subtitle": "Tutto ciò che accade sui tuoi siti e ciò che richiede la tua attenzione.",
+    "loadError": "Non è stato possibile caricare la panoramica. Riprova.",
+    "headline": {
+      "sites": "Siti attivi",
+      "sitesHint": "Domini con il widget attivo",
       "consents": "Eventi di consenso",
-      "consentsHint": "Registrati negli ultimi 30 giorni",
-      "scans": "Scansioni",
-      "scansHint": "Ultimi risultati della scansione dei cookie"
+      "consentsHint": "Registrati negli ultimi {days} giorni",
+      "acceptRate": "Tasso di accetta tutto",
+      "acceptRateHint": "Solo accettazioni complete, scelte parziali escluse",
+      "cookies": "Cookie rilevati",
+      "cookiesHint": "Ultima scansione il {date}",
+      "cookiesHintNever": "Nessuna scansione completata finora"
+    },
+    "attention": {
+      "title": "Richiede la tua attenzione",
+      "description": "L'elemento più importante per ogni sito. La pagina di ciascun sito mostra il resto.",
+      "allClear": "Sembra tutto conforme",
+      "allClearHint": "Ogni sito è verificato, scansionato e coperto da una cookie policy aggiornata.",
+      "kind": {
+        "unverified": "Verifica questo dominio",
+        "never_scanned": "Avvia la prima scansione",
+        "policy_missing": "Pubblica una cookie policy",
+        "policy_stale": "Aggiorna la cookie policy",
+        "insecure_cookies": "{count, plural, one {# cookie non sicuro} other {# cookie non sicuri}}"
+      },
+      "hint": {
+        "unverified": "Non possiamo confermare che il banner sia attivo finché il dominio non è verificato.",
+        "never_scanned": "Non sappiamo ancora quali cookie utilizza questo sito.",
+        "policy_missing": "I visitatori devono poter leggere cosa conservi e perché.",
+        "policy_stale": "La policy pubblicata è precedente all'ultima scansione.",
+        "insecure_cookies": "Cookie non essenziali inviati senza Secure o HttpOnly."
+      }
+    },
+    "empty": {
+      "title": "Aggiungi il tuo primo sito",
+      "description": "Registra un dominio per scansionarne i cookie, pubblicare una policy e iniziare a registrare i consensi.",
+      "cta": "Vai ai siti"
+    },
+    "trial": {
+      "daysLeft": "{days, plural, =0 {La tua prova termina oggi} one {# giorno rimasto di prova} other {# giorni rimasti di prova}}",
+      "usage": "{used, number} di {max, number} eventi di consenso utilizzati",
+      "expired": "La tua prova è terminata. Abbonati per aggiungere siti ed eseguire nuove scansioni.",
+      "cta": "Vedi i piani"
     }
   },
   "scans": {
@@ -490,8 +732,7 @@
       "label": "Posizione",
       "description": "Dove appare il banner nella pagina.",
       "bottom": "In basso",
-      "top": "In alto",
-      "center": "Al centro"
+      "top": "In alto"
     },
     "theme": {
       "label": "Colori",
@@ -535,7 +776,17 @@
       "rejectAll": "Pulsante «Rifiuta tutto»",
       "save": "Pulsante «Salva»",
       "preferences": "Pulsante «Preferenze»",
-      "blank": "Questo campo non può essere vuoto."
+      "preferencesTitle": "Titolo del pannello",
+      "close": "Pulsante di chiusura",
+      "alwaysActive": "Etichetta «Sempre attivo»",
+      "blank": "Questo campo non può essere vuoto.",
+      "panel": {
+        "label": "Pannello delle preferenze",
+        "description": "Testi del pannello dettagliato che i visitatori aprono da «Gestisci preferenze». Lascia un campo vuoto per usare la nostra traduzione in questa lingua.",
+        "usesDefault": "Vuoto: viene usata la nostra formulazione.",
+        "categoryLabel": "Nome della categoria",
+        "categoryDescription": "Spiegazione della categoria"
+      }
     },
     "preview": {
       "label": "Anteprima dal vivo",
@@ -565,6 +816,8 @@
     "usage": {
       "sitesLabel": "Siti",
       "sites": "{used} di {max} siti attivi",
+      "consentEventsLabel": "Eventi di consenso",
+      "consentEvents": "{used, number} di {max, number} eventi di consenso",
       "rescanLabel": "Scansioni automatiche",
       "rescan": {
         "monthly": "Una volta al mese",
@@ -662,6 +915,209 @@
       "label": "Esporta CSV",
       "businessOnly": "L’esportazione CSV è disponibile nel piano Business.",
       "upgrade": "Aggiorna"
+    }
+  },
+  "analytics": {
+    "title": "Analisi",
+    "subtitle": "Decisioni di consenso, inventario dei cookie e stato dell'informativa per questo sito, aggregati dai tuoi dati.",
+    "loadError": "Impossibile caricare le analisi di questo sito. Riprova.",
+    "retry": "Riprova",
+    "summary": {
+      "totalEvents": "Eventi di consenso",
+      "acceptShare": "Tasso di «accetta tutto»",
+      "policyVersion": "Versione dell'informativa",
+      "noPolicy": "Nessuna",
+      "publishedAt": "Pubblicata il {when}",
+      "languages": "Lingue dei visitatori",
+      "none": "Nessuna"
+    },
+    "actions": {
+      "accept_all": "Accetta tutto",
+      "reject_all": "Rifiuta tutto",
+      "custom": "Personalizzato"
+    },
+    "consentTrend": {
+      "title": "Andamento del consenso",
+      "description": "Decisioni di consenso giornaliere nel periodo selezionato.",
+      "ariaLabel": "Grafico ad aree impilate delle decisioni giornaliere: accetta tutto, rifiuta tutto e personalizzato.",
+      "empty": "Nessun evento di consenso registrato in questo periodo.",
+      "dateColumn": "Data"
+    },
+    "categoryOptIn": {
+      "title": "Tassi di adesione per categoria",
+      "description": "Quota di decisioni che hanno accettato ciascuna categoria di cookie.",
+      "ariaLabel": "Grafico a barre del tasso di adesione per categoria di consenso.",
+      "empty": "Nessuna decisione per categoria registrata in questo periodo.",
+      "categoryColumn": "Categoria",
+      "decisionsColumn": "Decisioni",
+      "rateColumn": "Tasso di adesione"
+    },
+    "categories": {
+      "necessary": "Necessari",
+      "preferences": "Preferenze",
+      "statistics": "Statistiche",
+      "marketing": "Marketing",
+      "unclassified": "Non classificati"
+    },
+    "cookies": {
+      "title": "Inventario dei cookie",
+      "description": "Cookie rilevati nell'ultima scansione completata di questo sito.",
+      "total": "Cookie totali",
+      "known": "Noti",
+      "unknown": "Sconosciuti",
+      "insecure": "Non sicuri",
+      "trackers": "Tracker",
+      "ariaLabel": "Grafico ad anello dei cookie raggruppati per categoria.",
+      "scannedAt": "Scansionato il {when}",
+      "empty": "Nessuna scansione completata. Esegui una scansione per vedere l'inventario dei cookie."
+    },
+    "languages": {
+      "title": "Lingue dei visitatori",
+      "description": "Eventi di consenso in base alla lingua del browser del visitatore.",
+      "unknown": "Sconosciuta",
+      "count": "{count} ({share} %)",
+      "barLabel": "{label}: {share} %",
+      "empty": "Nessun evento di consenso registrato in questo periodo."
+    },
+    "range": {
+      "legend": "Periodo",
+      "days": "{days} g"
+    },
+    "export": {
+      "label": "Esporta CSV",
+      "businessOnly": "L'esportazione CSV è disponibile nel piano Business."
+    },
+    "status": {
+      "loading": "Caricamento delle statistiche degli ultimi {days} giorni…",
+      "updated": "Statistiche aggiornate per gli ultimi {days} giorni."
+    },
+    "warningLabel": "Attenzione"
+  },
+  "settings": {
+    "title": "Impostazioni",
+    "subtitle": "Gestisci il tuo account e i tuoi dati.",
+    "navLabel": "Sezioni delle impostazioni",
+    "nav": {
+      "profile": "Profilo",
+      "security": "Sicurezza",
+      "notifications": "Notifiche",
+      "data": "I tuoi dati"
+    },
+    "profile": {
+      "name": {
+        "title": "Il tuo nome",
+        "description": "Il nome mostrato sul tuo account. Facoltativo: lascialo vuoto per usare invece il tuo indirizzo email.",
+        "label": "Nome visualizzato",
+        "placeholder": "es. Ada Lovelace",
+        "tooLong": "Usa al massimo 120 caratteri.",
+        "save": "Salva",
+        "saved": "Salvato"
+      },
+      "password": {
+        "title": "Password",
+        "description": "Modifica la password che usi per accedere. Verrai disconnesso da tutti i dispositivi.",
+        "currentLabel": "Password attuale",
+        "newLabel": "Nuova password",
+        "confirmLabel": "Conferma nuova password",
+        "save": "Cambia password",
+        "done": {
+          "title": "Password modificata",
+          "description": "Sei stato disconnesso ovunque. Accedi di nuovo con la tua nuova password.",
+          "login": "Vai all’accesso"
+        }
+      },
+      "email": {
+        "title": "Indirizzo email",
+        "description": "Modifica l'indirizzo che usi per accedere. Invieremo un link di conferma al nuovo indirizzo: il tuo indirizzo attuale resta attivo finché non confermi.",
+        "currentLabel": "Email attuale",
+        "newLabel": "Nuovo indirizzo email",
+        "currentPasswordLabel": "Password attuale",
+        "save": "Invia link di conferma",
+        "pending": "Una modifica verso {email} è in attesa di conferma. Apri il link che abbiamo inviato a quell'indirizzo per completarla. Il tuo indirizzo attuale resta attivo fino ad allora.",
+        "errors": {
+          "CURRENT_PASSWORD_INCORRECT": "Password errata: il tuo indirizzo email non è stato modificato.",
+          "EMAIL_IN_USE": "Questo indirizzo email è già in uso da un altro account.",
+          "NEW_EMAIL_SAME_AS_CURRENT": "Questo è già il tuo indirizzo email.",
+          "RATE_LIMITED": "Troppi tentativi: riprova tra un momento.",
+          "GENERIC": "Qualcosa è andato storto. Riprova."
+        }
+      }
+    },
+    "security": {
+      "title": "Disconnetti ovunque",
+      "description": "Esci da Complyr su tutti i dispositivi in cui hai effettuato l'accesso.",
+      "currentPasswordLabel": "Password attuale",
+      "note": "Questo ti disconnette anche dagli altri dispositivi. Perdono l'accesso entro pochi minuti; questo browser viene disconnesso subito.",
+      "submit": "Disconnetti tutti i dispositivi",
+      "errors": {
+        "CURRENT_PASSWORD_INCORRECT": "Password errata: non sei stato disconnesso.",
+        "RATE_LIMITED": "Troppi tentativi: riprova tra un momento.",
+        "GENERIC": "Qualcosa è andato storto. Riprova."
+      },
+      "done": {
+        "title": "Disconnesso ovunque",
+        "description": "Sei stato disconnesso da tutti i tuoi dispositivi. Accedi di nuovo per continuare.",
+        "login": "Vai all'accesso"
+      }
+    },
+    "notifications": {
+      "title": "Notifiche via email",
+      "description": "Scegli quali email ti invia Complyr sui tuoi siti.",
+      "loadError": "Non è stato possibile caricare le tue preferenze di notifica. Aggiorna la pagina per riprovare.",
+      "scanComplete": {
+        "label": "Primo scan completato",
+        "description": "Inviami il riepilogo quando il primo scan di un sito è completato."
+      },
+      "scanChanges": {
+        "label": "Tracker nuovi o modificati",
+        "description": "Inviami un'email quando uno scan programmato rileva cookie o tracker cambiati."
+      }
+    },
+    "data": {
+      "export": {
+        "title": "Esporta i tuoi dati",
+        "description": "Scarica tutto ciò che conserviamo sul tuo account in un file JSON leggibile da una macchina (art. 20 del GDPR).",
+        "includesTitle": "Il file contiene",
+        "includes": {
+          "account": "Il tuo account: indirizzo e-mail, lingua e data di registrazione",
+          "subscription": "Il tuo abbonamento: piano, stato e periodo in corso",
+          "sites": "I tuoi siti: dominio, chiave di integrazione e stato di verifica",
+          "banner": "La configurazione del banner pubblicata di ogni sito",
+          "policy": "L'informativa cookie pubblicata di ogni sito, con il suo URL pubblico",
+          "scans": "La cronologia delle scansioni e i cookie rilevati nell'ultima"
+        },
+        "consentNote": "I registri dei consensi appartengono ai tuoi visitatori, non al tuo account: ne resti tu il titolare del trattamento. Scaricali sito per sito in CSV dal registro dei consensi.",
+        "download": "Scarica il JSON"
+      },
+      "delete": {
+        "title": "Elimina il tuo account",
+        "description": "Cancella il tuo account e tutto ciò che contiene (art. 17 del GDPR).",
+        "erasedTitle": "Viene cancellato",
+        "erased": {
+          "identity": "Il tuo accesso: indirizzo e-mail, password e tutte le sessioni attive",
+          "sites": "I tuoi siti: domini, chiavi di integrazione e configurazione del banner",
+          "scans": "Ogni scansione e ogni cookie che ha rilevato",
+          "policies": "Le informative cookie generate, comprese le loro pagine pubbliche",
+          "billing": "Il tuo abbonamento: viene disdetto su Stripe prima di cancellare qualsiasi cosa"
+        },
+        "keptTitle": "Ciò che non possiamo cancellare",
+        "keptBody": "I registri dei consensi sono la prova dei tuoi visitatori, non i tuoi dati, e la legge impone che restino inalterabili. I siti che hanno registrato consensi rimangono come segnaposto vuoto — senza dominio, senza chiave e senza nulla che li colleghi a te — finché quei registri non scadono e vengono eliminati automaticamente dopo tre anni.",
+        "irreversible": "L'operazione è irreversibile. Esporta prima i tuoi dati se vuoi conservarne una copia.",
+        "trigger": "Elimina il mio account",
+        "confirmTitle": "Vuoi eliminare il tuo account?",
+        "confirmDescription": "Inserisci la password per confermare. Il tuo account e i suoi dati vengono cancellati subito.",
+        "passwordLabel": "Password",
+        "passwordRequired": "Inserisci la password per confermare",
+        "cancel": "Annulla",
+        "confirm": "Elimina definitivamente",
+        "done": {
+          "title": "Il tuo account è stato eliminato",
+          "description": "La sessione è stata chiusa. Nulla collega più questo browser all'account.",
+          "sitesDeleted": "{count, plural, =0 {Nessun sito è stato eliminato} one {# sito è stato eliminato completamente} other {# siti sono stati eliminati completamente}}",
+          "sitesAnonymized": "{count, plural, =0 {Nessun sito ha dovuto essere conservato} one {# sito viene conservato come segnaposto anonimo per i registri dei consensi} other {# siti vengono conservati come segnaposto anonimi per i registri dei consensi}}",
+          "home": "Torna alla home"
+        }
+      }
     }
   }
 }

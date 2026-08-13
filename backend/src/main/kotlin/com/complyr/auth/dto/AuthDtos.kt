@@ -59,15 +59,33 @@ data class ResetPasswordRequest(
     val newPassword: String,
 )
 
+/** Confirms an email change from the link mailed to the NEW address (verify-new-first flow). */
+data class ConfirmEmailChangeRequest(
+    @field:NotBlank
+    val token: String,
+)
+
 data class UserResponse(
     val id: UUID,
     val email: String,
+    val name: String?,
     val locale: String,
     val verifiedAt: Instant?,
+    // The address awaiting confirmation while an email change is in flight, or null in the steady state.
+    // Surfaced so the dashboard can show "pending change to …" without a second call; never the account's
+    // login identity until the change is confirmed.
+    val pendingEmail: String?,
 ) {
     companion object {
         fun from(user: UserEntity): UserResponse =
-            UserResponse(id = user.id, email = user.email, locale = user.locale, verifiedAt = user.verifiedAt)
+            UserResponse(
+                id = user.id,
+                email = user.email,
+                name = user.name,
+                locale = user.locale,
+                verifiedAt = user.verifiedAt,
+                pendingEmail = user.pendingEmail,
+            )
     }
 }
 

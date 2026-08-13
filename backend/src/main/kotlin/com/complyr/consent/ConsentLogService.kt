@@ -1,11 +1,13 @@
 package com.complyr.consent
 
+import com.complyr.billing.EntitlementService
 import com.complyr.consent.dto.ConsentEventLogResponse
 import com.complyr.consent.dto.ConsentLogFilter
 import com.complyr.site.SiteNotFoundException
 import com.complyr.site.SiteRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Instant
 import java.util.UUID
 
 /** A page of consent-log rows plus the opaque cursor for the next (older) page, null when this is the last page. */
@@ -19,11 +21,16 @@ data class ConsentLogPage(
  * (`findByIdAndUserId`) so another user's site id is indistinguishable from a true miss — matching
  * [ScanQueryService][com.complyr.scan.ScanQueryService]. Paging is keyset (newest-first by UUIDv7 `eventId`):
  * we over-fetch one row to detect whether an older page exists, then hand back its cursor.
+ *
+ * Reads are additionally floored at the account's plan retention window
+ * ([EntitlementService.consentRetentionFloor]) — the read-layer half of retention that ADR-16 defines but the
+ * tenant-blind partition reaper cannot deliver. The CSV export reuses [list], so it inherits the same floor.
  */
 @Service
 class ConsentLogService(
     private val siteRepository: SiteRepository,
     private val consentEventRepository: ConsentEventRepository,
+    private val entitlementService: EntitlementService,
 ) {
     @Transactional(readOnly = true)
     fun list(
@@ -35,7 +42,7 @@ class ConsentLogService(
         val pageSize = (filter.limit ?: DEFAULT_LIMIT).coerceIn(1, MAX_LIMIT)
         val query =
             ConsentLogQuery(
-                from = filter.from,
+                from = retentionFloored(userId, filter.from),
                 to = filter.to,
                 action = filter.action,
                 lang = filter.lang,
@@ -76,6 +83,19 @@ class ConsentLogService(
         siteId: UUID,
     ) {
         siteRepository.findByIdAndUserId(siteId, userId) ?: throw SiteNotFoundException()
+    }
+
+    /**
+     * Raise the caller's `from` to the plan's retention floor, so a request for older history simply returns
+     * fewer rows rather than failing. A caller asking for a *narrower* window than the floor keeps their own
+     * `from` — the floor is a lower bound on visible history, not a replacement for the filter.
+     */
+    private fun retentionFloored(
+        userId: UUID,
+        from: Instant?,
+    ): Instant {
+        val floor = entitlementService.consentRetentionFloor(userId)
+        return if (from == null || from.isBefore(floor)) floor else from
     }
 
     companion object {

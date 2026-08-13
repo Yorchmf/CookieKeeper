@@ -48,6 +48,10 @@ class BillingService(
                 CheckoutCustomer.Existing(existingCustomerId)
             } else {
                 val user = userRepository.findById(userId).orElseThrow { UnauthenticatedException() }
+                // Never open Checkout for an Art. 17 tombstone (ADR-20): its email is the synthetic
+                // `@erased.invalid` address, which would create a junk Stripe customer that can never
+                // be reached, on behalf of an account that no longer exists.
+                if (user.isErased) throw UnauthenticatedException()
                 CheckoutCustomer.New(user.email)
             }
         val request =

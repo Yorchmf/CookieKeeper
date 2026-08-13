@@ -36,13 +36,20 @@ export interface EntitlementLimits {
 
 /**
  * The current account's billing snapshot (EntitlementResponse). `plan` is set only when
- * `state === "subscribed"`; `trialEndsAt` only while `state === "trial"`.
+ * `state === "subscribed"`; `trialEndsAt` and `consentEventsUsed` only while `state === "trial"`.
+ * `consentEventsUsed` is the trial ingestion count against `limits.consentEventCap`, feeding the
+ * usage meter — a display signal, never a gate on the append-only consent log.
+ *
+ * The backend omits null fields (NON_NULL), so off-trial these arrive absent (`undefined`), not
+ * JSON `null`. They are typed `| null` to match the rest of this interface's convention; narrow
+ * with `!= null` / `??` so both the absent and null representations are handled.
  */
 export interface Entitlement {
   state: BillingState;
   plan: PlanId | null;
   trialEndsAt: string | null;
   activeSites: number;
+  consentEventsUsed: number | null;
   limits: EntitlementLimits;
 }
 

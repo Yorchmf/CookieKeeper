@@ -31,13 +31,17 @@ data class PortalSessionResponse(
  * backend text. [plan] is the purchased plan's enum name when [state] is `subscribed` (null while
  * trialing or expired, since the trial is only Starter-*shaped*, not a bought plan); [trialEndsAt] is
  * set only while trialing. [activeSites] is current usage against [limits].maxSites so the page can
- * show "1 of 1 sites used" and motivate the upgrade CTA.
+ * show "1 of 1 sites used" and motivate the upgrade CTA. [consentEventsUsed] is the trial ingestion
+ * count against [limits].consentEventCap — non-null only while trialing, so the dashboard shows the
+ * usage meter during the trial and hides it otherwise. It is a display signal, never an ingestion gate
+ * (CLAUDE.md #3).
  */
 data class EntitlementResponse(
     val state: String,
     val plan: String?,
     val trialEndsAt: Instant?,
     val activeSites: Long,
+    val consentEventsUsed: Long?,
     val limits: EntitlementLimits,
 ) {
     companion object {
@@ -59,6 +63,7 @@ data class EntitlementResponse(
                 plan = plan,
                 trialEndsAt = trialEndsAt,
                 activeSites = summary.activeSites,
+                consentEventsUsed = summary.consentEventsUsed,
                 limits = EntitlementLimits.from(entitlement.entitlements),
             )
         }

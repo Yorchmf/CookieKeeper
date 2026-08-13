@@ -4,6 +4,7 @@ import com.complyr.site.DnsTxtLookup
 import com.complyr.site.SiteEntity
 import com.complyr.site.VerificationMethod
 import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.NotNull
 import java.time.Instant
 import java.util.UUID
 
@@ -14,6 +15,17 @@ data class CreateSiteRequest(
 
 data class UpdateSiteRequest(
     val domain: String? = null,
+)
+
+/**
+ * Set the site's "hide the Powered by Complyr credit" preference. Nullable + `@NotNull` so a missing
+ * field is a 400 rather than silently coercing to `false` — the caller must state the value explicitly.
+ * The preference is only a wish: the backend floors it against the plan's branding entitlement, so
+ * this endpoint never grants the paid feature on its own (see [com.complyr.billing.EntitlementService]).
+ */
+data class BrandingPreferenceRequest(
+    @field:NotNull
+    val hideBranding: Boolean? = null,
 )
 
 data class SiteResponse(
@@ -54,11 +66,20 @@ data class SiteDetailResponse(
     val embedSnippet: String,
     val dnsRecordName: String,
     val dnsRecordValue: String,
+    /** The customer's saved preference to hide the "Powered by Complyr" credit. */
+    val hideBranding: Boolean,
+    /**
+     * Whether this account's plan actually grants branding removal. The toggle only *takes effect*
+     * when both this is true and [hideBranding] is set; the dashboard uses it to lock the control and
+     * point at the upgrade path. Resolved best-effort server-side, so it never blocks the site read.
+     */
+    val brandingRemovalEntitled: Boolean,
 ) {
     companion object {
         fun from(
             site: SiteEntity,
             embedSnippet: String,
+            brandingRemovalEntitled: Boolean,
         ): SiteDetailResponse =
             SiteDetailResponse(
                 id = site.id,
@@ -71,6 +92,8 @@ data class SiteDetailResponse(
                 embedSnippet = embedSnippet,
                 dnsRecordName = "${DnsTxtLookup.RECORD_PREFIX}.${site.domain}",
                 dnsRecordValue = site.siteKey,
+                hideBranding = site.hideBranding,
+                brandingRemovalEntitled = brandingRemovalEntitled,
             )
     }
 }

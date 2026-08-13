@@ -3,6 +3,7 @@ package com.complyr.scan
 import com.complyr.auth.UserEntity
 import com.complyr.auth.UserRepository
 import com.complyr.notify.BestEffortEmailDelivery
+import com.complyr.notify.NotificationPreferenceService
 import com.complyr.site.SiteRepository
 import com.complyr.site.SiteStatus
 import org.slf4j.LoggerFactory
@@ -51,6 +52,7 @@ class ScanCompletionNotifier(
     private val scanCookieRepository: ScanCookieRepository,
     private val siteRepository: SiteRepository,
     private val userRepository: UserRepository,
+    private val notificationPreferences: NotificationPreferenceService,
 ) {
     private val log = LoggerFactory.getLogger(ScanCompletionNotifier::class.java)
 
@@ -61,6 +63,14 @@ class ScanCompletionNotifier(
     ) {
         if (trigger == ScanTrigger.MANUAL) return
         val target = resolveTarget(scanId, siteId) ?: return
+
+        // The owner's opt-out, checked after the site/owner resolve so we never read preferences for an
+        // archived or deleted account. SITE_ADDED maps to the "first scan finished" toggle, SCHEDULED to
+        // the "new trackers found" toggle; MANUAL already returned above.
+        if (!wantsEmail(target.user.id, trigger)) {
+            log.debug("Owner opted out of {} scan emails; skipping scan {}", trigger, scanId)
+            return
+        }
 
         val cookies = scanCookieRepository.findByScanId(scanId)
         val trackerCount = target.scan.marketingTrackerCount ?: 0
@@ -79,6 +89,27 @@ class ScanCompletionNotifier(
             )
         val user = target.user
         delivery.deliver(user.id, user.email, composer.scanCompletedEmail(user.locale, summary), "scan-completed")
+    }
+
+    /**
+     * Whether the owner still wants this class of scan email. The two triggers that reach here map to the
+     * two customer-facing toggles: SITE_ADDED is "your first scan finished" ([NotificationPreferences.scanComplete]),
+     * SCHEDULED is "a monitoring scan found new trackers" ([NotificationPreferences.scanChanges]). An account
+     * that never touched the settings page has no row and gets the all-on default, so silence here is always
+     * an explicit choice, never a missing default.
+     */
+    private fun wantsEmail(
+        userId: UUID,
+        trigger: ScanTrigger,
+    ): Boolean {
+        val preferences = notificationPreferences.get(userId)
+        return when (trigger) {
+            ScanTrigger.SITE_ADDED -> preferences.scanComplete
+            ScanTrigger.SCHEDULED -> preferences.scanChanges
+            // Unreachable: MANUAL short-circuits at the top of sendScanCompleted. Mapped explicitly so a
+            // future trigger cannot silently fall through to "send".
+            ScanTrigger.MANUAL -> false
+        }
     }
 
     /**

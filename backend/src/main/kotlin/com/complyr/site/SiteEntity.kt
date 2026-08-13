@@ -83,6 +83,12 @@ data class SiteEntity(
     @Convert(converter = VerificationMethodConverter::class)
     @Column(name = "verification_method")
     val verificationMethod: VerificationMethod? = null,
+    // Customer's preference to hide the "Powered by Complyr" credit. Only a WISH — the effective
+    // suppression is this AND the plan's removeBranding entitlement (EntitlementService). Defaults
+    // true so an upgrade removes the credit without a toggle; the entitlement floor keeps free-tier
+    // sites honest. See V21.
+    @Column(name = "hide_branding", nullable = false)
+    val hideBranding: Boolean = true,
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
     @Column(name = "updated_at", nullable = false)
@@ -108,6 +114,13 @@ interface SiteRepository : JpaRepository<SiteEntity, UUID> {
         status: SiteStatus,
     ): List<SiteEntity>
 
+    /**
+     * Every site the account owns, archived included — the Art. 20 export
+     * ([com.complyr.account.AccountExportService]) must hand back what we hold, not what the dashboard
+     * currently lists.
+     */
+    fun findAllByUserId(userId: UUID): List<SiteEntity>
+
     fun findByIdAndUserId(
         id: UUID,
         userId: UUID,
@@ -129,6 +142,17 @@ interface SiteRepository : JpaRepository<SiteEntity, UUID> {
         userId: UUID,
         status: SiteStatus,
     ): Long
+
+    /**
+     * Every site id owned by [userId], across all statuses. Backs the trial consent-usage counter
+     * ([com.complyr.billing.EntitlementService.summarize]): `consent_events` is keyed only by
+     * `site_id`, so an account's usage is summed over its sites. Archived sites are included on
+     * purpose — events they ingested during the trial still counted against the allowance.
+     */
+    @Query("SELECT s.id FROM SiteEntity s WHERE s.userId = :userId")
+    fun findIdsByUserId(
+        @Param("userId") userId: UUID,
+    ): List<UUID>
 
     /**
      * Transaction-scoped Postgres advisory lock keyed on a user, taken at the top of the site-cap guard

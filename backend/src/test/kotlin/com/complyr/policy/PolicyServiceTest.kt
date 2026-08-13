@@ -2,6 +2,7 @@ package com.complyr.policy
 
 import com.complyr.banner.BannerConfigEntity
 import com.complyr.banner.BannerConfigService
+import com.complyr.billing.EntitlementService
 import com.complyr.common.ComplyrProperties
 import com.complyr.policy.dto.PolicyGenerationRequest
 import com.complyr.scan.ScanCookieEntity
@@ -43,10 +44,12 @@ class PolicyServiceTest {
     private val policySettingsRepository = mockk<PolicySettingsRepository>()
     private val bannerConfigService = mockk<BannerConfigService>()
     private val properties = mockk<ComplyrProperties>()
+    private val entitlementService = mockk<EntitlementService>()
 
     // Real, not mocked: preview delegates its whole payload to it, and the point of the preview is that
     // it resolves exactly what the hosted page would.
-    private val policyReadService = PolicyReadService(policyRepository, policySettingsRepository, siteRepository)
+    private val policyReadService =
+        PolicyReadService(policyRepository, policySettingsRepository, siteRepository, entitlementService)
 
     private val service =
         PolicyService(
@@ -394,6 +397,9 @@ class PolicyServiceTest {
     /** Owned site with a published version in [languages]; deliberately never verified. */
     private fun stubPublishedForPreview(vararg languages: String) {
         every { siteRepository.findByIdAndUserId(siteId, userId) } returns site()
+        // Preview resolves branding from the authenticated owner's entitlement ANDed with the site's own
+        // hide-branding wish (both via effectiveRemoveBranding); userId is the owner here.
+        every { entitlementService.effectiveRemoveBranding(userId, any()) } returns false
         every { policySettingsRepository.findById(siteId) } returns
             Optional.of(
                 PolicySettingsEntity(

@@ -174,6 +174,43 @@ class SiteApiIntegrationTest {
     }
 
     @Test
+    fun `branding preference - default surfaced on detail, PATCH persists, empty body is 400`() {
+        val alice = registeredUser()
+        val siteId = createSite(alice, "brand-${UUID.randomUUID().toString().take(8)}.example.com")
+
+        // A fresh site defaults to hiding the credit; a trial/free plan is not entitled to remove it, so
+        // the effective branding is floored elsewhere — the detail exposes both facts for the dashboard.
+        mockMvc
+            .perform(get("/api/v1/sites/$siteId").cookie(alice))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.hideBranding").value(true))
+            .andExpect(jsonPath("$.data.brandingRemovalEntitled").value(false))
+
+        // PATCH the stored preference to false regardless of plan; it persists and echoes back.
+        mockMvc
+            .perform(
+                patch("/api/v1/sites/$siteId/branding")
+                    .cookie(alice)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""{"hideBranding":false}"""),
+            ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.hideBranding").value(false))
+        mockMvc
+            .perform(get("/api/v1/sites/$siteId").cookie(alice))
+            .andExpect(jsonPath("$.data.hideBranding").value(false))
+
+        // A missing hideBranding is a validation failure, not a silent default.
+        mockMvc
+            .perform(
+                patch("/api/v1/sites/$siteId/branding")
+                    .cookie(alice)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""{}"""),
+            ).andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.success").value(false))
+    }
+
+    @Test
     fun `list with an unknown status value returns 400 INVALID_QUERY_PARAM`() {
         val alice = registeredUser()
 
@@ -204,6 +241,13 @@ class SiteApiIntegrationTest {
         mockMvc
             .perform(delete("/api/v1/sites/$siteId").cookie(bob))
             .andExpect(status().isNotFound)
+        mockMvc
+            .perform(
+                patch("/api/v1/sites/$siteId/branding")
+                    .cookie(bob)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""{"hideBranding":false}"""),
+            ).andExpect(status().isNotFound)
 
         // Bob's list does not contain Alice's site.
         mockMvc

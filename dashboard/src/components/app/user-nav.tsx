@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLogout, useMe } from "@/hooks/use-auth";
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 
 export function UserNav() {
   const t = useTranslations();
@@ -54,6 +54,9 @@ export function UserNav() {
             <DropdownMenuSeparator />
           </DropdownMenuGroup>
         ) : null}
+        <DropdownMenuItem render={<Link href="/settings/data" />}>
+          {t("nav.settings")}
+        </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => void handleSignOut()}
           disabled={logout.isPending}

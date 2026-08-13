@@ -51,6 +51,13 @@ class ScanQueue(
      * row is created `queued` either way, so the dashboard shows the pending scan straight away
      * regardless of when the crawl actually starts.
      *
+     * [priority] is the claim-ordering weight ([PRIORITY_HIGH] for a priority-plan site, [PRIORITY_NORMAL]
+     * otherwise — see [priorityFor]). It is resolved by the caller, never here: the queue stays free of any
+     * billing dependency, and no entitlement lookup runs inside this write transaction (a resolve that hit
+     * a transient DB error would otherwise poison the whole enqueue at commit). The scheduled re-scan job
+     * reuses the entitlement it already batch-resolved; the interactive callers resolve once from state they
+     * already hold. Frozen onto the row at enqueue, so the hot claim path does no billing lookup.
+     *
      * Deliberately NOT a Kotlin default parameter: this is a proxied `@Transactional` method, and the
      * synthetic `enqueue$default` bridge Kotlin generates for defaults is static, so it evaluates the
      * default expression against the CGLIB proxy's own (uninitialized) fields — a null-`clock` NPE at the
@@ -61,6 +68,7 @@ class ScanQueue(
         siteId: UUID,
         trigger: ScanTrigger,
         availableAt: Instant,
+        priority: Int,
     ): UUID {
         val now = clock.instant()
         val scan =
@@ -73,6 +81,7 @@ class ScanQueue(
                 payload = mapOf(PAYLOAD_SCAN_ID to scan.id.toString()),
                 status = JobStatus.PENDING,
                 maxAttempts = properties.scan.maxAttempts,
+                priority = priority,
                 availableAt = availableAt,
                 createdAt = now,
                 updatedAt = now,
@@ -233,6 +242,19 @@ class ScanQueue(
     companion object {
         const val JOB_TYPE_SCAN = "scan"
         const val PAYLOAD_SCAN_ID = "scanId"
+
+        // Claim-ordering tiers (jobs.priority, higher served first). Two tiers today: priority-plan
+        // sites and everyone else. Kept as a gap (0 vs 10) so intermediate tiers can slot in later.
+        const val PRIORITY_NORMAL = 0
+        const val PRIORITY_HIGH = 10
+
+        /**
+         * Map a plan's `priorityScan` entitlement to its claim-ordering tier. The single place the
+         * boolean→weight mapping lives, so every caller that resolves the entitlement (the site-added
+         * listener, the manual "Re-scan now", the scheduled batch) stamps the same value. The queue owns
+         * the tier contract; callers own the billing lookup.
+         */
+        fun priorityFor(priorityScan: Boolean): Int = if (priorityScan) PRIORITY_HIGH else PRIORITY_NORMAL
 
         // Scans.error is a display/audit field, not a stack-trace sink — bound it so a pathological
         // exception message can't bloat the row or leak a wall of internal detail into the dashboard.

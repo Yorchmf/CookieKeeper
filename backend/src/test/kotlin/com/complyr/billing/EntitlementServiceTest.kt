@@ -4,10 +4,13 @@ import com.complyr.auth.UserEntity
 import com.complyr.auth.UserRepository
 import com.complyr.common.ComplyrProperties
 import com.complyr.common.UnauthenticatedException
+import com.complyr.consent.ConsentEventRepository
+import com.complyr.site.SiteEntity
 import com.complyr.site.SiteRepository
 import com.complyr.site.SiteStatus
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import io.mockk.verifyOrder
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -19,6 +22,7 @@ import java.util.Optional
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 
 /**
  * Unit tests for [EntitlementService] — the billing-state resolver + site-cap guard. [PlanResolver] is
@@ -50,7 +54,16 @@ class EntitlementServiceTest {
     private val userRepository = mockk<UserRepository>()
     private val subscriptionRepository = mockk<SubscriptionRepository>()
     private val siteRepository = mockk<SiteRepository>()
-    private val service = EntitlementService(userRepository, subscriptionRepository, siteRepository, PlanResolver(properties, clock))
+    private val consentEventRepository = mockk<ConsentEventRepository>()
+    private val service =
+        EntitlementService(
+            userRepository,
+            subscriptionRepository,
+            siteRepository,
+            consentEventRepository,
+            PlanResolver(properties, clock),
+            clock,
+        )
 
     private val userId = UUID.randomUUID()
 
@@ -112,7 +125,7 @@ class EntitlementServiceTest {
     }
 
     @Test
-    fun `summarize pairs the resolved entitlement with the active-site count`() {
+    fun `summarize pairs the resolved entitlement with the active-site count and no trial usage`() {
         stubUser(createdAt = now)
         every { subscriptionRepository.findByUserId(userId) } returns subscription(Plan.PRO)
         every { siteRepository.countByUserIdAndStatus(userId, SiteStatus.ACTIVE) } returns 2
@@ -121,6 +134,43 @@ class EntitlementServiceTest {
 
         assertIs<AccountEntitlement.Subscribed>(summary.entitlement)
         assertEquals(2, summary.activeSites, "usage count is surfaced alongside the entitlement")
+        // The consent-usage meter is a trial-only signal; a subscribed account never triggers the count.
+        assertNull(summary.consentEventsUsed, "consent usage is null off-trial")
+        verify(exactly = 0) { siteRepository.findIdsByUserId(any()) }
+        verify(exactly = 0) { consentEventRepository.countBySiteIdInAndCreatedAtGreaterThanEqual(any(), any()) }
+    }
+
+    @Test
+    fun `summarize counts trial consent events across the account's sites since it was created`() {
+        val createdAt = now.minusSeconds(3600) // inside the trial window
+        stubUser(createdAt = createdAt)
+        every { subscriptionRepository.findByUserId(userId) } returns null
+        every { siteRepository.countByUserIdAndStatus(userId, SiteStatus.ACTIVE) } returns 1
+        val siteIds = listOf(UUID.randomUUID(), UUID.randomUUID())
+        every { siteRepository.findIdsByUserId(userId) } returns siteIds
+        // The count is floored at the account's creation instant so it prunes to the trial's partitions.
+        every {
+            consentEventRepository.countBySiteIdInAndCreatedAtGreaterThanEqual(siteIds, createdAt)
+        } returns 250
+
+        val summary = service.summarize(userId)
+
+        assertIs<AccountEntitlement.Trial>(summary.entitlement)
+        assertEquals(250, summary.consentEventsUsed, "trial usage is the consent count across the account's sites")
+    }
+
+    @Test
+    fun `summarize reports zero trial usage when the account has no sites yet`() {
+        stubUser(createdAt = now.minusSeconds(3600))
+        every { subscriptionRepository.findByUserId(userId) } returns null
+        every { siteRepository.countByUserIdAndStatus(userId, SiteStatus.ACTIVE) } returns 0
+        every { siteRepository.findIdsByUserId(userId) } returns emptyList()
+
+        val summary = service.summarize(userId)
+
+        assertEquals(0, summary.consentEventsUsed, "no sites means no usage — and no empty-IN query")
+        // Guard the empty-IN case in Kotlin, never as `site_id IN ()`.
+        verify(exactly = 0) { consentEventRepository.countBySiteIdInAndCreatedAtGreaterThanEqual(any(), any()) }
     }
 
     @Test
@@ -202,4 +252,120 @@ class EntitlementServiceTest {
 
         assertThrows<SiteLimitReachedException> { service.requireCanAddSite(userId) }
     }
+
+    @Test
+    fun `consentRetentionFloor is 12 months back on the entry plan`() {
+        stubUser(createdAt = now.minus(trialPeriod).minusSeconds(1))
+        every { subscriptionRepository.findByUserId(userId) } returns subscription(Plan.STARTER)
+
+        // Calendar arithmetic at UTC, not a fixed 365-day Duration: Period is date-based.
+        assertEquals(Instant.parse("2025-08-01T12:00:00Z"), service.consentRetentionFloor(userId))
+    }
+
+    @Test
+    fun `consentRetentionFloor is 3 years back on the paid plans`() {
+        stubUser(createdAt = now.minus(trialPeriod).minusSeconds(1))
+        every { subscriptionRepository.findByUserId(userId) } returns subscription(Plan.BUSINESS)
+
+        assertEquals(Instant.parse("2023-08-01T12:00:00Z"), service.consentRetentionFloor(userId))
+    }
+
+    @Test
+    fun `consentRetentionFloor holds at the entry window for an expired account`() {
+        // Evidence keeps ageing out normally once the trial lapses — we never widen or collapse the window
+        // to apply billing pressure (EXPIRED_ENTITLEMENTS pins retention at the 12-month tier).
+        stubUser(createdAt = now.minus(trialPeriod).minusSeconds(1))
+        every { subscriptionRepository.findByUserId(userId) } returns null
+
+        assertEquals(Instant.parse("2025-08-01T12:00:00Z"), service.consentRetentionFloor(userId))
+    }
+
+    @Test
+    fun `removeBrandingOrDefault reflects the plan flag`() {
+        stubUser(createdAt = now)
+        every { subscriptionRepository.findByUserId(userId) } returns subscription(Plan.PRO) // removeBranding = true
+        assertEquals(true, service.removeBrandingOrDefault(userId))
+
+        every { subscriptionRepository.findByUserId(userId) } returns subscription(Plan.STARTER) // removeBranding = false
+        assertEquals(false, service.removeBrandingOrDefault(userId))
+    }
+
+    @Test
+    fun `removeBrandingOrDefault falls back to showing the attribution when billing cannot be read`() {
+        // A since-deleted owner makes resolve throw UnauthenticatedException; the public hosted-policy and
+        // widget-config reads must never 500 over a branding nicety, and must fail CLOSED (show it).
+        every { userRepository.findById(userId) } returns Optional.empty()
+
+        assertEquals(false, service.removeBrandingOrDefault(userId))
+    }
+
+    @Test
+    fun `removeBrandingOrDefault rethrows a fatal Error rather than masking it as show-branding`() {
+        // Best-effort swallows ordinary failures, but an OutOfMemoryError is not a billing hiccup — it must
+        // propagate, not be silently downgraded to a false flag.
+        every { userRepository.findById(userId) } throws OutOfMemoryError("heap")
+
+        assertThrows<OutOfMemoryError> { service.removeBrandingOrDefault(userId) }
+    }
+
+    @Test
+    fun `effectiveRemoveBranding suppresses only when the site prefers it AND the plan grants it`() {
+        // The whole gate in one truth table: branding is removed iff the customer asked (hideBranding)
+        // AND the plan pays for it. A paid plan the customer left on shows the credit; a free plan that
+        // asked to hide it still shows the credit (the entitlement floor).
+        stubUser(createdAt = now)
+
+        every { subscriptionRepository.findByUserId(userId) } returns subscription(Plan.PRO) // entitled
+        assertEquals(true, service.effectiveRemoveBranding(userId, hideBranding = true))
+        assertEquals(false, service.effectiveRemoveBranding(userId, hideBranding = false))
+
+        every { subscriptionRepository.findByUserId(userId) } returns subscription(Plan.STARTER) // not entitled
+        assertEquals(false, service.effectiveRemoveBranding(userId, hideBranding = true))
+        assertEquals(false, service.effectiveRemoveBranding(userId, hideBranding = false))
+    }
+
+    @Test
+    fun `effectiveRemoveBranding short-circuits the billing read when the site keeps the credit`() {
+        // hideBranding = false can never suppress, so the plan is irrelevant — and we must not spend a
+        // billing read to decide it. No user/subscription is stubbed; a lookup would throw.
+        assertEquals(false, service.effectiveRemoveBranding(userId, hideBranding = false))
+
+        verify(exactly = 0) { userRepository.findById(any()) }
+    }
+
+    @Test
+    fun `priorityScanForSite is true only when the site owner's plan grants priority scanning`() {
+        val siteId = UUID.randomUUID()
+        every { siteRepository.findById(siteId) } returns Optional.of(siteOwnedBy(siteId, userId))
+        stubUser(createdAt = now)
+
+        every { subscriptionRepository.findByUserId(userId) } returns subscription(Plan.BUSINESS) // priorityScan = true
+        assertEquals(true, service.priorityScanForSite(siteId))
+
+        every { subscriptionRepository.findByUserId(userId) } returns subscription(Plan.PRO) // priorityScan = false
+        assertEquals(false, service.priorityScanForSite(siteId))
+    }
+
+    @Test
+    fun `priorityScanForSite falls back to the normal tier when the site is gone`() {
+        // A since-archived-and-purged site must still let a scan enqueue at normal priority, never drop it.
+        val siteId = UUID.randomUUID()
+        every { siteRepository.findById(siteId) } returns Optional.empty()
+
+        assertEquals(false, service.priorityScanForSite(siteId))
+    }
+
+    private fun siteOwnedBy(
+        siteId: UUID,
+        ownerId: UUID,
+    ): SiteEntity =
+        SiteEntity(
+            id = siteId,
+            userId = ownerId,
+            domain = "site-$siteId.example.com",
+            siteKey = "pk_$siteId",
+            status = SiteStatus.ACTIVE,
+            createdAt = now,
+            updatedAt = now,
+        )
 }

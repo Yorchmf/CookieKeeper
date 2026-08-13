@@ -38,4 +38,21 @@ class AuthNotifier(
     ) {
         delivery.deliver(userId, email, composer.welcomeEmail(locale), "welcome")
     }
+
+    fun sendEmailChange(
+        userId: UUID,
+        email: String,
+        locale: String,
+        rawToken: String,
+    ) {
+        delivery.deliver(userId, email, composer.emailChangeEmail(locale, rawToken), "email-change")
+    }
+
+    fun sendEmailChangedNotice(
+        userId: UUID,
+        email: String,
+        locale: String,
+    ) {
+        delivery.deliver(userId, email, composer.emailChangedNoticeEmail(locale), "email-changed-notice")
+    }
 }

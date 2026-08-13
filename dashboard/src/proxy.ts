@@ -14,7 +14,7 @@ const ACCESS_TOKEN_COOKIE = "cmplyr_at";
 const SESSION_MARKER_COOKIE = "cmplyr_session";
 
 /** Path prefixes (locale-stripped) of the authenticated (app) route group. */
-const PROTECTED_PREFIXES = ["/dashboard", "/sites"];
+const PROTECTED_PREFIXES = ["/dashboard", "/sites", "/billing", "/settings"];
 
 /** Auth pages that bounce already-signed-in users back to the app. */
 const AUTH_PAGES = ["/login", "/signup"];

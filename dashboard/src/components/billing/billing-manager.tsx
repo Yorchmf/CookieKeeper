@@ -102,6 +102,19 @@ function CurrentPlanCard({ entitlement }: { entitlement: Entitlement }) {
         )
       : null;
 
+  // Trial ingestion usage against the cap. Only shown while trialing (the only state that carries a
+  // cap); off-trial the backend omits `consentEventsUsed`/`consentEventCap` entirely, so both arrive
+  // absent (`undefined`) at runtime — the `!= null` guards below narrow out null and undefined alike.
+  // Clamp the bar at 100% — the cap never blocks recording (CLAUDE.md #3), so real usage can
+  // legitimately sit above it.
+  const consentEventCap = entitlement.limits.consentEventCap;
+  const showConsentMeter = entitlement.state === "trial" && consentEventCap != null;
+  const consentEventsUsed = entitlement.consentEventsUsed ?? 0;
+  const consentMeterPercent =
+    consentEventCap != null && consentEventCap > 0
+      ? Math.min(100, Math.round((consentEventsUsed / consentEventCap) * 100))
+      : 0;
+
   return (
     <Card>
       <CardHeader>
@@ -135,6 +148,37 @@ function CurrentPlanCard({ entitlement }: { entitlement: Entitlement }) {
             {t(`usage.rescan.${entitlement.limits.rescanFrequency}`)}
           </span>
         </div>
+        {showConsentMeter && consentEventCap != null ? (
+          <div className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium">{t("usage.consentEventsLabel")}</span>
+            <span className="text-sm text-muted-foreground">
+              {t("usage.consentEvents", {
+                used: consentEventsUsed,
+                max: consentEventCap,
+              })}
+            </span>
+            <div
+              className="mt-1 h-2 w-full overflow-hidden rounded-full bg-muted"
+              role="meter"
+              aria-valuemin={0}
+              aria-valuemax={consentEventCap}
+              aria-valuenow={Math.min(consentEventsUsed, consentEventCap)}
+              aria-valuetext={t("usage.consentEvents", {
+                used: consentEventsUsed,
+                max: consentEventCap,
+              })}
+              aria-label={t("usage.consentEventsLabel")}
+            >
+              {/* Scale on the compositor (transform), not `width` — layout-bound props are banned
+                  from animation by the project's performance rules. transform-origin keeps it
+                  growing left-to-right. */}
+              <div
+                className="h-full w-full origin-left rounded-full bg-primary transition-transform"
+                style={{ transform: `scaleX(${consentMeterPercent / 100})` }}
+              />
+            </div>
+          </div>
+        ) : null}
         {entitlement.state === "trial" && entitlement.trialEndsAt ? (
           <p className="text-sm text-muted-foreground">
             {t("trial.endsOn", {

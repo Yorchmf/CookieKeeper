@@ -32,12 +32,18 @@ import tools.jackson.databind.ObjectMapper
  *    (ADR-17). Two distinct budgets need bounding: the request threads it occupies for up to the
  *    verification budget each, and the outbound requests it lets an authenticated account aim at third
  *    parties. A handful per minute is far above the handful per *lifetime* a real activation takes.
+ *  - **ACCOUNT tier (tight):** every call under `/api/v1/account` — the customer's own GDPR and
+ *    credential surface (ADR-20). `POST /account/delete` and `POST /account/password` both re-verify the
+ *    account password, so leaving them on the generous GENERAL tier made them a 300-guesses-per-minute
+ *    password oracle *and* a bcrypt CPU-exhaustion primitive; `GET /account/export.json` assembles the
+ *    entire account in memory, several queries per site. All are actions a real customer performs a
+ *    handful of times ever.
  *  - **GENERAL tier (generous backstop):** all other authed `/api/v1` calls — e.g.
  *    `POST /api/v1/sites` (each synchronously enqueues a Chromium scan) or consent-log reads (keyset
  *    queries fanning across monthly partitions). A cap normal dashboard use never reaches, but which
  *    bounds amplification abuse.
  *
- * Registered at [Ordered.LOWEST_PRECEDENCE] so it executes downstream of Spring Security's filter
+ * Registered just ahead of [ErasedAccountFilter] and downstream of Spring Security's filter
  * chain — after the bearer token has been resolved into the `SecurityContext`. Requests with no
  * authenticated JWT are passed straight through: unauthenticated traffic is the IP filter's and the
  * security layer's concern, not this one's. The `/api/v1/billing/webhook` endpoint is unauthenticated
@@ -45,7 +51,7 @@ import tools.jackson.databind.ObjectMapper
  * never logged, never persisted (CLAUDE.md #4). Edge rate limiting (Cloudflare) layers on top.
  */
 @Component
-@Order(Ordered.LOWEST_PRECEDENCE)
+@Order(Ordered.LOWEST_PRECEDENCE - 1)
 class AuthenticatedRateLimitFilter(
     private val properties: ComplyrProperties,
     private val objectMapper: ObjectMapper,
@@ -85,6 +91,7 @@ class AuthenticatedRateLimitFilter(
             // Unauthenticated by construction (Stripe cannot send a JWT) — no principal to key on.
             uri == BILLING_WEBHOOK_PATH -> null
             uri == BILLING_PATH || uri.startsWith("$BILLING_PATH/") -> Tier.BILLING
+            uri == ACCOUNT_PATH || uri.startsWith("$ACCOUNT_PATH/") -> Tier.ACCOUNT
             // Ordered before the GENERAL fallthrough, which would otherwise swallow it. Matching is
             // method-blind here as everywhere in this filter, which is why the suffix must be exact:
             // `GET /api/v1/sites/{id}/scans` is polled every 3s by the dashboard and must stay GENERAL.
@@ -96,6 +103,7 @@ class AuthenticatedRateLimitFilter(
     private fun capacityFor(tier: Tier): Long =
         when (tier) {
             Tier.BILLING -> properties.rateLimit.authBillingPerMinute
+            Tier.ACCOUNT -> properties.rateLimit.authAccountPerMinute
             Tier.VERIFY -> properties.rateLimit.authVerifyPerMinute
             Tier.GENERAL -> properties.rateLimit.authGeneralPerMinute
         }
@@ -112,11 +120,12 @@ class AuthenticatedRateLimitFilter(
         )
     }
 
-    private enum class Tier { BILLING, VERIFY, GENERAL }
+    private enum class Tier { BILLING, ACCOUNT, VERIFY, GENERAL }
 
     companion object {
         const val API_PREFIX = "/api/v1/"
         const val BILLING_PATH = "/api/v1/billing"
+        const val ACCOUNT_PATH = "/api/v1/account"
         const val BILLING_WEBHOOK_PATH = "/api/v1/billing/webhook"
         const val SITES_PATH_PREFIX = "/api/v1/sites/"
         const val VERIFY_SUFFIX = "/verify"

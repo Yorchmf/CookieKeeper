@@ -9,8 +9,15 @@ import { apiFetch } from "@/lib/api";
 export interface User {
   id: string;
   email: string;
+  name: string | null;
   locale: string;
   verifiedAt: string | null;
+  /**
+   * The address awaiting confirmation while an email change is in flight, or null in the steady state.
+   * Set by `POST /account/email` (verify-new-first) and cleared once the link mailed to it is redeemed;
+   * never the account's login identity until then.
+   */
+  pendingEmail: string | null;
 }
 
 export interface SignupInput {
@@ -53,6 +60,19 @@ export async function getMe(): Promise<User> {
 
 export async function verifyEmail(token: string): Promise<User> {
   const { data } = await apiFetch<User>("/api/v1/auth/verify-email", {
+    method: "POST",
+    body: JSON.stringify({ token }),
+  });
+  return data;
+}
+
+/**
+ * Redeem the link mailed to a pending new address, swapping it in as the login email (verify-new-first).
+ * Unauthenticated on purpose — the link may be opened from the new inbox in a browser that never signed in —
+ * so it neither reads nor issues a session; any current session stays as-is.
+ */
+export async function confirmEmailChange(token: string): Promise<User> {
+  const { data } = await apiFetch<User>("/api/v1/auth/confirm-email-change", {
     method: "POST",
     body: JSON.stringify({ token }),
   });

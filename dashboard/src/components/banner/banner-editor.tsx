@@ -134,6 +134,28 @@ export function BannerEditor({
               },
             }))
           }
+          onChangeCategoryText={(categoryKey, field, value) =>
+            setState((s) => {
+              const bundle = s.texts[activeLang];
+              const current = bundle.categoryLabels[categoryKey] ?? {
+                label: "",
+                description: "",
+              };
+              return {
+                ...s,
+                texts: {
+                  ...s.texts,
+                  [activeLang]: {
+                    ...bundle,
+                    categoryLabels: {
+                      ...bundle.categoryLabels,
+                      [categoryKey]: { ...current, [field]: value },
+                    },
+                  },
+                },
+              };
+            })
+          }
         />
       </div>
 
@@ -183,12 +205,26 @@ export function BannerEditor({
   );
 }
 
-/** Offered languages whose text bundle has at least one blank field (backend would reject these). */
+/**
+ * The banner copy the backend rejects when blank. The preferences-panel fields are deliberately not
+ * listed: leaving them empty publishes our own translation, so a blank one must not block Save.
+ */
+const REQUIRED_TEXT_FIELDS = [
+  "title",
+  "description",
+  "acceptAll",
+  "rejectAll",
+  "save",
+  "preferences",
+] as const satisfies readonly (keyof BannerTexts)[];
+
+/** Offered languages whose text bundle has at least one blank required field. */
 function offeredBlankLanguages(state: BannerEditorState): SupportedLanguage[] {
   return state.languages.filter((lang) => {
     const texts = state.texts[lang];
     return (
-      !texts || Object.values(texts).some((value) => value.trim() === "")
+      !texts ||
+      REQUIRED_TEXT_FIELDS.some((field) => texts[field].trim() === "")
     );
   });
 }
@@ -470,11 +506,17 @@ function TextCard({
   activeLang,
   onSelectLang,
   onChangeField,
+  onChangeCategoryText,
 }: {
   state: BannerEditorState;
   activeLang: SupportedLanguage;
   onSelectLang: (lang: SupportedLanguage) => void;
   onChangeField: (field: keyof BannerTexts, value: string) => void;
+  onChangeCategoryText: (
+    categoryKey: string,
+    field: "label" | "description",
+    value: string,
+  ) => void;
 }) {
   const t = useTranslations("banner");
   const tabId = useId();
@@ -541,7 +583,9 @@ function TextCard({
           <BannerTextFields
             language={activeLang}
             texts={state.texts[activeLang]}
+            categories={state.offeredCategories}
             onChange={onChangeField}
+            onCategoryChange={onChangeCategoryText}
           />
         </div>
       </CardContent>

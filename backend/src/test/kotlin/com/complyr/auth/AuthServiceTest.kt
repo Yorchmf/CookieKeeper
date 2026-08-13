@@ -3,6 +3,7 @@ package com.complyr.auth
 import com.complyr.auth.dto.LoginRequest
 import com.complyr.auth.dto.SignupRequest
 import com.complyr.common.ComplyrProperties
+import com.complyr.notify.EmailChangedNoticeRequested
 import com.complyr.notify.PasswordResetEmailRequested
 import com.complyr.notify.VerificationEmailRequested
 import com.complyr.notify.WelcomeEmailRequested
@@ -13,11 +14,14 @@ import io.mockk.runs
 import io.mockk.slot
 import io.mockk.verify
 import io.mockk.verifyOrder
+import org.hibernate.exception.ConstraintViolationException
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
+import java.sql.SQLException
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -86,6 +90,9 @@ class AuthServiceTest {
             locale = "de",
             verifiedAt = verifiedAt,
         )
+
+    /** An account after the Art. 17 erasure rewrote it (ADR-20): synthetic address, `deletedAt` stamped. */
+    private fun erasedUser(): UserEntity = user().copy(email = TOMBSTONE_EMAIL, deletedAt = now)
 
     @Test
     fun `signup stores a bcrypt hash, never the plaintext password`() {
@@ -373,6 +380,68 @@ class AuthServiceTest {
         verify(exactly = 0) { eventPublisher.publishEvent(any<Any>()) }
     }
 
+    /**
+     * The Art. 17 tombstone's address is `erased-<user id>@erased.invalid` (ADR-20), and that user id is
+     * printed in the account's own Art. 20 export — so anyone who ever held a copy of that file can derive
+     * it. Issuing a reset link for it would hand them a working password on the shell of a deleted
+     * account; the tombstone must look exactly like an address we have never seen.
+     */
+    @Test
+    fun `forgotPassword for an erased account issues nothing`() {
+        every { userRepository.findByEmail(TOMBSTONE_EMAIL) } returns erasedUser()
+
+        service.forgotPassword(TOMBSTONE_EMAIL)
+
+        verify(exactly = 0) { authTokenRepository.save(any()) }
+        verify(exactly = 0) { authTokenRepository.markAllUsedByUserIdAndPurpose(any(), any(), any()) }
+        verify(exactly = 0) { eventPublisher.publishEvent(any<Any>()) }
+    }
+
+    @Test
+    fun `login as an erased account is rejected like an unknown email`() {
+        every { userRepository.findByEmail(TOMBSTONE_EMAIL) } returns erasedUser()
+
+        assertThrows<InvalidCredentialsException> {
+            service.login(LoginRequest(email = TOMBSTONE_EMAIL, password = "correct-password"))
+        }
+
+        verify(exactly = 0) { tokenService.issueAccessToken(any(), any()) }
+        // Not counted as a failure either: there is no account left to protect, and incrementing a
+        // tombstone's counter would only write to a row the erasure just finished cleaning.
+        verify(exactly = 0) { loginAttemptService.recordFailure(any()) }
+    }
+
+    @Test
+    fun `resendVerification for an erased account sends nothing`() {
+        every { userRepository.findByEmail(TOMBSTONE_EMAIL) } returns erasedUser()
+
+        service.resendVerification(TOMBSTONE_EMAIL)
+
+        verify(exactly = 0) { eventPublisher.publishEvent(any<Any>()) }
+    }
+
+    /** The other half of the pair: a token minted moments before the erasure committed is still dead. */
+    @Test
+    fun `resetPassword refuses a token belonging to an erased account`() {
+        val erased = erasedUser()
+        val raw = OpaqueTokens.generate()
+        every {
+            authTokenRepository.findByTokenHashAndPurpose(OpaqueTokens.sha256(raw), TokenPurpose.PASSWORD_RESET)
+        } returns
+            AuthTokenEntity(
+                userId = erased.id,
+                tokenHash = OpaqueTokens.sha256(raw),
+                purpose = TokenPurpose.PASSWORD_RESET,
+                expiresAt = now.plusSeconds(60),
+            )
+        every { authTokenRepository.save(any()) } answers { firstArg() }
+        every { userRepository.findById(erased.id) } returns Optional.of(erased)
+
+        assertThrows<InvalidTokenException> { service.resetPassword(raw, "brand-new-password") }
+
+        verify(exactly = 0) { userRepository.save(any()) }
+    }
+
     @Test
     fun `login for an unknown email still burns one password match (timing equalizer)`() {
         val encoder = mockk<PasswordEncoder>()
@@ -424,6 +493,105 @@ class AuthServiceTest {
         verify(exactly = 1) { tokenService.revokeAllForUser(existing.id) }
     }
 
+    @Test
+    fun `confirmEmailChange swaps to the pending address, clears it, re-stamps verification and notifies the old address`() {
+        stubSaves()
+        val existing = user(verifiedAt = now.minusSeconds(3_600)).copy(pendingEmail = "new@example.com")
+        val raw = OpaqueTokens.generate()
+        val token = emailChangeToken(existing.id, raw)
+        every {
+            authTokenRepository.findByTokenHashAndPurpose(token.tokenHash, TokenPurpose.EMAIL_CHANGE)
+        } returns token
+        every { userRepository.findById(existing.id) } returns Optional.of(existing)
+        val savedUser = slot<UserEntity>()
+
+        val response = service.confirmEmailChange(raw)
+
+        verify { userRepository.saveAndFlush(capture(savedUser)) }
+        assertEquals("new@example.com", savedUser.captured.email, "the login email swaps to the parked address")
+        assertEquals(null, savedUser.captured.pendingEmail, "the parked address is cleared once redeemed")
+        // The click proves control of the address now bound to the account, so verification is (re-)stamped.
+        assertEquals(now, savedUser.captured.verifiedAt)
+        assertEquals("new@example.com", response.email)
+        assertEquals(null, response.pendingEmail)
+        verify { authTokenRepository.save(match { it.id == token.id && it.usedAt == now }) }
+
+        val notice = publishedEvent<EmailChangedNoticeRequested>()
+        // The heads-up goes to the OLD address, which just lost control of the account.
+        assertEquals("alice@example.com", notice.email)
+        assertEquals(existing.id, notice.userId)
+    }
+
+    @Test
+    fun `confirmEmailChange with no parked address is rejected as a generic invalid token`() {
+        val existing = user() // pendingEmail is null: a superseded change whose token should already be spent
+        val raw = OpaqueTokens.generate()
+        val token = emailChangeToken(existing.id, raw)
+        every {
+            authTokenRepository.findByTokenHashAndPurpose(token.tokenHash, TokenPurpose.EMAIL_CHANGE)
+        } returns token
+        every { userRepository.findById(existing.id) } returns Optional.of(existing)
+        every { authTokenRepository.save(any()) } answers { firstArg() }
+
+        assertThrows<InvalidTokenException> { service.confirmEmailChange(raw) }
+
+        verify(exactly = 0) { userRepository.saveAndFlush(any()) }
+        verify(exactly = 0) { eventPublisher.publishEvent(any<Any>()) }
+    }
+
+    @Test
+    fun `confirmEmailChange refuses a token belonging to an erased account`() {
+        val erased = erasedUser().copy(pendingEmail = "new@example.com")
+        val raw = OpaqueTokens.generate()
+        val token = emailChangeToken(erased.id, raw)
+        every {
+            authTokenRepository.findByTokenHashAndPurpose(token.tokenHash, TokenPurpose.EMAIL_CHANGE)
+        } returns token
+        every { userRepository.findById(erased.id) } returns Optional.of(erased)
+        every { authTokenRepository.save(any()) } answers { firstArg() }
+
+        assertThrows<InvalidTokenException> { service.confirmEmailChange(raw) }
+
+        verify(exactly = 0) { userRepository.saveAndFlush(any()) }
+        verify(exactly = 0) { eventPublisher.publishEvent(any<Any>()) }
+    }
+
+    @Test
+    fun `confirmEmailChange surfaces an address taken since the request as a 409, not a PII-leaking 500`() {
+        val existing = user().copy(pendingEmail = "new@example.com")
+        val raw = OpaqueTokens.generate()
+        val token = emailChangeToken(existing.id, raw)
+        every {
+            authTokenRepository.findByTokenHashAndPurpose(token.tokenHash, TokenPurpose.EMAIL_CHANGE)
+        } returns token
+        every { userRepository.findById(existing.id) } returns Optional.of(existing)
+        every { authTokenRepository.save(any()) } answers { firstArg() }
+        // Another account registered the address in the window between request and confirmation: the unique
+        // index is the authoritative check, and its breach must map to EMAIL_IN_USE.
+        every { userRepository.saveAndFlush(any()) } throws integrityViolation("uq_users_email")
+
+        assertThrows<EmailAlreadyRegisteredException> { service.confirmEmailChange(raw) }
+
+        verify(exactly = 0) { eventPublisher.publishEvent(any<Any>()) }
+    }
+
+    private fun emailChangeToken(
+        userId: UUID,
+        raw: String,
+    ): AuthTokenEntity =
+        AuthTokenEntity(
+            userId = userId,
+            tokenHash = OpaqueTokens.sha256(raw),
+            purpose = TokenPurpose.EMAIL_CHANGE,
+            expiresAt = now.plusSeconds(60),
+        )
+
+    private fun integrityViolation(constraintName: String): DataIntegrityViolationException =
+        DataIntegrityViolationException(
+            "dup",
+            ConstraintViolationException("dup", SQLException("duplicate key"), constraintName),
+        )
+
     /** Returns the single published event of type [T], failing if none was published. */
     private inline fun <reified T : Any> publishedEvent(): T {
         val published = mutableListOf<Any>()
@@ -431,5 +599,10 @@ class AuthServiceTest {
         val events = published.filterIsInstance<T>()
         assertEquals(1, events.size, "expected exactly one ${T::class.simpleName}, got: $published")
         return events.first()
+    }
+
+    private companion object {
+        /** Shaped like the real tombstone address, which is derivable from the Art. 20 export. */
+        const val TOMBSTONE_EMAIL = "erased-11111111-1111-1111-1111-111111111111@erased.invalid"
     }
 }

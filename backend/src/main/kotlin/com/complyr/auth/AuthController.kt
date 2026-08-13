@@ -1,5 +1,6 @@
 package com.complyr.auth
 
+import com.complyr.auth.dto.ConfirmEmailChangeRequest
 import com.complyr.auth.dto.ForgotPasswordRequest
 import com.complyr.auth.dto.LoginRequest
 import com.complyr.auth.dto.OkResponse
@@ -101,6 +102,17 @@ class AuthController(
         authService.resetPassword(request.token, request.newPassword)
         return ApiResponse.success(OkResponse())
     }
+
+    /**
+     * Confirms an email change from the link mailed to the NEW address (verify-new-first). Public: the
+     * clicker holds the mailed token, not necessarily a session, and the token itself is the proof. No
+     * session cookies are issued — the swap does not authenticate anyone; any live session keeps working
+     * and now belongs to the changed address.
+     */
+    @PostMapping("/confirm-email-change")
+    fun confirmEmailChange(
+        @Valid @RequestBody request: ConfirmEmailChangeRequest,
+    ): ApiResponse<UserResponse> = ApiResponse.success(authService.confirmEmailChange(request.token))
 
     private fun withSessionCookies(session: AuthSession): ResponseEntity<ApiResponse<UserResponse>> =
         ResponseEntity

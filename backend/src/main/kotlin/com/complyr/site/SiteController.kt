@@ -5,6 +5,7 @@ import com.complyr.common.ApiResponse
 import com.complyr.common.CurrentUser
 import com.complyr.common.InvalidQueryParamException
 import com.complyr.site.dto.ArchiveResponse
+import com.complyr.site.dto.BrandingPreferenceRequest
 import com.complyr.site.dto.CreateSiteRequest
 import com.complyr.site.dto.SiteDetailResponse
 import com.complyr.site.dto.SiteResponse
@@ -57,6 +58,21 @@ class SiteController(
         @PathVariable id: UUID,
         @Valid @RequestBody request: UpdateSiteRequest,
     ): ApiResponse<SiteDetailResponse> = ApiResponse.success(siteService.update(CurrentUser.id(), id, request.domain))
+
+    /**
+     * Set whether this site hides the "Powered by Complyr" credit. Only the customer's *preference* —
+     * it activates only if the plan also grants branding removal, floored server-side, so this endpoint
+     * can never hand out the paid feature. Separate from [update] (domain) so it needs no domain body
+     * and re-toggling never disturbs verification state.
+     */
+    @PatchMapping("/{id}/branding")
+    fun setBranding(
+        @PathVariable id: UUID,
+        @Valid @RequestBody request: BrandingPreferenceRequest,
+    ): ApiResponse<SiteDetailResponse> =
+        ApiResponse.success(
+            siteService.setBrandingPreference(CurrentUser.id(), id, requireNotNull(request.hideBranding)),
+        )
 
     /**
      * Attempt to prove control of the site's domain (ADR-17). Deliberately a **200 with

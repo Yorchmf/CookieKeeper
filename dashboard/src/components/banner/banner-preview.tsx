@@ -21,11 +21,9 @@ export function BannerPreview({
   const { primaryColor, background, textColor } = state.theme;
 
   const alignment =
-    state.position === "center"
-      ? "items-center justify-center"
-      : state.position === "top"
-        ? "items-start justify-center"
-        : "items-end justify-center";
+    state.position === "top"
+      ? "items-start justify-center"
+      : "items-end justify-center";
 
   return (
     <div

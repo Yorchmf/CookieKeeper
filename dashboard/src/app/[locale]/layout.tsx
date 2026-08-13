@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Fraunces, Geist, Geist_Mono } from "next/font/google";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
+import { SITE_URL } from "@/lib/site";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import "../globals.css";
 
@@ -18,6 +20,15 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// Editorial display face for headings (brand.md §7). Body stays on Geist Sans;
+// Geist Mono is reserved for the embed snippet. Self-hosted by next/font — no
+// Google Fonts CDN call (GDPR-safe), font-display: swap by default.
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
+  subsets: ["latin"],
+  axes: ["opsz"],
+});
+
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
@@ -29,7 +40,11 @@ export async function generateMetadata(props: {
   const t = await getTranslations({ locale, namespace: "app" });
 
   return {
-    title: t("name"),
+    metadataBase: new URL(SITE_URL),
+    title: {
+      default: t("name"),
+      template: `%s · ${t("name")}`,
+    },
     description: t("tagline"),
   };
 }
@@ -50,15 +65,18 @@ export default async function LocaleLayout({
   return (
     <html
       lang={locale}
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
+      className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <NextIntlClientProvider>
-          <QueryProvider>
-            {children}
-            <Toaster />
-          </QueryProvider>
-        </NextIntlClientProvider>
+        <ThemeProvider>
+          <NextIntlClientProvider>
+            <QueryProvider>
+              {children}
+              <Toaster />
+            </QueryProvider>
+          </NextIntlClientProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

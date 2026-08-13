@@ -85,6 +85,18 @@ interface StripeGateway {
     ): String
 
     /**
+     * Cancels [subscriptionId] immediately (no period-end grace) — the account is being erased under
+     * Art. 17 and must stop being billed, so there is nothing left to serve out the paid period for.
+     *
+     * IDEMPOTENT by contract: a subscription Stripe no longer knows about counts as already cancelled and
+     * returns normally. Without that, a stale local `stripe_sub_id` (cancelled directly in the Stripe
+     * dashboard, say) would make the cancel fail forever and leave the customer permanently unable to
+     * delete their account. Any other Stripe failure raises [BillingUnavailableException], which aborts
+     * the erasure BEFORE anything is destroyed.
+     */
+    fun cancelSubscription(subscriptionId: String)
+
+    /**
      * Verifies the webhook signature against the raw [payload] and returns the reduced event. Throws
      * [WebhookSignatureException] when the signature is missing/invalid — the only client-visible
      * failure of the webhook endpoint.

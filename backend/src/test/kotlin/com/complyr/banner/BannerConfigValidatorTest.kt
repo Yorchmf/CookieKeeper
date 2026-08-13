@@ -1,6 +1,7 @@
 package com.complyr.banner
 
 import com.complyr.banner.dto.BannerCategoryRequest
+import com.complyr.banner.dto.BannerCategoryTextRequest
 import com.complyr.banner.dto.BannerConfigUpdateRequest
 import com.complyr.banner.dto.BannerTextsRequest
 import com.complyr.banner.dto.BannerThemeRequest
@@ -142,6 +143,70 @@ class BannerConfigValidatorTest {
             BannerConfigValidator.validate(
                 validRequest(textsByLang = mapOf("en" to texts(title = "   "), "de" to texts())),
             )
+        }
+    }
+
+    @Test
+    fun `fills omitted preferences-panel copy with the shipped translation for that language`() {
+        // The customizer's advanced fields are optional; leaving them empty must never publish an
+        // English panel to German visitors (or, worse, an empty one).
+        val document = BannerConfigValidator.validate(validRequest())
+
+        val german = document.texts.getValue("de")
+        assertEquals("Datenschutz-Einstellungen", german.preferencesTitle)
+        assertEquals("Schließen", german.close)
+        assertEquals("Immer aktiv", german.alwaysActive)
+        assertEquals("Unbedingt erforderlich", german.categoryLabels.getValue("necessary").label)
+    }
+
+    @Test
+    fun `keeps the customer's own panel copy when they provide it`() {
+        val custom =
+            texts().copy(
+                preferencesTitle = "Your choices",
+                close = "Dismiss",
+                alwaysActive = "Required",
+                categoryLabels = mapOf("statistics" to BannerCategoryTextRequest("Analytics", "How you browse.")),
+            )
+
+        val document = BannerConfigValidator.validate(validRequest(textsByLang = mapOf("en" to custom, "de" to texts())))
+
+        val english = document.texts.getValue("en")
+        assertEquals("Your choices", english.preferencesTitle)
+        assertEquals("Dismiss", english.close)
+        assertEquals("Analytics", english.categoryLabels.getValue("statistics").label)
+        // A category they left alone still gets our wording, not a blank row.
+        assertEquals("Strictly necessary", english.categoryLabels.getValue("necessary").label)
+    }
+
+    @Test
+    fun `keys category labels by the categories actually offered`() {
+        val withExtras =
+            texts().copy(
+                categoryLabels = mapOf("marketing" to BannerCategoryTextRequest("Ads", "Personalized ads.")),
+            )
+
+        val document =
+            BannerConfigValidator.validate(
+                validRequest(textsByLang = mapOf("en" to withExtras, "de" to texts())),
+            )
+
+        // `marketing` is not among the offered categories, so its label is dropped rather than shipped
+        // to every visitor as dead weight on the config payload.
+        assertEquals(
+            setOf("necessary", "statistics"),
+            document.texts
+                .getValue("en")
+                .categoryLabels.keys,
+        )
+    }
+
+    @Test
+    fun `rejects an over-long category label`() {
+        val tooLong = texts().copy(categoryLabels = mapOf("statistics" to BannerCategoryTextRequest("x".repeat(81), "ok")))
+
+        assertThrows<InvalidBannerConfigException> {
+            BannerConfigValidator.validate(validRequest(textsByLang = mapOf("en" to tooLong, "de" to texts())))
         }
     }
 

@@ -6,8 +6,10 @@ import {
   createSite,
   getSite,
   listSites,
+  setSiteBranding,
   updateSite,
   verifySite,
+  type SiteDetail,
   type SiteStatus,
 } from "@/lib/api/sites";
 
@@ -58,6 +60,21 @@ export function useVerifySite(id: string) {
     mutationFn: () => verifySite(id),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [...SITES_QUERY_KEY, id] });
+    },
+  });
+}
+
+/**
+ * Persist the site's "hide the Powered by Complyr credit" preference. Writes the returned fresh detail
+ * straight into this site's query cache so the toggle reflects server truth immediately (the backend
+ * echoes the stored preference and the plan entitlement) without a second round-trip.
+ */
+export function useSetSiteBranding(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (hideBranding: boolean) => setSiteBranding(id, hideBranding),
+    onSuccess: (site: SiteDetail) => {
+      queryClient.setQueryData([...SITES_QUERY_KEY, id], site);
     },
   });
 }

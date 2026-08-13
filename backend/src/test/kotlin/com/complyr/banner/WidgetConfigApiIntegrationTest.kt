@@ -110,4 +110,35 @@ class WidgetConfigApiIntegrationTest {
             .andExpect(jsonPath("$.success").value(false))
             .andExpect(jsonPath("$.error.code").value("SITE_NOT_FOUND"))
     }
+
+    @Test
+    fun `the CDN config URL serves the flat unenveloped shape the widget parses`() {
+        val siteKey = createSiteKey(registeredUserCookie())
+
+        mockMvc
+            .perform(get("/cfg/{siteKey}.json", siteKey))
+            .andExpect(status().isOk)
+            .andExpect(header().string(HttpHeaders.CACHE_CONTROL, containsString("max-age=300")))
+            .andExpect(header().string(HttpHeaders.CACHE_CONTROL, containsString("public")))
+            // No envelope: the widget reads these fields off the root object (ADR-19).
+            .andExpect(jsonPath("$.success").doesNotExist())
+            .andExpect(jsonPath("$.version").value(1))
+            .andExpect(jsonPath("$.position").value("bottom"))
+            .andExpect(jsonPath("$.defaultLanguage").value("en"))
+            .andExpect(jsonPath("$.removeBranding").value(false))
+            // The four-token palette, including the label color the stored theme has no field for.
+            .andExpect(jsonPath("$.colors.button").isString)
+            .andExpect(jsonPath("$.colors.buttonText").isString)
+            // Renamed to the widget's vocabulary — `key` and `description` would be silently dropped.
+            .andExpect(jsonPath("$.categories[0].id").value("necessary"))
+            .andExpect(jsonPath("$.categories[0].required").value(true))
+            .andExpect(jsonPath("$.texts.en.message").isString)
+    }
+
+    @Test
+    fun `an unknown site key on the CDN config URL is a 404`() {
+        mockMvc
+            .perform(get("/cfg/{siteKey}.json", "pk_does_not_exist"))
+            .andExpect(status().isNotFound)
+    }
 }

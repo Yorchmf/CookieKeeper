@@ -40,6 +40,8 @@ class BillingServiceTest {
             return PORTAL_URL
         }
 
+        override fun cancelSubscription(subscriptionId: String) = throw NotImplementedError("no cancels here")
+
         override fun parseWebhookEvent(
             payload: String,
             signatureHeader: String,

@@ -1,7 +1,9 @@
 package com.complyr.scan
 
+import com.complyr.billing.AccountEntitlement
 import com.complyr.billing.EntitlementService
 import com.complyr.billing.OnDemandRescanNotEntitledException
+import com.complyr.billing.Plan
 import com.complyr.site.SiteEntity
 import com.complyr.site.SiteNotFoundException
 import com.complyr.site.SiteRepository
@@ -56,15 +58,31 @@ class ScanRequestServiceTest {
     }
 
     @Test
-    fun `an entitled account gets a MANUAL scan enqueued immediately`() {
+    fun `an entitled Pro account gets a MANUAL scan enqueued at normal priority`() {
         stubSite(site())
         stubLiveScan(false)
+        // Pro is entitled to on-demand rescan but not priority scanning, so the manual scan joins the
+        // normal claim tier — the priority is resolved here, from the owner's plan, and passed to enqueue.
+        every { entitlementService.resolve(userId) } returns AccountEntitlement.Subscribed(Plan.PRO)
         val scanId = UUID.randomUUID()
-        every { scanQueue.enqueue(siteId, ScanTrigger.MANUAL, now) } returns scanId
+        every { scanQueue.enqueue(siteId, ScanTrigger.MANUAL, now, ScanQueue.PRIORITY_NORMAL) } returns scanId
 
         assertEquals(scanId, service.request(userId, siteId))
         // The lock must be taken before the live-scan read, or the check-then-enqueue is a race.
         verify { scanRepository.acquireSiteScanLock(any()) }
+    }
+
+    @Test
+    fun `a Business account's MANUAL scan is enqueued at high priority`() {
+        stubSite(site())
+        stubLiveScan(false)
+        every { entitlementService.resolve(userId) } returns AccountEntitlement.Subscribed(Plan.BUSINESS)
+        val scanId = UUID.randomUUID()
+        every { scanQueue.enqueue(siteId, ScanTrigger.MANUAL, now, ScanQueue.PRIORITY_HIGH) } returns scanId
+
+        assertEquals(scanId, service.request(userId, siteId))
+        // Business grants priorityScan, so the queue must receive the high tier — not the normal default.
+        verify { scanQueue.enqueue(siteId, ScanTrigger.MANUAL, now, ScanQueue.PRIORITY_HIGH) }
     }
 
     @Test
@@ -76,7 +94,7 @@ class ScanRequestServiceTest {
 
         assertThrows<OnDemandRescanNotEntitledException> { service.request(userId, siteId) }
         verify(exactly = 0) { scanRepository.existsBySiteIdAndStatusIn(any(), any()) }
-        verify(exactly = 0) { scanQueue.enqueue(any(), any(), any()) }
+        verify(exactly = 0) { scanQueue.enqueue(any(), any(), any(), any()) }
     }
 
     @Test
@@ -85,7 +103,7 @@ class ScanRequestServiceTest {
         stubLiveScan(true)
 
         assertThrows<ScanAlreadyInProgressException> { service.request(userId, siteId) }
-        verify(exactly = 0) { scanQueue.enqueue(any(), any(), any()) }
+        verify(exactly = 0) { scanQueue.enqueue(any(), any(), any(), any()) }
     }
 
     @Test
@@ -95,7 +113,7 @@ class ScanRequestServiceTest {
         assertThrows<SiteNotFoundException> { service.request(userId, siteId) }
         // Not even the entitlement is consulted — nothing about the caller's plan leaks on a foreign id.
         verify(exactly = 0) { entitlementService.requireOnDemandRescan(any()) }
-        verify(exactly = 0) { scanQueue.enqueue(any(), any(), any()) }
+        verify(exactly = 0) { scanQueue.enqueue(any(), any(), any(), any()) }
     }
 
     @Test
@@ -103,6 +121,6 @@ class ScanRequestServiceTest {
         stubSite(site(status = SiteStatus.ARCHIVED))
 
         assertThrows<SiteNotFoundException> { service.request(userId, siteId) }
-        verify(exactly = 0) { scanQueue.enqueue(any(), any(), any()) }
+        verify(exactly = 0) { scanQueue.enqueue(any(), any(), any(), any()) }
     }
 }

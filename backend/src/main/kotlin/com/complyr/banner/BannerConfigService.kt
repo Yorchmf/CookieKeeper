@@ -3,6 +3,7 @@ package com.complyr.banner
 import com.complyr.banner.dto.BannerConfigResponse
 import com.complyr.banner.dto.BannerConfigUpdateRequest
 import com.complyr.banner.dto.WidgetConfigResponse
+import com.complyr.billing.EntitlementService
 import com.complyr.site.SiteEntity
 import com.complyr.site.SiteNotFoundException
 import com.complyr.site.SiteRepository
@@ -20,6 +21,7 @@ import java.util.UUID
 class BannerConfigService(
     private val bannerConfigRepository: BannerConfigRepository,
     private val siteRepository: SiteRepository,
+    private val entitlementService: EntitlementService,
     private val clock: Clock,
 ) {
     /**
@@ -103,6 +105,10 @@ class BannerConfigService(
             siteRepository.findBySiteKeyAndStatus(siteKey, SiteStatus.ACTIVE)
                 ?: throw WidgetConfigNotFoundException()
         val config = currentPublished(site.id) ?: throw WidgetConfigNotFoundException()
-        return WidgetConfigResponse.from(site.siteKey, config)
+        return WidgetConfigResponse.from(
+            site.siteKey,
+            config,
+            entitlementService.effectiveRemoveBranding(site.userId, site.hideBranding),
+        )
     }
 }

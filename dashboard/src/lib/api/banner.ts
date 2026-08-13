@@ -9,8 +9,13 @@
  */
 import { ApiError, apiFetch } from "@/lib/api";
 
-/** Where the banner renders. Must match BannerConfigValidator.POSITIONS. */
-export const BANNER_POSITIONS = ["bottom", "top", "center"] as const;
+/**
+ * Where the banner renders. The backend still accepts `center` (older configs carry it), but the
+ * widget only implements `bottom` and `top` — a `center` config is served to the widget as `bottom`
+ * (ADR-19). Offering it here would promise a layout no visitor ever sees, so the editor omits it
+ * and `asPosition` folds a stored `center` back to `bottom` on load.
+ */
+export const BANNER_POSITIONS = ["bottom", "top"] as const;
 export type BannerPosition = (typeof BANNER_POSITIONS)[number];
 
 /** The languages the banner can be offered in. Must match backend SupportedLocales.CODES. */
@@ -40,6 +45,21 @@ export interface BannerCategory {
   enabledByDefault: boolean;
 }
 
+/** One category's copy in the preferences panel. */
+export interface BannerCategoryText {
+  label: string;
+  description: string;
+}
+
+/**
+ * One language's banner copy.
+ *
+ * The preferences-panel fields are optional on the wire: the backend fills a blank one with its own
+ * translation for that language rather than publishing an empty label, and backfills them on read so
+ * configs predating ADR-19 Slice 2 arrive here already populated. The "Powered by Complyr"
+ * attribution is deliberately absent — it is server-owned, because suppressing it is a paid
+ * entitlement and an editable string would be a way around it.
+ */
 export interface BannerTexts {
   title: string;
   description: string;
@@ -47,6 +67,10 @@ export interface BannerTexts {
   rejectAll: string;
   save: string;
   preferences: string;
+  preferencesTitle: string;
+  close: string;
+  alwaysActive: string;
+  categoryLabels: Record<string, BannerCategoryText>;
 }
 
 /** The versioned per-site widget configuration (BannerConfigDocument). */

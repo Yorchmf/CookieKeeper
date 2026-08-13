@@ -40,6 +40,18 @@ data class BannerCategory(
     val enabledByDefault: Boolean,
 )
 
+/**
+ * One language's banner copy.
+ *
+ * The four fields added in ADR-19 Slice 2 ([preferencesTitle], [close], [alwaysActive],
+ * [categoryLabels]) default to blank/empty so a document written before they existed still
+ * deserializes; [BannerTextDefaults] fills any blank from the shipped translation for that
+ * language on every read, so neither the editor nor the widget ever sees a gap.
+ *
+ * The widget also renders a "Powered by Complyr" attribution, which is deliberately NOT a field
+ * here: it is server-owned ([WidgetAttributionTexts]) because suppressing it is a paid entitlement,
+ * and a customer-editable string would be a free way around it.
+ */
 data class BannerTexts(
     val title: String,
     val description: String,
@@ -47,4 +59,17 @@ data class BannerTexts(
     val rejectAll: String,
     val save: String,
     val preferences: String,
+    /** Heading of the preferences panel. */
+    val preferencesTitle: String = "",
+    /** Label of the panel's close control. */
+    val close: String = "",
+    /** Badge shown beside categories the visitor cannot switch off. */
+    val alwaysActive: String = "",
+    /** Category key → the label and explanation shown for it in the preferences panel. */
+    val categoryLabels: Map<String, BannerCategoryText> = emptyMap(),
+)
+
+data class BannerCategoryText(
+    val label: String,
+    val description: String,
 )

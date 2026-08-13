@@ -72,6 +72,7 @@ complyr:
     refresh-token-ttl: 30d
     verification-token-ttl: 24h
     reset-token-ttl: 1h
+    email-change-token-ttl: 24h
   consent:
     # How long a claimed dedupe key lives before the reaper prunes it. Only has to outlive a
     # pending widget retry (localStorage replays drain within days); short keeps the table small.

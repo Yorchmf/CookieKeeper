@@ -1,5 +1,6 @@
 package com.complyr.policy
 
+import com.complyr.billing.EntitlementService
 import com.complyr.site.SiteEntity
 import com.complyr.site.SiteRepository
 import com.complyr.site.SiteStatus
@@ -26,10 +27,13 @@ class PolicyReadServiceTest {
     private val policyRepository = mockk<PolicyRepository>()
     private val policySettingsRepository = mockk<PolicySettingsRepository>()
     private val siteRepository = mockk<SiteRepository>()
-    private val service = PolicyReadService(policyRepository, policySettingsRepository, siteRepository)
+    private val entitlementService = mockk<EntitlementService>()
+    private val service =
+        PolicyReadService(policyRepository, policySettingsRepository, siteRepository, entitlementService)
 
     private val siteId = UUID.randomUUID()
     private val publicId = UUID.randomUUID()
+    private val ownerId = UUID.randomUUID()
 
     private fun settings(): PolicySettingsEntity =
         PolicySettingsEntity(
@@ -46,7 +50,7 @@ class PolicyReadServiceTest {
     ): SiteEntity =
         SiteEntity(
             id = siteId,
-            userId = UUID.randomUUID(),
+            userId = ownerId,
             domain = "acme.example.com",
             siteKey = "pk_test",
             status = status,
@@ -64,6 +68,10 @@ class PolicyReadServiceTest {
         every { siteRepository.findById(siteId) } returns Optional.of(site())
         every { policyRepository.findFirstBySiteIdAndPublishedAtIsNotNullOrderByVersionDesc(siteId) } returns row("en")
         every { policyRepository.findBySiteIdAndVersion(siteId, 4) } returns languages.map(::row)
+        // Default: branding not suppressed. The AND of site-preference-and-plan lives in
+        // EntitlementService.effectiveRemoveBranding (covered by its own truth-table test); here it's
+        // mocked, so we stub it directly rather than the entitlement flag it wraps.
+        every { entitlementService.effectiveRemoveBranding(ownerId, any()) } returns false
     }
 
     @Test
@@ -191,13 +199,42 @@ class PolicyReadServiceTest {
     @Test
     fun `readBySite serves a published policy without consulting the site at all`() {
         // The preview path's primitive: ownership is the caller's gate, so this must not re-apply the
-        // public verification gate or the owner could never preview before verifying.
+        // public verification gate or the owner could never preview before verifying. Branding is
+        // resolved from the owner's entitlement, never the site row — so this stays site-free.
         every { policyRepository.findFirstBySiteIdAndPublishedAtIsNotNullOrderByVersionDesc(siteId) } returns row("en")
         every { policyRepository.findBySiteIdAndVersion(siteId, 4) } returns listOf(row("en"), row("de"))
+        every { entitlementService.effectiveRemoveBranding(ownerId, any()) } returns false
 
-        val response = service.readBySite(settings(), "de")
+        val response = service.readBySite(settings(), "de", ownerId, hideBranding = true)
 
         assertEquals("de", response.language)
         verify(exactly = 0) { siteRepository.findById(any()) }
+    }
+
+    @Test
+    fun `readBySite forwards the site's stored branding preference into the entitlement resolver`() {
+        // The preview/read paths pass the site's own hide_branding wish; the resolver ANDs it with the
+        // plan. This asserts the wish actually reaches effectiveRemoveBranding rather than a hardcoded
+        // value, so a site that keeps the credit can never be silently overridden here.
+        every { policyRepository.findFirstBySiteIdAndPublishedAtIsNotNullOrderByVersionDesc(siteId) } returns row("en")
+        every { policyRepository.findBySiteIdAndVersion(siteId, 4) } returns listOf(row("en"))
+        every { entitlementService.effectiveRemoveBranding(ownerId, false) } returns false
+
+        service.readBySite(settings(), "en", ownerId, hideBranding = false)
+
+        verify(exactly = 1) { entitlementService.effectiveRemoveBranding(ownerId, false) }
+    }
+
+    @Test
+    fun `the response carries whatever branding the entitlement resolves`() {
+        // The read is a straight passthrough of effectiveRemoveBranding — a suppression and an attribution
+        // both land verbatim on the response. (The AND of site-preference-and-plan, and the best-effort
+        // fallback on a billing-read failure, both live in EntitlementService and are tested there.)
+        stubVersion("en")
+        every { entitlementService.effectiveRemoveBranding(ownerId, any()) } returns true
+        assertEquals(true, service.read(publicId, "en").removeBranding)
+
+        every { entitlementService.effectiveRemoveBranding(ownerId, any()) } returns false
+        assertEquals(false, service.read(publicId, "en").removeBranding)
     }
 }

@@ -72,5 +72,19 @@ interface ConsentEventRepository :
 
     fun countBySiteId(siteId: UUID): Long
 
+    /**
+     * How many consent events the given sites recorded since [createdAt] — the read behind the trial
+     * consent-usage meter ([com.complyr.billing.EntitlementService.summarize]). A COUNT is a read, so
+     * the append-only invariant is untouched: this never gates ingestion (CLAUDE.md #3), it only tells
+     * the dashboard how much of the trial allowance has been used. The `created_at >= :createdAt` bound
+     * (the account's creation instant for a trialing account) lets Postgres prune to the trial's own
+     * monthly partitions rather than scanning the whole multi-year table. Callers must pass a non-empty
+     * [siteIds] — `site_id IN ()` is not valid SQL.
+     */
+    fun countBySiteIdInAndCreatedAtGreaterThanEqual(
+        siteIds: Collection<UUID>,
+        createdAt: Instant,
+    ): Long
+
     fun findByVisitorId(visitorId: UUID): List<ConsentEventEntity>
 }

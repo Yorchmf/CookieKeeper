@@ -1,6 +1,7 @@
 package com.complyr.banner
 
 import com.complyr.banner.dto.BannerCategoryRequest
+import com.complyr.banner.dto.BannerCategoryTextRequest
 import com.complyr.banner.dto.BannerConfigUpdateRequest
 import com.complyr.banner.dto.BannerTextsRequest
 import com.complyr.common.SupportedLocales
@@ -25,6 +26,8 @@ object BannerConfigValidator {
     private const val MAX_TITLE = 120
     private const val MAX_DESCRIPTION = 600
     private const val MAX_BUTTON = 60
+    private const val MAX_CATEGORY_LABEL = 80
+    private const val MAX_CATEGORY_DESCRIPTION = 300
 
     fun validate(request: BannerConfigUpdateRequest): BannerConfigDocument {
         val position = request.position.trim().lowercase()
@@ -44,7 +47,7 @@ object BannerConfigValidator {
         if (defaultLanguage !in languages) invalid("defaultLanguage must be one of the offered languages")
 
         val categories = normalizeCategories(request.categories)
-        val texts = normalizeTexts(request.texts, languages)
+        val texts = normalizeTexts(request.texts, languages, categories.map { it.key })
 
         return BannerConfigDocument(
             position = position,
@@ -84,6 +87,7 @@ object BannerConfigValidator {
     private fun normalizeTexts(
         raw: Map<String, BannerTextsRequest>,
         languages: List<String>,
+        categoryKeys: List<String>,
     ): Map<String, BannerTexts> {
         // Normalize incoming keys and drop entries for languages that aren't offered.
         val provided =
@@ -93,16 +97,61 @@ object BannerConfigValidator {
                 }.toMap()
         return languages.associateWith { language ->
             val texts = provided[language] ?: invalid("texts are missing for an offered language")
-            BannerTexts(
-                title = text(texts.title, "title", MAX_TITLE),
-                description = text(texts.description, "description", MAX_DESCRIPTION),
-                acceptAll = text(texts.acceptAll, "acceptAll", MAX_BUTTON),
-                rejectAll = text(texts.rejectAll, "rejectAll", MAX_BUTTON),
-                save = text(texts.save, "save", MAX_BUTTON),
-                preferences = text(texts.preferences, "preferences", MAX_BUTTON),
-            )
+            normalizeBundle(texts, language, categoryKeys)
         }
     }
+
+    /**
+     * The banner copy is mandatory; the preferences-panel copy is optional and a blank value means
+     * "keep the shipped translation" rather than "publish an empty label", so the customer can leave
+     * the advanced fields alone without ending up with an unusable panel in any language.
+     */
+    private fun normalizeBundle(
+        request: BannerTextsRequest,
+        language: String,
+        categoryKeys: List<String>,
+    ): BannerTexts {
+        val shipped = DefaultBannerTexts.BY_LANGUAGE[language] ?: DefaultBannerTexts.ENGLISH
+        return BannerTexts(
+            title = text(request.title, "title", MAX_TITLE),
+            description = text(request.description, "description", MAX_DESCRIPTION),
+            acceptAll = text(request.acceptAll, "acceptAll", MAX_BUTTON),
+            rejectAll = text(request.rejectAll, "rejectAll", MAX_BUTTON),
+            save = text(request.save, "save", MAX_BUTTON),
+            preferences = text(request.preferences, "preferences", MAX_BUTTON),
+            preferencesTitle = textOrShipped(request.preferencesTitle, shipped.preferencesTitle, "preferencesTitle", MAX_TITLE),
+            close = textOrShipped(request.close, shipped.close, "close", MAX_BUTTON),
+            alwaysActive = textOrShipped(request.alwaysActive, shipped.alwaysActive, "alwaysActive", MAX_BUTTON),
+            categoryLabels = normalizeCategoryLabels(request.categoryLabels, shipped, categoryKeys),
+        )
+    }
+
+    /** Keyed by the categories actually offered, so labels for dropped categories are not carried along. */
+    private fun normalizeCategoryLabels(
+        raw: Map<String, BannerCategoryTextRequest>,
+        shipped: BannerTexts,
+        categoryKeys: List<String>,
+    ): Map<String, BannerCategoryText> =
+        categoryKeys.associateWith { key ->
+            val requested = raw[key]
+            val fallback = shipped.categoryLabels[key]
+            BannerCategoryText(
+                label =
+                    textOrShipped(
+                        requested?.label.orEmpty(),
+                        fallback?.label.orEmpty(),
+                        "category label",
+                        MAX_CATEGORY_LABEL,
+                    ),
+                description =
+                    textOrShipped(
+                        requested?.description.orEmpty(),
+                        fallback?.description.orEmpty(),
+                        "category description",
+                        MAX_CATEGORY_DESCRIPTION,
+                    ),
+            )
+        }
 
     private fun color(
         value: String,
@@ -120,6 +169,19 @@ object BannerConfigValidator {
     ): String {
         val trimmed = value.trim()
         if (trimmed.isBlank()) invalid("$field must not be blank")
+        if (trimmed.length > maxLength) invalid("$field is too long")
+        return trimmed
+    }
+
+    /** Length-checks a customer value, or substitutes our own translation when they left it empty. */
+    private fun textOrShipped(
+        value: String,
+        shipped: String,
+        field: String,
+        maxLength: Int,
+    ): String {
+        val trimmed = value.trim()
+        if (trimmed.isBlank()) return shipped
         if (trimmed.length > maxLength) invalid("$field is too long")
         return trimmed
     }

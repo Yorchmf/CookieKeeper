@@ -160,9 +160,11 @@ class PolicyService(
         siteId: UUID,
         language: String?,
     ): PublicPolicyResponse {
-        requireOwnedSite(userId, siteId)
+        val site = requireOwnedSite(userId, siteId)
         val settings = policySettingsRepository.findById(siteId).orElseThrow { PolicyNotFoundException() }
-        return policyReadService.readBySite(settings, language)
+        // The authenticated caller owns the site (requireOwnedSite), so their id is the branding owner;
+        // the site carries its own hide-branding preference for the effective-branding resolution.
+        return policyReadService.readBySite(settings, language, userId, site.hideBranding)
     }
 
     private fun requireOwnedSite(

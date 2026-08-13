@@ -58,7 +58,11 @@ class ScanRequestService(
         scanRepository.acquireSiteScanLock(advisoryLockKey(siteId))
         if (scanRepository.existsBySiteIdAndStatusIn(siteId, LIVE_STATUSES)) throw ScanAlreadyInProgressException()
 
-        return scanQueue.enqueue(siteId, ScanTrigger.MANUAL, clock.instant())
+        // Stamp the claim-ordering tier from the owner's plan. Resolved here (not inside the queue) so the
+        // queue carries no billing dependency; the owner provably exists past requireOnDemandRescan, so a
+        // plain resolve is safe. Business gets priority; Pro (the other on-demand tier) enqueues normal.
+        val priority = ScanQueue.priorityFor(entitlementService.resolve(userId).entitlements.priorityScan)
+        return scanQueue.enqueue(siteId, ScanTrigger.MANUAL, clock.instant(), priority)
     }
 
     // Fold the 128-bit site id into the 64-bit key pg_advisory_xact_lock takes (mirrors

@@ -85,12 +85,12 @@ class ScheduledRescanJob(
     @Scheduled(cron = "\${complyr.scan.rescan-cron:$DEFAULT_RESCAN_CRON}")
     fun enqueueDueRescans() {
         val now = clock.instant()
-        val dueSiteIds = transactionTemplate.execute { selectDueSites(now) } ?: emptyList()
-        if (dueSiteIds.isEmpty()) return
+        val dueSites = transactionTemplate.execute { selectDueSites(now) } ?: emptyList()
+        if (dueSites.isEmpty()) return
 
         val jitter = SecureRandom()
         val window = properties.scan.rescanJitterWindow
-        val enqueued = dueSiteIds.count { siteId -> tryEnqueue(siteId, jitteredAvailableAt(now, window, jitter)) }
+        val enqueued = dueSites.count { due -> tryEnqueue(due, jitteredAvailableAt(now, window, jitter)) }
         if (enqueued > 0) {
             log.info("Scheduled re-scan enqueued {} due site(s)", enqueued)
         }
@@ -103,7 +103,7 @@ class ScheduledRescanJob(
      * No enqueues happen here — the lock releases at this transaction's commit and each enqueue then runs
      * on its own (see [tryEnqueue]).
      */
-    private fun selectDueSites(now: Instant): List<UUID> {
+    private fun selectDueSites(now: Instant): List<DueSite> {
         if (!scanRepository.tryAcquireAdvisoryXactLock(ADVISORY_LOCK_KEY)) {
             log.debug("Skipping scheduled re-scan; another instance holds the lock")
             return emptyList()
@@ -114,7 +114,16 @@ class ScheduledRescanJob(
         val cutoff = now.minus(SHORTEST_CADENCE).plus(DST_SAFETY_MARGIN)
         val candidates = siteRepository.findRescanCandidates(cutoff, properties.scan.rescanBatchSize)
         val entitlements = entitlementService.resolveAll(candidates.map { it.userId })
-        return candidates.filter { isDue(it, entitlements[it.userId], now) }.map { it.siteId }
+        // Stamp each due site's claim-ordering tier from the SAME batch resolution, so the per-site enqueue
+        // does no billing lookup of its own — the whole batch resolves entitlements in two queries, never
+        // one resolve per site. isDue == true implies a live (non-Expired) entitlement is present; the
+        // `?: false` is a defensive fallback to the normal tier that never fires in practice.
+        return candidates
+            .filter { isDue(it, entitlements[it.userId], now) }
+            .map { candidate ->
+                val priorityScan = entitlements[candidate.userId]?.entitlements?.priorityScan ?: false
+                DueSite(candidate.siteId, ScanQueue.priorityFor(priorityScan))
+            }
     }
 
     /**
@@ -125,13 +134,13 @@ class ScheduledRescanJob(
      * programming error propagates.
      */
     private fun tryEnqueue(
-        siteId: UUID,
+        due: DueSite,
         availableAt: Instant,
     ): Boolean =
         try {
-            transactionTemplate.execute { enqueueDueSite(siteId, availableAt) } == true
+            transactionTemplate.execute { enqueueDueSite(due, availableAt) } == true
         } catch (ex: NestedRuntimeException) {
-            log.warn("Scheduled re-scan skipped site {}; will retry next run", siteId, ex)
+            log.warn("Scheduled re-scan skipped site {}; will retry next run", due.siteId, ex)
             false
         }
 
@@ -142,12 +151,12 @@ class ScheduledRescanJob(
      * false when a live scan already exists.
      */
     private fun enqueueDueSite(
-        siteId: UUID,
+        due: DueSite,
         availableAt: Instant,
     ): Boolean {
-        scanRepository.acquireSiteScanLock(siteLockKey(siteId))
-        if (scanRepository.existsBySiteIdAndStatusIn(siteId, ScanRequestService.LIVE_STATUSES)) return false
-        scanQueue.enqueue(siteId, ScanTrigger.SCHEDULED, availableAt)
+        scanRepository.acquireSiteScanLock(siteLockKey(due.siteId))
+        if (scanRepository.existsBySiteIdAndStatusIn(due.siteId, ScanRequestService.LIVE_STATUSES)) return false
+        scanQueue.enqueue(due.siteId, ScanTrigger.SCHEDULED, availableAt, due.priority)
         return true
     }
 
@@ -188,6 +197,12 @@ class ScheduledRescanJob(
     // ScanRequestService.advisoryLockKey, so the manual and scheduled paths serialize on the same key);
     // a rare collision only costs harmless extra serialization.
     private fun siteLockKey(siteId: UUID): Long = siteId.mostSignificantBits xor siteId.leastSignificantBits
+
+    /** A site the batch found due, paired with the claim-ordering priority resolved from its owner's plan. */
+    private data class DueSite(
+        val siteId: UUID,
+        val priority: Int,
+    )
 
     companion object {
         /**

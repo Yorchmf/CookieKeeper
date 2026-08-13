@@ -1,5 +1,6 @@
 package com.complyr.policy
 
+import com.complyr.billing.EntitlementService
 import com.complyr.policy.dto.PublicPolicyResponse
 import com.complyr.site.SiteRepository
 import com.complyr.site.SiteStatus
@@ -31,6 +32,7 @@ class PolicyReadService(
     private val policyRepository: PolicyRepository,
     private val policySettingsRepository: PolicySettingsRepository,
     private val siteRepository: SiteRepository,
+    private val entitlementService: EntitlementService,
 ) {
     /**
      * The public hosted read. Resolves the public id, refuses unless the owning site is active and
@@ -44,7 +46,7 @@ class PolicyReadService(
         val settings = policySettingsRepository.findByPublicId(publicId) ?: throw PolicyNotFoundException()
         val site = siteRepository.findById(settings.siteId).orElse(null)
         if (site == null || site.status != SiteStatus.ACTIVE || site.verifiedAt == null) throw PolicyNotFoundException()
-        return readBySite(settings, requestedLanguage)
+        return readBySite(settings, requestedLanguage, site.userId, site.hideBranding)
     }
 
     /**
@@ -52,11 +54,18 @@ class PolicyReadService(
      * no verification or ownership gate of its own. Callers must apply their own: [read] checks the
      * site is active and verified; [PolicyService.preview] checks ownership. Throws
      * [PolicyNotFoundException] when the site has never published.
+     *
+     * [ownerId] is the site owner (already known to both callers), used only to resolve the branding
+     * entitlement — this primitive never re-loads the site itself. [hideBranding] is the site's own
+     * preference; the effective suppression is that AND the owner's entitlement (see
+     * [EntitlementService.effectiveRemoveBranding]).
      */
     @Transactional(readOnly = true)
     fun readBySite(
         settings: PolicySettingsEntity,
         requestedLanguage: String?,
+        ownerId: UUID,
+        hideBranding: Boolean,
     ): PublicPolicyResponse {
         val latest =
             policyRepository.findFirstBySiteIdAndPublishedAtIsNotNullOrderByVersionDesc(settings.siteId)
@@ -74,6 +83,12 @@ class PolicyReadService(
             companyName = settings.details.companyName,
             html = chosen.html,
             publishedAt = chosen.publishedAt,
+            // The customer's per-site preference AND the owner's plan entitlement (never the raw
+            // entitlement alone, or a free-tier site that never opted out would lose its credit).
+            // Resolved from the owner (never a re-loaded site row) so the hosted read and the owner
+            // preview never disagree and [readBySite] stays free of the verification gate. Best-effort:
+            // falls back to showing the footer, so a billing-read blip never 500s a public visitor.
+            removeBranding = entitlementService.effectiveRemoveBranding(ownerId, hideBranding),
         )
     }
 }

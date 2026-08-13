@@ -100,6 +100,9 @@ class BillingApiIntegrationTest {
             .andExpect(jsonPath("$.data.plan").doesNotExist())
             .andExpect(jsonPath("$.data.trialEndsAt").isNotEmpty)
             .andExpect(jsonPath("$.data.activeSites").value(0))
+            // Trial surfaces its ingestion usage (0 on a site-less fresh account) against the 1,000 cap.
+            .andExpect(jsonPath("$.data.consentEventsUsed").value(0))
+            .andExpect(jsonPath("$.data.limits.consentEventCap").value(1000))
             .andExpect(jsonPath("$.data.limits.maxSites").value(1))
             .andExpect(jsonPath("$.data.limits.csvExport").value(false))
     }
@@ -114,6 +117,9 @@ class BillingApiIntegrationTest {
             .andExpect(jsonPath("$.data.state").value("subscribed"))
             .andExpect(jsonPath("$.data.plan").value("BUSINESS"))
             .andExpect(jsonPath("$.data.trialEndsAt").doesNotExist())
+            // The consent cap and its usage meter are trial-only; both are absent for a paid plan.
+            .andExpect(jsonPath("$.data.consentEventsUsed").doesNotExist())
+            .andExpect(jsonPath("$.data.limits.consentEventCap").doesNotExist())
             .andExpect(jsonPath("$.data.limits.maxSites").value(10))
             .andExpect(jsonPath("$.data.limits.csvExport").value(true))
             .andExpect(jsonPath("$.data.limits.consentRetentionMonths").value(36))

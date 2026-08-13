@@ -40,6 +40,8 @@ export interface PublicPolicy {
   companyName: string;
   html: string;
   publishedAt: string | null;
+  /** Site owner's plan entitlement: when true, hide the "Powered by Complyr" footer. */
+  removeBranding: boolean;
 }
 
 /** Business details + optional language subset that fill the template (PolicyGenerationRequest). */

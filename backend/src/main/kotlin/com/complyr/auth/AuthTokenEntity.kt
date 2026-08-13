@@ -19,6 +19,7 @@ enum class TokenPurpose(
 ) {
     EMAIL_VERIFICATION("email_verification"),
     PASSWORD_RESET("password_reset"),
+    EMAIL_CHANGE("email_change"),
     ;
 
     companion object {
@@ -36,7 +37,7 @@ class TokenPurposeConverter : AttributeConverter<TokenPurpose, String> {
 }
 
 /**
- * Single-use token for email verification / password reset.
+ * Single-use token for email verification / password reset / email change.
  * Only the SHA-256 hash of the opaque token is stored.
  */
 @Entity

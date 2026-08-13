@@ -47,14 +47,37 @@ const BLANK_TEXTS: BannerTexts = {
   rejectAll: "",
   save: "",
   preferences: "",
+  preferencesTitle: "",
+  close: "",
+  alwaysActive: "",
+  categoryLabels: {},
 };
+
+/**
+ * Copies one language's bundle. `categoryLabels` is cloned explicitly: a shallow spread would leave
+ * every language sharing the fallback's single object, so editing German would silently edit French.
+ */
+function cloneTexts(texts: BannerTexts): BannerTexts {
+  return {
+    ...texts,
+    categoryLabels: Object.fromEntries(
+      Object.entries(texts.categoryLabels ?? {}).map(([key, value]) => [
+        key,
+        { ...value },
+      ]),
+    ),
+  };
+}
 
 /** Derives editable state from a published config, seeding missing-language texts from the default. */
 export function toEditorState(config: BannerConfig): BannerEditorState {
   const doc = config.config;
   const fallback = doc.texts[doc.defaultLanguage] ?? BLANK_TEXTS;
   const texts = Object.fromEntries(
-    SUPPORTED_LANGUAGES.map((lang) => [lang, { ...(doc.texts[lang] ?? fallback) }]),
+    SUPPORTED_LANGUAGES.map((lang) => [
+      lang,
+      cloneTexts(doc.texts[lang] ?? fallback),
+    ]),
   );
   return {
     position: asPosition(doc.position),

@@ -27,6 +27,11 @@ data class ComplyrProperties(
         val refreshTokenTtl: Duration,
         val verificationTokenTtl: Duration,
         val resetTokenTtl: Duration,
+        // TTL for the email-change confirmation token (V24). Defaulted (rather than required like the two
+        // above) so existing constructions need no change; mirrors verification's 24h window — long enough
+        // for someone to click the link from the new mailbox that day, short enough to bound how long a
+        // parked pending change stays confirmable.
+        val emailChangeTokenTtl: Duration = Duration.ofHours(DEFAULT_EMAIL_CHANGE_TOKEN_TTL_HOURS),
         // Reuse tolerance for the immediately-preceding refresh token (parallel-refresh races).
         val refreshReuseGrace: Duration = Duration.ofSeconds(DEFAULT_REFRESH_REUSE_GRACE_SECONDS),
         // Consecutive failed logins that lock an account, and for how long. The per-IP auth rate limit
@@ -52,11 +57,17 @@ data class ComplyrProperties(
             require(!loginLockoutDuration.isZero && !loginLockoutDuration.isNegative) {
                 "complyr.auth.login-lockout-duration must be a positive duration (was $loginLockoutDuration)"
             }
+            // A zero/negative TTL would mint an already-expired confirmation link, so no email change could
+            // ever complete. Refuse the misconfig at startup.
+            require(!emailChangeTokenTtl.isZero && !emailChangeTokenTtl.isNegative) {
+                "complyr.auth.email-change-token-ttl must be a positive duration (was $emailChangeTokenTtl)"
+            }
         }
 
         companion object {
             const val MIN_JWT_SECRET_BYTES = 32
             const val DEFAULT_REFRESH_REUSE_GRACE_SECONDS = 10L
+            const val DEFAULT_EMAIL_CHANGE_TOKEN_TTL_HOURS = 24L
 
             // Generous enough that a real user fat-fingering a password a few times is never locked in
             // normal use, tight enough to make online guessing against one account infeasible.
@@ -88,6 +99,13 @@ data class ComplyrProperties(
         // call is a live Stripe API round-trip, so one account looping checkout/portal could burn the
         // shared Stripe rate budget for all tenants. Normal use is a handful of clicks per session.
         val authBillingPerMinute: Long = DEFAULT_AUTH_BILLING_PER_MINUTE,
+        // Requests per minute per authenticated user on `/api/v1/account/**` — the customer's own GDPR
+        // surface (ADR-20). Tight for two independent reasons: `POST /account/delete` re-verifies the
+        // account password, so a generous tier turns it into an online password oracle and a bcrypt
+        // CPU-exhaustion primitive on a 2-vCPU box; `GET /account/export.json` assembles the whole
+        // account in memory at several queries per site. The per-account lockout (LoginAttemptService)
+        // is the primary control on the first; this bounds both. Real use is a handful of calls ever.
+        val authAccountPerMinute: Long = DEFAULT_AUTH_ACCOUNT_PER_MINUTE,
         // Requests per minute per authenticated user on `POST /api/v1/sites/{id}/verify`. Tightest of
         // the three: it is the only authed endpoint that dials a *customer-supplied* host synchronously
         // on a Tomcat request thread (ADR-17), so it bounds both request-thread occupancy and the
@@ -103,13 +121,14 @@ data class ComplyrProperties(
         // Hard cap on distinct keys each in-memory bucket registry tracks before it evicts (idle-first)
         // to bound memory — see [com.complyr.common.RateLimitBuckets]. Sized with headroom for the
         // authenticated registry's fan-out: it keys by `tier|userId`, so an active tenant can hold up
-        // to 3 keys (billing + verify + general). The default covers well past MVP scale; raise it
+        // to 4 keys (billing + account + verify + general). The default covers well past MVP scale; raise it
         // before the active-user count approaches half this value, or steady-state traffic keeps the
         // map at cap and turns eviction from a rare safety valve into a per-new-key cost.
         val maxTrackedKeys: Int = DEFAULT_MAX_TRACKED_KEYS,
     ) {
         init {
             require(authBillingPerMinute > 0) { "complyr.rate-limit.auth-billing-per-minute must be > 0" }
+            require(authAccountPerMinute > 0) { "complyr.rate-limit.auth-account-per-minute must be > 0" }
             require(authVerifyPerMinute > 0) { "complyr.rate-limit.auth-verify-per-minute must be > 0" }
             require(authGeneralPerMinute > 0) { "complyr.rate-limit.auth-general-per-minute must be > 0" }
             require(maxTrackedKeys > 0) { "complyr.rate-limit.max-tracked-keys must be > 0" }
@@ -121,6 +140,7 @@ data class ComplyrProperties(
             const val DEFAULT_PUBLIC_SCAN_PER_MINUTE = 10L
             const val DEFAULT_PUBLIC_POLICY_PER_MINUTE = 120L
             const val DEFAULT_AUTH_BILLING_PER_MINUTE = 20L
+            const val DEFAULT_AUTH_ACCOUNT_PER_MINUTE = 10L
             const val DEFAULT_AUTH_VERIFY_PER_MINUTE = 5L
             const val DEFAULT_AUTH_GENERAL_PER_MINUTE = 300L
             const val DEFAULT_MAX_TRACKED_KEYS = 50_000
@@ -147,7 +167,15 @@ data class ComplyrProperties(
             val DEFAULT_ALLOWED_HEADERS = listOf("Content-Type")
             const val DEFAULT_MAX_AGE_SECONDS = 3600L
             val DEFAULT_PATHS =
-                listOf("/api/v1/consent", "/api/v1/consent-token/**", "/api/v1/widget-config/**")
+                listOf(
+                    "/api/v1/consent",
+                    "/api/v1/consent-token/**",
+                    "/api/v1/widget-config/**",
+                    // The widget's own config URL (ADR-19). Cross-origin by construction: it is
+                    // fetched from the customer's page. CORS is owned here, not in Caddy, so the
+                    // proxied response carries exactly one Access-Control-Allow-Origin header.
+                    "/cfg/**",
+                )
         }
     }
 

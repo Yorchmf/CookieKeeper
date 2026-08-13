@@ -48,6 +48,8 @@ class BillingWebhookServiceTest {
             returnUrl: String,
         ): String = error("unused")
 
+        override fun cancelSubscription(subscriptionId: String) = error("unused")
+
         override fun parseWebhookEvent(
             payload: String,
             signatureHeader: String,

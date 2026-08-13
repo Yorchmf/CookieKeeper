@@ -2,12 +2,13 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { UserNav } from "@/components/app/user-nav";
 
-// Only routes that exist today; scans/consent-log/policies/settings
+// Only routes that exist today; scans/consent-log/policies
 // return here as their pages are built in later weeks.
 const NAV_ITEMS = [
   { key: "dashboard", href: "/dashboard" },
   { key: "sites", href: "/sites" },
   { key: "billing", href: "/billing" },
+  { key: "settings", href: "/settings/data" },
 ] as const;
 
 export default function AppShellLayout({

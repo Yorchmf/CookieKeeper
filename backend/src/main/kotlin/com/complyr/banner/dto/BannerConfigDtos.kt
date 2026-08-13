@@ -2,6 +2,7 @@ package com.complyr.banner.dto
 
 import com.complyr.banner.BannerConfigDocument
 import com.complyr.banner.BannerConfigEntity
+import com.complyr.banner.BannerTextDefaults
 import jakarta.validation.constraints.NotEmpty
 import jakarta.validation.constraints.Size
 import java.time.Instant
@@ -46,6 +47,14 @@ data class BannerCategoryRequest(
     @field:Size(max = BannerConfigUpdateRequest.MAX_SHORT) val key: String,
 )
 
+/**
+ * One language's copy as submitted by the customizer.
+ *
+ * The preferences-panel fields added in ADR-19 Slice 2 are optional and default to blank: a blank
+ * value is not an error, it means "use the shipped translation for this language"
+ * (`BannerConfigValidator` substitutes it, so nothing is ever stored empty). The attribution text is
+ * absent by design — it is server-owned, see `WidgetAttributionTexts`.
+ */
 data class BannerTextsRequest(
     val title: String,
     val description: String,
@@ -53,6 +62,17 @@ data class BannerTextsRequest(
     val rejectAll: String,
     val save: String,
     val preferences: String,
+    val preferencesTitle: String = "",
+    val close: String = "",
+    val alwaysActive: String = "",
+    @field:Size(max = BannerConfigUpdateRequest.MAX_CATEGORIES)
+    val categoryLabels: Map<String, BannerCategoryTextRequest> = emptyMap(),
+)
+
+/** One category's copy in the preferences panel; blank fields fall back to the shipped translation. */
+data class BannerCategoryTextRequest(
+    val label: String = "",
+    val description: String = "",
 )
 
 /**
@@ -69,7 +89,9 @@ data class BannerConfigResponse(
             BannerConfigResponse(
                 version = entity.version,
                 publishedAt = entity.publishedAt,
-                config = entity.config,
+                // Backfill here rather than in the service so no read path can serve a config
+                // predating ADR-19 Slice 2 with an empty preferences panel.
+                config = BannerTextDefaults.complete(entity.config),
             )
     }
 }

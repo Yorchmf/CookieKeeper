@@ -107,6 +107,12 @@ interface ScanRepository : JpaRepository<ScanEntity, UUID> {
         pageable: Pageable,
     ): List<ScanEntity>
 
+    /**
+     * How many scans a site has ever had. The Art. 20 export lists only the most recent page of scans, and
+     * publishes this alongside so a truncated list is visible as truncated rather than looking complete.
+     */
+    fun countBySiteId(siteId: UUID): Long
+
     /** One scan scoped to its site — the read path pairs this with a site-ownership check. */
     fun findByIdAndSiteId(
         id: UUID,

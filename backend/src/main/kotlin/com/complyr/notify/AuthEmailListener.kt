@@ -25,6 +25,10 @@ class AuthEmailListener(
                 notifier.sendPasswordReset(event.userId, event.email, event.locale, event.rawToken)
             is WelcomeEmailRequested ->
                 notifier.sendWelcome(event.userId, event.email, event.locale)
+            is EmailChangeRequested ->
+                notifier.sendEmailChange(event.userId, event.email, event.locale, event.rawToken)
+            is EmailChangedNoticeRequested ->
+                notifier.sendEmailChangedNotice(event.userId, event.email, event.locale)
         }
     }
 }

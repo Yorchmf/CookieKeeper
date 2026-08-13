@@ -44,6 +44,10 @@ class SiteService(
         rawDomain: String,
     ): SiteResponse {
         val user = userRepository.findById(userId).orElseThrow { UnauthenticatedException() }
+        // An Art. 17 tombstone must not be able to acquire new data with a still-valid access token
+        // (ADR-20). Its verifiedAt is cleared too, so this is belt-and-braces — but "erased" is the
+        // honest reason, and a future change to the verification rule must not silently open this path.
+        if (user.isErased) throw UnauthenticatedException()
         if (user.verifiedAt == null) throw EmailNotVerifiedException()
         val domain = DomainValidator.normalize(rawDomain)
         ensureDomainAvailable(userId, domain)
@@ -83,6 +87,29 @@ class SiteService(
     ): SiteDetailResponse {
         val site = owned(userId, siteId)
         val updated = newDomain?.let { changeDomain(site, it) } ?: site
+        return detail(updated)
+    }
+
+    /**
+     * Persist the site's "hide the Powered by Complyr credit" preference. Ownership-scoped like every
+     * other write; a no-op save is skipped so an idempotent re-toggle doesn't bump `updatedAt`. The
+     * preference is stored as-is regardless of plan — the entitlement floor is applied only when the
+     * effective branding is *resolved* (widget-config / hosted-policy reads), so a customer who sets it
+     * while on the free tier keeps the choice and it activates the moment they upgrade.
+     */
+    @Transactional
+    fun setBrandingPreference(
+        userId: UUID,
+        siteId: UUID,
+        hideBranding: Boolean,
+    ): SiteDetailResponse {
+        val site = owned(userId, siteId)
+        val updated =
+            if (site.hideBranding == hideBranding) {
+                site
+            } else {
+                siteRepository.save(site.copy(hideBranding = hideBranding, updatedAt = clock.instant()))
+            }
         return detail(updated)
     }
 
@@ -143,7 +170,14 @@ class SiteService(
         }
     }
 
-    private fun detail(site: SiteEntity): SiteDetailResponse = SiteDetailResponse.from(site, embedSnippet(site.siteKey))
+    // The site page is authed and low-frequency, so the extra best-effort billing read for
+    // `brandingRemovalEntitled` is fine here; it never throws (fails closed to "not entitled").
+    private fun detail(site: SiteEntity): SiteDetailResponse =
+        SiteDetailResponse.from(
+            site,
+            embedSnippet(site.siteKey),
+            entitlementService.removeBrandingOrDefault(site.userId),
+        )
 
     private fun embedSnippet(siteKey: String): String =
         """<script async src="${properties.cdnBaseUrl}/v1.js" data-complyr="$siteKey"></script>"""

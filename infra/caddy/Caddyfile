@@ -35,24 +35,34 @@
 	# per request (app-level), and the widget CDN must stay embeddable anywhere.
 }
 
-# --- CDN vhosts: widget bundle + per-site config, served from disk -----------
-# CI uploads content-hashed/versioned assets; cache hard, Cloudflare absorbs
-# the read load. Config JSON (cfg/*.json) revalidates every 5 minutes.
+# --- CDN vhosts: widget bundle from disk, per-site config from the API -------
+# args: {args[0]} = disk root for the widget bundle, {args[1]} = api upstream.
+#
+# CI uploads content-hashed/versioned assets; cache hard, Cloudflare absorbs the
+# read load. Per-site config (/cfg/{siteKey}.json) is NOT a file: it is proxied
+# to the API, which renders the published banner config live (ADR-19). Its
+# Cache-Control (public, max-age=300) is set by the API on the response, so the
+# TTL lives next to the code that knows when a config changes.
 (cdn_site) {
-	root * {args[0]}
-	file_server
 	encode gzip zstd
 	import security_headers
-	header Access-Control-Allow-Origin "*"
-	@config path /cfg/*
-	header @config Cache-Control "public, max-age=300"
-	# The stable embed URLs (/v1.js, future /v2.js) are OVERWRITTEN in place by
-	# deploys — a long/immutable TTL here would pin a buggy widget in browsers
-	# and Cloudflare for a year with no cache-busting lever left.
-	@entry path /v*.js
-	header @entry Cache-Control "public, max-age=3600, stale-while-revalidate=86400"
-	# Everything else must be content-hashed — only then is immutable safe.
-	header ?Cache-Control "public, max-age=31536000, immutable"
+	handle /cfg/* {
+		# CORS for this route is emitted by the API (Spring), not here — two
+		# Access-Control-Allow-Origin headers on one response is a browser error.
+		reverse_proxy {args[1]}
+	}
+	handle {
+		root * {args[0]}
+		file_server
+		header Access-Control-Allow-Origin "*"
+		# The stable embed URLs (/v1.js, future /v2.js) are OVERWRITTEN in place by
+		# deploys — a long/immutable TTL here would pin a buggy widget in browsers
+		# and Cloudflare for a year with no cache-busting lever left.
+		@entry path /v*.js
+		header @entry Cache-Control "public, max-age=3600, stale-while-revalidate=86400"
+		# Everything else must be content-hashed — only then is immutable safe.
+		header ?Cache-Control "public, max-age=31536000, immutable"
+	}
 	# X-Frame-Options DENY is fine here — the widget is a <script>, not a frame.
 }
 
@@ -78,7 +88,7 @@ api.complyr.eu {
 }
 
 cdn.complyr.eu {
-	import cdn_site /srv/cdn/prd
+	import cdn_site /srv/cdn/prd complyr-prd-api-1:8080
 }
 
 # ================================== DEV ======================================
@@ -101,5 +111,5 @@ api.dev.complyr.eu {
 }
 
 cdn.dev.complyr.eu {
-	import cdn_site /srv/cdn/dev
+	import cdn_site /srv/cdn/dev complyr-dev-api-1:8080
 }

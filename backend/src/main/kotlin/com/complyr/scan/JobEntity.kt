@@ -66,6 +66,10 @@ data class JobEntity(
     val attempts: Int = 0,
     @Column(name = "max_attempts", nullable = false)
     val maxAttempts: Int,
+    // Claim ordering weight (higher = served first). Frozen from the site owner's entitlement at
+    // enqueue time (see [ScanQueue.enqueue]); default 0 is the normal tier.
+    @Column(name = "priority", nullable = false)
+    val priority: Int = 0,
     @Column(name = "available_at", nullable = false)
     val availableAt: Instant,
     @Column(name = "locked_until")
@@ -89,6 +93,10 @@ interface JobRepository : JpaRepository<JobEntity, UUID> {
      * held for the rest of the caller's transaction; the caller must, in that same transaction,
      * flip the row to `running` with a fresh `locked_until` (see [ScanQueue.claimNext]) so the
      * claim survives past commit. Native because JPQL cannot express SKIP LOCKED.
+     *
+     * `ORDER BY priority DESC, available_at`: higher-priority jobs (Business-plan sites) are served
+     * first, then oldest-due within a tier — matched by `idx_jobs_claim (type, priority DESC,
+     * available_at)` so the LIMIT 1 claim is an index-order walk that stops at the first live row.
      */
     @Query(
         value =
@@ -96,7 +104,7 @@ interface JobRepository : JpaRepository<JobEntity, UUID> {
                 "WHERE type = :type AND (" +
                 "(status = 'pending' AND available_at <= now()) OR " +
                 "(status = 'running' AND (locked_until IS NULL OR locked_until < now()))" +
-                ") ORDER BY available_at " +
+                ") ORDER BY priority DESC, available_at " +
                 "FOR UPDATE SKIP LOCKED LIMIT 1",
         nativeQuery = true,
     )

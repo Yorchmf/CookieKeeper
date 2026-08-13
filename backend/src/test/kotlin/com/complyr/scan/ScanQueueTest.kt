@@ -63,7 +63,7 @@ class ScanQueueTest {
     fun `enqueue creates a queued scan and a pending job referencing it`() {
         val siteId = insertSite()
 
-        val scanId = scanQueue.enqueue(siteId, ScanTrigger.SITE_ADDED, Instant.now())
+        val scanId = scanQueue.enqueue(siteId, ScanTrigger.SITE_ADDED, Instant.now(), ScanQueue.PRIORITY_NORMAL)
 
         val scan = scanRepository.findById(scanId).orElseThrow()
         assertEquals(ScanStatus.QUEUED, scan.status)
@@ -81,7 +81,8 @@ class ScanQueueTest {
         // The scheduled re-scan job jitters availableAt across a window so a nightly batch doesn't hit the
         // single-Chromium worker at once. The customer-visible scan row must still appear immediately.
         val siteId = insertSite()
-        val scanId = scanQueue.enqueue(siteId, ScanTrigger.SCHEDULED, Instant.now().plus(Duration.ofHours(1)))
+        val scanId =
+            scanQueue.enqueue(siteId, ScanTrigger.SCHEDULED, Instant.now().plus(Duration.ofHours(1)), ScanQueue.PRIORITY_NORMAL)
 
         assertEquals(ScanStatus.QUEUED, scanRepository.findById(scanId).orElseThrow().status)
         assertNull(scanQueue.claimNext(), "a job is not due until its availableAt passes")
@@ -90,7 +91,7 @@ class ScanQueueTest {
     @Test
     fun `claimNext moves the scan and job to running and marks succeeded records the result`() {
         val siteId = insertSite()
-        val scanId = scanQueue.enqueue(siteId, ScanTrigger.SITE_ADDED, Instant.now())
+        val scanId = scanQueue.enqueue(siteId, ScanTrigger.SITE_ADDED, Instant.now(), ScanQueue.PRIORITY_NORMAL)
 
         val claim = scanQueue.claimNext()
         assertNotNull(claim, "the sole due job must be claimable")
@@ -113,7 +114,7 @@ class ScanQueueTest {
     @Test
     fun `a claimed job is hidden from a second claim until its visibility lock expires`() {
         val siteId = insertSite()
-        scanQueue.enqueue(siteId, ScanTrigger.SITE_ADDED, Instant.now())
+        scanQueue.enqueue(siteId, ScanTrigger.SITE_ADDED, Instant.now(), ScanQueue.PRIORITY_NORMAL)
 
         val first = scanQueue.claimNext()
         assertNotNull(first)
@@ -124,7 +125,7 @@ class ScanQueueTest {
     @Test
     fun `a crashed job is redelivered once its visibility lock expires`() {
         val siteId = insertSite()
-        scanQueue.enqueue(siteId, ScanTrigger.SITE_ADDED, Instant.now())
+        scanQueue.enqueue(siteId, ScanTrigger.SITE_ADDED, Instant.now(), ScanQueue.PRIORITY_NORMAL)
         val first = scanQueue.claimNext()
         assertNotNull(first)
 
@@ -140,7 +141,7 @@ class ScanQueueTest {
     @Test
     fun `a stale worker cannot complete a job that was already re-claimed`() {
         val siteId = insertSite()
-        val scanId = scanQueue.enqueue(siteId, ScanTrigger.SITE_ADDED, Instant.now())
+        val scanId = scanQueue.enqueue(siteId, ScanTrigger.SITE_ADDED, Instant.now(), ScanQueue.PRIORITY_NORMAL)
 
         // Worker A claims, then overruns its lease and the job is redelivered to worker B.
         val stale = scanQueue.claimNext()
@@ -166,7 +167,7 @@ class ScanQueueTest {
     @Test
     fun `markFailed requeues while attempts remain then dead-letters both rows`() {
         val siteId = insertSite()
-        val scanId = scanQueue.enqueue(siteId, ScanTrigger.SITE_ADDED, Instant.now())
+        val scanId = scanQueue.enqueue(siteId, ScanTrigger.SITE_ADDED, Instant.now(), ScanQueue.PRIORITY_NORMAL)
 
         // Attempt 1 fails — with max-attempts=2 and zero backoff it is immediately requeued.
         val attempt1 = scanQueue.claimNext()
@@ -189,6 +190,38 @@ class ScanQueueTest {
         assertEquals(JobStatus.FAILED, job.status)
         assertEquals("boom again", job.lastError)
         assertNull(scanQueue.claimNext(), "a dead-lettered job is never handed out again")
+    }
+
+    @Test
+    fun `enqueue stamps the priority it is given onto the job`() {
+        // Priority is resolved by the caller (see ScanRequestService / ScheduledRescanJob / the site-added
+        // listener) and passed in; the queue simply freezes it onto the row so the claim path never
+        // re-reads billing state.
+        val siteId = insertSite()
+
+        scanQueue.enqueue(siteId, ScanTrigger.SITE_ADDED, Instant.now(), ScanQueue.PRIORITY_HIGH)
+
+        assertEquals(ScanQueue.PRIORITY_HIGH, onlyScanJob().priority, "enqueue persists the caller's priority verbatim")
+    }
+
+    @Test
+    fun `claimNext serves a higher-priority job ahead of an older normal one`() {
+        // The ORDER BY priority DESC, available_at contract: a high-priority job added a moment ago must
+        // be crawled before a normal-priority one that has been waiting longer.
+        val normalSite = insertSite()
+        val prioritySite = insertSite()
+        val normalScan =
+            scanQueue.enqueue(normalSite, ScanTrigger.SITE_ADDED, Instant.now().minusSeconds(60), ScanQueue.PRIORITY_NORMAL)
+        val priorityScan =
+            scanQueue.enqueue(prioritySite, ScanTrigger.SITE_ADDED, Instant.now().minusSeconds(30), ScanQueue.PRIORITY_HIGH)
+
+        val first = scanQueue.claimNext()
+        assertNotNull(first)
+        assertEquals(priorityScan, first.scanId, "the high-priority job wins despite its newer availableAt")
+
+        val second = scanQueue.claimNext()
+        assertNotNull(second)
+        assertEquals(normalScan, second.scanId, "the older normal job is served once the priority tier drains")
     }
 
     @Test

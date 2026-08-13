@@ -11,19 +11,35 @@
   },
   "marketing": {
     "hero": {
-      "title": "Complyr",
-      "pitch": "Le consentement aux cookies RGPD ultra-simple pour les petites entreprises européennes — bannière conforme, analyses de cookies et journaux de consentement prêts pour l'audit dès 9 €/mois.",
-      "cta": "Commencer",
-      "euBadge": "Conçu et hébergé dans l'UE"
+      "title": "Le consentement aux cookies GDPR, sans le mal de tête",
+      "pitch": "Le bandeau conforme, le scanner de cookies et les journaux de consentement prêts pour l'audit dont les petites entreprises européennes ont vraiment besoin — configuré en quelques minutes, à partir de €9/mois.",
+      "cta": "Commencer gratuitement",
+      "euBadge": "Conçu et hébergé dans l'UE",
+      "ctaSecondary": "Voir les tarifs",
+      "trust": "Essai gratuit de 14 jours · Sans carte bancaire · Annulable à tout moment"
     },
     "nav": {
       "features": "Fonctionnalités",
       "pricing": "Tarifs",
-      "signIn": "Se connecter"
+      "signIn": "Se connecter",
+      "faq": "FAQ",
+      "cta": "Commencer gratuitement"
     },
     "footer": {
-      "legal": "Mentions légales",
-      "privacy": "Confidentialité"
+      "legal": "Juridique",
+      "privacy": "Confidentialité",
+      "tagline": "Le consentement aux cookies GDPR simplifié pour les entreprises européennes.",
+      "product": "Produit",
+      "features": "Fonctionnalités",
+      "pricing": "Tarifs",
+      "faq": "FAQ",
+      "terms": "Conditions",
+      "imprint": "Mentions légales",
+      "account": "Compte",
+      "signIn": "Se connecter",
+      "cta": "Commencer gratuitement",
+      "rights": "© {year} Complyr. Tous droits réservés.",
+      "madeIn": "Conçu et hébergé dans l'UE"
     },
     "scan": {
       "eyebrow": "Audit de cookies gratuit",
@@ -126,10 +142,177 @@
           "logs": {
             "label": "Preuves de consentement",
             "without": "Aucune piste d'audit.",
-            "with": "Un journal de consentement inaltérable, conservé jusqu'à cinq ans."
+            "with": "Un journal de consentement inaltérable, conservé jusqu'à trois ans."
           }
         }
       }
+    },
+    "theme": {
+      "label": "Changer de thème",
+      "light": "Clair",
+      "dark": "Sombre",
+      "system": "Système"
+    },
+    "problem": {
+      "eyebrow": "Pourquoi Complyr",
+      "title": "Tout ce qu'il vous faut pour être conforme. Rien de superflu.",
+      "subtitle": "Les outils de consentement d'entreprise sont puissants, coûteux et pénibles. Complyr fait les 95 % dont une petite entreprise a vraiment besoin — et vous laisse tranquille pour le reste.",
+      "cards": {
+        "design": {
+          "title": "Beau par défaut",
+          "body": "Des bandeaux que vos visiteurs ne détesteront pas. Designs modernes, animations fluides et personnalisation complète — sans une ligne de CSS."
+        },
+        "languages": {
+          "title": "5 langues de l'UE, d'autres à venir",
+          "body": "Détecte automatiquement la langue de votre visiteur. Anglais, allemand, français, espagnol et italien aujourd'hui — d'autres arrivent."
+        },
+        "scanner": {
+          "title": "Scanner automatique",
+          "body": "Nous explorons votre site et détectons chaque cookie et traceur pour vous. Pas de listes manuelles, pas de suppositions."
+        },
+        "policy": {
+          "title": "Politique générée automatiquement",
+          "body": "Une politique de cookies rédigée pour vous, toujours synchronisée avec les traceurs que nous trouvons réellement sur votre site."
+        },
+        "consentMode": {
+          "title": "Consent Mode v2",
+          "body": "Google Consent Mode v2 intégré. Un seul interrupteur, et c'est fait — obligatoire pour Google Ads dans l'UE depuis 2024."
+        },
+        "logs": {
+          "title": "Journaux prêts pour l'audit",
+          "body": "Chaque choix de consentement conservé comme preuve infalsifiable — 12 mois sur Starter, 3 ans sur Pro et Business. La preuve de votre conformité quand un régulateur le demande."
+        },
+        "hosting": {
+          "title": "Hébergé dans l'UE",
+          "body": "Les données de vos visiteurs ne quittent jamais l'Europe. Stockées dans des centres de données allemands — pleine souveraineté des données, aucun transfert vers les États-Unis."
+        },
+        "performance": {
+          "title": "Ultra-rapide",
+          "body": "Notre widget fait moins de 20 KB et est entièrement asynchrone. Il ne ralentira pas votre site ni n'affectera vos Core Web Vitals."
+        },
+        "analytics": {
+          "title": "Statistiques incluses",
+          "body": "Tendances de consentement, taux d'acceptation par catégorie et inventaire de vos cookies — à partir de vos propres données. Pas de Google Analytics, pas de traqueurs tiers."
+        }
+      }
+    },
+    "how": {
+      "eyebrow": "Comment ça marche",
+      "title": "Conforme en trois étapes",
+      "subtitle": "Pas de développeurs, pas d'avocats, pas de week-end perdu en paperasse.",
+      "steps": {
+        "scan": {
+          "step": "01",
+          "title": "Scannez votre site",
+          "body": "Saisissez votre domaine et nous l'explorerons, en trouvant automatiquement chaque cookie et traceur."
+        },
+        "customise": {
+          "step": "02",
+          "title": "Personnalisez votre bandeau",
+          "body": "Adaptez-le à votre marque en quelques clics — couleurs, position, langues, catégories. Aperçu en direct inclus."
+        },
+        "embed": {
+          "step": "03",
+          "title": "Collez une ligne",
+          "body": "Ajoutez une seule balise script avant votre balise head fermante. C'est tout — vous êtes conforme et vous recueillez les consentements."
+        }
+      },
+      "snippet": {
+        "label": "Ajouter à votre site",
+        "copy": "Copier",
+        "copied": "Copié !"
+      }
+    },
+    "pricing": {
+      "eyebrow": "Tarifs",
+      "title": "Des tarifs simples, sans surprise",
+      "subtitle": "Commencez par un essai gratuit de 14 jours. Sans carte bancaire, annulable à tout moment. Prix hors TVA.",
+      "perMonth": "/mois",
+      "mostPopular": "Le plus populaire",
+      "cta": "Démarrer l'essai gratuit",
+      "plans": {
+        "starter": {
+          "name": "Starter",
+          "price": "€9",
+          "tagline": "Pour un seul site.",
+          "features": [
+            "1 site web",
+            "Re-scans automatiques mensuels",
+            "Bandeau conforme en 5 langues",
+            "Politique de cookies générée automatiquement",
+            "Consent Mode v2 intégré",
+            "Conservation des journaux de consentement pendant 12 mois"
+          ]
+        },
+        "pro": {
+          "name": "Pro",
+          "price": "€19",
+          "tagline": "Pour les indépendants et les sites en croissance.",
+          "features": [
+            "Tout ce qui est inclus dans Starter",
+            "Jusqu'à 3 sites web",
+            "Re-scans hebdomadaires + à la demande",
+            "Conservation des journaux de consentement pendant 3 ans",
+            "Retirer la marque Complyr"
+          ]
+        },
+        "business": {
+          "name": "Business",
+          "price": "€29",
+          "tagline": "Pour les agences et les marques multiples.",
+          "features": [
+            "Tout ce qui est inclus dans Pro",
+            "Jusqu'à 10 sites web",
+            "Scans prioritaires",
+            "API d'export CSV"
+          ]
+        }
+      }
+    },
+    "faq": {
+      "eyebrow": "FAQ",
+      "title": "Vos questions, nos réponses",
+      "subtitle": "Encore des questions ? Contactez-nous à tout moment — un vrai humain vous répondra.",
+      "items": {
+        "compliant": {
+          "q": "Complyr est-il vraiment conforme au GDPR ?",
+          "a": "Oui. Complyr est conçu spécifiquement pour la conformité au GDPR et à ePrivacy. Nous conservons les journaux de consentement comme preuve prête pour l'audit — 12 mois sur Starter, jusqu'à 3 ans sur Pro et Business —, prenons en charge le consentement granulaire par catégorie et générons automatiquement des politiques de cookies conformes. Les données de vos visiteurs sont hébergées entièrement au sein de l'UE."
+        },
+        "different": {
+          "q": "En quoi Complyr est-il différent de Cookiebot ou Osano ?",
+          "a": "Deux mots : simplicité et prix. Les outils d'entreprise facturent 50 à 500+ €/mois et nécessitent une formation. Complyr fait 95 % de ce qu'ils font, pour une fraction du prix, avec une interface que vous comprendrez en 30 secondes."
+        },
+        "analytics": {
+          "q": "En ai-je besoin si j'utilise seulement Google Analytics ?",
+          "a": "Oui. Si votre site utilise Google Analytics, Facebook Pixel, des intégrations YouTube ou tout cookie de suivi, la loi européenne exige un consentement préalable. Complyr gère cela correctement, avec Google Consent Mode v2 intégré."
+        },
+        "consentMode": {
+          "q": "Qu'est-ce que Google Consent Mode v2 ?",
+          "a": "C'est le système de Google pour respecter le consentement des utilisateurs tout en permettant l'analytique. Depuis mars 2024, il est obligatoire pour les utilisateurs de Google Ads dans l'UE. Complyr le configure automatiquement — chaque signal étant par défaut sur 'denied' jusqu'à ce que votre visiteur choisisse."
+        },
+        "dataLocation": {
+          "q": "Où mes données sont-elles stockées ?",
+          "a": "Toutes les données de visiteurs et de consentement sont stockées dans des centres de données de l'UE en Allemagne. Nous utilisons exclusivement une infrastructure basée dans l'UE — aucun transfert de données vers les États-Unis, aucun casse-tête Schrems II."
+        },
+        "cancel": {
+          "q": "Puis-je annuler à tout moment ?",
+          "a": "Oui. Annulez en un clic — pas de contrats, pas de frais d'annulation, pas de parcours du combattant. Vous gardez l'accès jusqu'à la fin de votre période de facturation."
+        },
+        "platforms": {
+          "q": "Fonctionne-t-il avec WordPress, Shopify, Wix, etc. ?",
+          "a": "Oui. Complyr fonctionne sur n'importe quel site web — il suffit de coller une ligne de code avant votre balise head fermante. Un plugin WordPress dédié est en préparation."
+        },
+        "freePlan": {
+          "q": "Proposez-vous une offre gratuite ?",
+          "a": "Nous proposons un essai gratuit de 14 jours — sans carte bancaire, jusqu'à 1 000 événements de consentement. À la fin de l'essai, choisissez une offre à partir de €9/mois pour garder votre bandeau actif ; d'ici là, les nouveaux scans et l'ajout de sites sont suspendus, mais votre journal de consentement n'est jamais supprimé. Nous maintenons des prix bas pour investir dans le produit plutôt que de subventionner une offre gratuite permanente."
+        }
+      }
+    },
+    "finalCta": {
+      "title": "Prêt à ne plus vous soucier du consentement aux cookies ?",
+      "subtitle": "Configurez Complyr en quelques minutes. Essai gratuit de 14 jours, sans carte bancaire.",
+      "cta": "Commencer gratuitement",
+      "ctaSecondary": "Scanner votre site"
     }
   },
   "nav": {
@@ -168,7 +351,11 @@
       "INVALID_DOMAIN": "Saisissez un domaine valide, p. ex. www.exemple.eu",
       "ON_DEMAND_RESCAN_NOT_ENTITLED": "Les analyses à la demande sont disponibles avec les offres Pro et Business",
       "SCAN_ALREADY_IN_PROGRESS": "Une analyse est déjà en cours pour ce site",
-      "GENERIC": "Une erreur est survenue. Veuillez réessayer."
+      "DELETE_CONFIRMATION_FAILED": "Mot de passe incorrect — votre compte n'a pas été supprimé",
+      "CURRENT_PASSWORD_INCORRECT": "Mot de passe incorrect — votre mot de passe n’a pas été modifié",
+      "NEW_PASSWORD_SAME_AS_CURRENT": "Choisissez un mot de passe différent de l’actuel",
+      "GENERIC": "Une erreur est survenue. Veuillez réessayer.",
+      "NEW_EMAIL_SAME_AS_CURRENT": "C'est déjà votre adresse e-mail"
     },
     "login": {
       "title": "Se connecter",
@@ -219,6 +406,16 @@
       "successTitle": "Mot de passe mis à jour",
       "successDescription": "Votre mot de passe a été modifié. Vous pouvez maintenant vous connecter avec celui-ci.",
       "goToLogin": "Aller à la connexion"
+    },
+    "confirmEmailChange": {
+      "title": "Confirmation de votre nouvel e-mail",
+      "confirming": "Un instant, nous confirmons votre nouvelle adresse e-mail…",
+      "successTitle": "Adresse e-mail mise à jour",
+      "successDescription": "Votre nouvelle adresse e-mail est désormais celle que vous utilisez pour vous connecter.",
+      "goToLogin": "Aller à la connexion",
+      "invalidTitle": "Échec de la confirmation",
+      "invalidDescription": "Ce lien de confirmation est invalide ou a expiré.",
+      "invalidHelp": "Connectez-vous et redemandez la modification depuis les paramètres de votre compte."
     }
   },
   "sites": {
@@ -271,6 +468,14 @@
       "bannerTitle": "Bandeau de consentement",
       "bannerDescription": "Personnalisez l'apparence, le texte et les catégories de votre bandeau de cookies.",
       "bannerCta": "Personnaliser le bandeau",
+      "branding": {
+        "title": "Marque",
+        "description": "Gérez la mention « Powered by Complyr » affichée sur votre bandeau et votre politique en matière de cookies.",
+        "toggleLabel": "Masquer la mention Complyr",
+        "hiddenHint": "La mention « Powered by Complyr » est masquée sur votre bandeau et votre politique en matière de cookies.",
+        "shownHint": "La mention « Powered by Complyr » est affichée sur votre bandeau et votre politique en matière de cookies.",
+        "lockedHint": "La suppression de la mention Complyr est disponible avec les forfaits Pro et Business."
+      },
       "consentLogTitle": "Journal des consentements",
       "consentLogDescription": "Parcourez et exportez les choix de consentement enregistrés pour ce site.",
       "consentLogCta": "Voir le journal",
@@ -306,20 +511,57 @@
         "starting": "Démarrage…",
         "started": "Nouvelle analyse lancée. Les résultats se mettront à jour automatiquement.",
         "inProgress": "Une analyse est déjà en cours pour ce site."
-      }
+      },
+      "analyticsTitle": "Analytique",
+      "analyticsDescription": "Tendances de consentement, inventaire des cookies et statut de la politique pour ce site.",
+      "analyticsCta": "Voir l'analytique"
     }
   },
   "dashboard": {
     "title": "Tableau de bord",
-    "welcome": "Bienvenue sur Complyr",
-    "placeholder": "Vos sites, analyses et statistiques de consentement apparaîtront ici.",
-    "cards": {
-      "sites": "Sites",
-      "sitesHint": "Domaines enregistrés utilisant le widget",
+    "subtitle": "Une vue d'ensemble de vos sites et de ce qui vous attend.",
+    "loadError": "Impossible de charger votre vue d'ensemble. Veuillez réessayer.",
+    "headline": {
+      "sites": "Sites actifs",
+      "sitesHint": "Domaines utilisant le widget",
       "consents": "Événements de consentement",
-      "consentsHint": "Enregistrés au cours des 30 derniers jours",
-      "scans": "Analyses",
-      "scansHint": "Derniers résultats d'analyse des cookies"
+      "consentsHint": "Enregistrés au cours des {days} derniers jours",
+      "acceptRate": "Taux de tout accepter",
+      "acceptRateHint": "Acceptations complètes uniquement, choix partiels exclus",
+      "cookies": "Cookies détectés",
+      "cookiesHint": "Dernière analyse le {date}",
+      "cookiesHintNever": "Aucune analyse terminée pour le moment"
+    },
+    "attention": {
+      "title": "Nécessite votre attention",
+      "description": "L'élément le plus important par site. La page de chaque site affiche le reste.",
+      "allClear": "Tout semble conforme",
+      "allClearHint": "Chaque site est vérifié, analysé et couvert par une politique de cookies à jour.",
+      "kind": {
+        "unverified": "Vérifier ce domaine",
+        "never_scanned": "Lancer la première analyse",
+        "policy_missing": "Publier une politique de cookies",
+        "policy_stale": "Mettre à jour la politique de cookies",
+        "insecure_cookies": "{count, plural, one {# cookie non sécurisé} other {# cookies non sécurisés}}"
+      },
+      "hint": {
+        "unverified": "Nous ne pouvons pas confirmer que votre bandeau est actif tant que le domaine n'est pas vérifié.",
+        "never_scanned": "Nous ne savons pas encore quels cookies ce site dépose.",
+        "policy_missing": "Les visiteurs doivent pouvoir lire ce que vous stockez et pourquoi.",
+        "policy_stale": "La politique publiée est antérieure à la dernière analyse.",
+        "insecure_cookies": "Cookies non essentiels envoyés sans Secure ni HttpOnly."
+      }
+    },
+    "empty": {
+      "title": "Ajoutez votre premier site",
+      "description": "Enregistrez un domaine pour analyser ses cookies, publier une politique et commencer à enregistrer les consentements.",
+      "cta": "Aller aux sites"
+    },
+    "trial": {
+      "daysLeft": "{days, plural, =0 {Votre essai se termine aujourd'hui} one {# jour restant dans votre essai} other {# jours restants dans votre essai}}",
+      "usage": "{used, number} sur {max, number} événements de consentement utilisés",
+      "expired": "Votre essai est terminé. Abonnez-vous pour ajouter des sites et relancer des analyses.",
+      "cta": "Voir les forfaits"
     }
   },
   "scans": {
@@ -490,8 +732,7 @@
       "label": "Position",
       "description": "Où le bandeau apparaît sur la page.",
       "bottom": "Bas",
-      "top": "Haut",
-      "center": "Centre"
+      "top": "Haut"
     },
     "theme": {
       "label": "Couleurs",
@@ -535,7 +776,17 @@
       "rejectAll": "Bouton « Tout refuser »",
       "save": "Bouton « Enregistrer »",
       "preferences": "Bouton « Préférences »",
-      "blank": "Ce champ ne peut pas être vide."
+      "preferencesTitle": "Titre du panneau",
+      "close": "Bouton de fermeture",
+      "alwaysActive": "Badge « Toujours actif »",
+      "blank": "Ce champ ne peut pas être vide.",
+      "panel": {
+        "label": "Panneau de préférences",
+        "description": "Textes du panneau détaillé que les visiteurs ouvrent via « Gérer les préférences ». Laissez un champ vide pour utiliser notre traduction dans cette langue.",
+        "usesDefault": "Vide – notre formulation est utilisée.",
+        "categoryLabel": "Nom de la catégorie",
+        "categoryDescription": "Explication de la catégorie"
+      }
     },
     "preview": {
       "label": "Aperçu en direct",
@@ -565,6 +816,8 @@
     "usage": {
       "sitesLabel": "Sites",
       "sites": "{used} sur {max} sites actifs",
+      "consentEventsLabel": "Événements de consentement",
+      "consentEvents": "{used, number} sur {max, number} événements de consentement",
       "rescanLabel": "Scans automatiques",
       "rescan": {
         "monthly": "Une fois par mois",
@@ -662,6 +915,209 @@
       "label": "Exporter en CSV",
       "businessOnly": "L’export CSV est disponible avec l’offre Business.",
       "upgrade": "Mettre à niveau"
+    }
+  },
+  "analytics": {
+    "title": "Analytique",
+    "subtitle": "Décisions de consentement, inventaire des cookies et statut de la politique pour ce site — agrégés à partir de vos propres données.",
+    "loadError": "Impossible de charger l'analytique de ce site. Veuillez réessayer.",
+    "retry": "Réessayer",
+    "summary": {
+      "totalEvents": "Événements de consentement",
+      "acceptShare": "Taux de « tout accepter »",
+      "policyVersion": "Version de la politique",
+      "noPolicy": "Aucune",
+      "publishedAt": "Publiée le {when}",
+      "languages": "Langues des visiteurs",
+      "none": "Aucune"
+    },
+    "actions": {
+      "accept_all": "Tout accepter",
+      "reject_all": "Tout refuser",
+      "custom": "Personnalisé"
+    },
+    "consentTrend": {
+      "title": "Tendance du consentement",
+      "description": "Décisions de consentement quotidiennes sur la période sélectionnée.",
+      "ariaLabel": "Graphique en aires empilées des décisions quotidiennes : tout accepter, tout refuser et personnalisé.",
+      "empty": "Aucun événement de consentement enregistré sur cette période pour le moment.",
+      "dateColumn": "Date"
+    },
+    "categoryOptIn": {
+      "title": "Taux d'acceptation par catégorie",
+      "description": "Part des décisions ayant accepté chaque catégorie de cookies.",
+      "ariaLabel": "Graphique à barres du taux d'acceptation par catégorie de consentement.",
+      "empty": "Aucune décision par catégorie enregistrée sur cette période pour le moment.",
+      "categoryColumn": "Catégorie",
+      "decisionsColumn": "Décisions",
+      "rateColumn": "Taux d'acceptation"
+    },
+    "categories": {
+      "necessary": "Nécessaires",
+      "preferences": "Préférences",
+      "statistics": "Statistiques",
+      "marketing": "Marketing",
+      "unclassified": "Non classés"
+    },
+    "cookies": {
+      "title": "Inventaire des cookies",
+      "description": "Cookies détectés lors du dernier scan terminé de ce site.",
+      "total": "Cookies au total",
+      "known": "Connus",
+      "unknown": "Inconnus",
+      "insecure": "Non sécurisés",
+      "trackers": "Traceurs",
+      "ariaLabel": "Graphique en anneau des cookies regroupés par catégorie.",
+      "scannedAt": "Scanné le {when}",
+      "empty": "Aucun scan terminé pour le moment. Lancez un scan pour voir l'inventaire des cookies."
+    },
+    "languages": {
+      "title": "Langues des visiteurs",
+      "description": "Événements de consentement selon la langue du navigateur du visiteur.",
+      "unknown": "Inconnue",
+      "count": "{count} ({share} %)",
+      "barLabel": "{label} : {share} %",
+      "empty": "Aucun événement de consentement enregistré sur cette période pour le moment."
+    },
+    "range": {
+      "legend": "Période",
+      "days": "{days} j"
+    },
+    "export": {
+      "label": "Exporter en CSV",
+      "businessOnly": "L'export CSV est disponible avec le forfait Business."
+    },
+    "status": {
+      "loading": "Chargement des statistiques des {days} derniers jours…",
+      "updated": "Statistiques mises à jour pour les {days} derniers jours."
+    },
+    "warningLabel": "Avertissement"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "subtitle": "Gérez votre compte et vos données.",
+    "navLabel": "Sections des paramètres",
+    "nav": {
+      "profile": "Profil",
+      "security": "Sécurité",
+      "notifications": "Notifications",
+      "data": "Vos données"
+    },
+    "profile": {
+      "name": {
+        "title": "Votre nom",
+        "description": "Le nom affiché sur votre compte. Facultatif — laissez le champ vide pour utiliser votre adresse e-mail à la place.",
+        "label": "Nom affiché",
+        "placeholder": "ex. Ada Lovelace",
+        "tooLong": "Utilisez 120 caractères au maximum.",
+        "save": "Enregistrer",
+        "saved": "Enregistré"
+      },
+      "password": {
+        "title": "Mot de passe",
+        "description": "Modifiez le mot de passe que vous utilisez pour vous connecter. Vous serez déconnecté de tous vos appareils.",
+        "currentLabel": "Mot de passe actuel",
+        "newLabel": "Nouveau mot de passe",
+        "confirmLabel": "Confirmer le nouveau mot de passe",
+        "save": "Modifier le mot de passe",
+        "done": {
+          "title": "Mot de passe modifié",
+          "description": "Vous avez été déconnecté partout. Reconnectez-vous avec votre nouveau mot de passe.",
+          "login": "Aller à la connexion"
+        }
+      },
+      "email": {
+        "title": "Adresse e-mail",
+        "description": "Modifiez l'adresse que vous utilisez pour vous connecter. Nous enverrons un lien de confirmation à la nouvelle adresse — votre adresse actuelle reste active jusqu'à ce que vous confirmiez.",
+        "currentLabel": "E-mail actuel",
+        "newLabel": "Nouvelle adresse e-mail",
+        "currentPasswordLabel": "Mot de passe actuel",
+        "save": "Envoyer le lien de confirmation",
+        "pending": "Une modification vers {email} attend une confirmation. Ouvrez le lien que nous avons envoyé à cette adresse pour la finaliser. Votre adresse actuelle reste active jusque-là.",
+        "errors": {
+          "CURRENT_PASSWORD_INCORRECT": "Mot de passe incorrect — votre adresse e-mail n'a pas été modifiée.",
+          "EMAIL_IN_USE": "Cette adresse e-mail est déjà utilisée par un autre compte.",
+          "NEW_EMAIL_SAME_AS_CURRENT": "C'est déjà votre adresse e-mail.",
+          "RATE_LIMITED": "Trop de tentatives — veuillez réessayer dans un instant.",
+          "GENERIC": "Une erreur s'est produite. Veuillez réessayer."
+        }
+      }
+    },
+    "security": {
+      "title": "Se déconnecter partout",
+      "description": "Déconnectez-vous de Complyr sur tous les appareils où vous êtes connecté.",
+      "currentPasswordLabel": "Mot de passe actuel",
+      "note": "Cela vous déconnecte aussi de vos autres appareils. Ils perdent l'accès en quelques minutes ; ce navigateur est déconnecté immédiatement.",
+      "submit": "Déconnecter tous les appareils",
+      "errors": {
+        "CURRENT_PASSWORD_INCORRECT": "Mot de passe incorrect — vous n'avez pas été déconnecté.",
+        "RATE_LIMITED": "Trop de tentatives — veuillez réessayer dans un instant.",
+        "GENERIC": "Une erreur s'est produite. Veuillez réessayer."
+      },
+      "done": {
+        "title": "Déconnecté partout",
+        "description": "Vous avez été déconnecté de tous vos appareils. Reconnectez-vous pour continuer.",
+        "login": "Aller à la connexion"
+      }
+    },
+    "notifications": {
+      "title": "Notifications par e-mail",
+      "description": "Choisissez les e-mails que Complyr vous envoie au sujet de vos sites.",
+      "loadError": "Impossible de charger vos préférences de notification. Actualisez la page pour réessayer.",
+      "scanComplete": {
+        "label": "Premier scan terminé",
+        "description": "M'envoyer le récapitulatif lorsque le premier scan d'un site est terminé."
+      },
+      "scanChanges": {
+        "label": "Traceurs nouveaux ou modifiés",
+        "description": "M'envoyer un e-mail lorsqu'un nouveau scan planifié détecte des cookies ou traceurs modifiés."
+      }
+    },
+    "data": {
+      "export": {
+        "title": "Exporter vos données",
+        "description": "Téléchargez tout ce que nous conservons sur votre compte dans un fichier JSON lisible par machine (art. 20 du RGPD).",
+        "includesTitle": "Le fichier contient",
+        "includes": {
+          "account": "Votre compte : adresse e-mail, langue et date d'inscription",
+          "subscription": "Votre abonnement : formule, statut et période en cours",
+          "sites": "Vos sites : domaine, clé d'intégration et statut de vérification",
+          "banner": "La configuration de bannière publiée de chaque site",
+          "policy": "La politique cookies publiée de chaque site, avec son URL publique",
+          "scans": "Votre historique d'analyses et les cookies détectés lors de la dernière"
+        },
+        "consentNote": "Les preuves de consentement appartiennent à vos visiteurs, pas à votre compte — vous en restez responsable de traitement. Téléchargez-les site par site au format CSV depuis le journal des consentements.",
+        "download": "Télécharger le JSON"
+      },
+      "delete": {
+        "title": "Supprimer votre compte",
+        "description": "Effacez votre compte et tout ce qu'il contient (art. 17 du RGPD).",
+        "erasedTitle": "Sont effacés",
+        "erased": {
+          "identity": "Votre accès : adresse e-mail, mot de passe et toutes les sessions actives",
+          "sites": "Vos sites : domaines, clés d'intégration et configuration de la bannière",
+          "scans": "Chaque analyse et chaque cookie qu'elle a détecté",
+          "policies": "Vos politiques cookies générées, y compris leurs pages publiques",
+          "billing": "Votre abonnement — il est résilié chez Stripe avant tout effacement"
+        },
+        "keptTitle": "Ce que nous ne pouvons pas effacer",
+        "keptBody": "Les preuves de consentement sont celles de vos visiteurs, pas vos données, et la loi impose qu'elles restent inaltérables. Les sites ayant enregistré des consentements subsistent sous forme d'emplacement vide — sans domaine, sans clé, sans rien qui les relie à vous — jusqu'à l'expiration de ces preuves et leur suppression automatique au bout de trois ans.",
+        "irreversible": "Cette action est irréversible. Exportez vos données d'abord si vous souhaitez en garder une copie.",
+        "trigger": "Supprimer mon compte",
+        "confirmTitle": "Supprimer votre compte ?",
+        "confirmDescription": "Saisissez votre mot de passe pour confirmer. Votre compte et ses données sont effacés immédiatement.",
+        "passwordLabel": "Mot de passe",
+        "passwordRequired": "Saisissez votre mot de passe pour confirmer",
+        "cancel": "Annuler",
+        "confirm": "Supprimer définitivement",
+        "done": {
+          "title": "Votre compte a été supprimé",
+          "description": "Vous avez été déconnecté. Plus rien ne relie ce navigateur au compte.",
+          "sitesDeleted": "{count, plural, =0 {Aucun site n'a été supprimé} one {# site a été entièrement supprimé} other {# sites ont été entièrement supprimés}}",
+          "sitesAnonymized": "{count, plural, =0 {Aucun site n'a dû être conservé} one {# site est conservé comme emplacement anonyme pour les preuves de consentement} other {# sites sont conservés comme emplacements anonymes pour les preuves de consentement}}",
+          "home": "Retour à l'accueil"
+        }
+      }
     }
   }
 }

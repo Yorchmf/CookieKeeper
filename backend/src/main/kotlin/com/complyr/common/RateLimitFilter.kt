@@ -103,6 +103,9 @@ class RateLimitFilter(
                 "/api/v1/auth/resend-verification",
                 "/api/v1/auth/forgot-password",
                 "/api/v1/auth/reset-password",
+                // Public, unauthenticated token redemption (verify-new-first email change): IP-throttled
+                // here like the other token endpoints so it can't be brute-forced by an anonymous caller.
+                "/api/v1/auth/confirm-email-change",
             )
         const val CONSENT_PATH = "/api/v1/consent"
         const val CONSENT_TOKEN_PATH = "/api/v1/consent-token"

@@ -6,6 +6,7 @@ import com.complyr.auth.dto.UserResponse
 import com.complyr.common.ComplyrProperties
 import com.complyr.common.UnauthenticatedException
 import com.complyr.common.violatedConstraint
+import com.complyr.notify.EmailChangedNoticeRequested
 import com.complyr.notify.PasswordResetEmailRequested
 import com.complyr.notify.VerificationEmailRequested
 import com.complyr.notify.WelcomeEmailRequested
@@ -75,7 +76,7 @@ class AuthService(
 
     @Transactional
     fun login(request: LoginRequest): AuthSession {
-        val user = userRepository.findByEmail(normalizeEmail(request.email))
+        val user = findLiveAccountByEmail(request.email)
         // Unknown email OR a locked account (distributed brute-force backstop, see LoginAttemptService):
         // burn one bcrypt (anti-enumeration timing) and reject with the SAME generic error as a wrong
         // password. A locked account must be indistinguishable from a wrong password / unknown email —
@@ -99,6 +100,10 @@ class AuthService(
     fun refresh(rawRefreshToken: String): AuthSession {
         val rotated = tokenService.rotateRefreshToken(rawRefreshToken)
         val user = userRepository.findById(rotated.userId).orElseThrow { InvalidRefreshTokenException() }
+        // An Art. 17 tombstone is not an account (ADR-20). The erasure deletes every refresh token, so
+        // this should be unreachable — it is here so a future path that resurrects a token can never
+        // mint a fresh 15-minute access token for a deleted account.
+        if (user.isErased) throw InvalidRefreshTokenException()
         return AuthSession(
             user = UserResponse.from(user),
             accessToken = tokenService.issueAccessToken(user.id, emailVerified = user.verifiedAt != null),
@@ -113,6 +118,11 @@ class AuthService(
 
     fun me(userId: UUID): UserResponse {
         val user = userRepository.findById(userId).orElseThrow { UnauthenticatedException() }
+        // Belt-and-braces with com.complyr.common.ErasedAccountFilter, which already rejects a tombstone's
+        // still-valid access token before any controller runs. Kept because this is the call the dashboard
+        // polls: if the filter is ever reordered or disabled, the session still collapses to a 401 here
+        // rather than rendering a deleted account's shell.
+        if (user.isErased) throw UnauthenticatedException()
         return UserResponse.from(user)
     }
 
@@ -134,14 +144,14 @@ class AuthService(
     /** Always succeeds (anti-enumeration): sends only for existing, unverified accounts. */
     @Transactional
     fun resendVerification(email: String) {
-        val user = userRepository.findByEmail(normalizeEmail(email)) ?: return
+        val user = findLiveAccountByEmail(email) ?: return
         if (user.verifiedAt == null) sendVerificationEmail(user)
     }
 
     /** Always succeeds (anti-enumeration): sends only when the account exists. */
     @Transactional
     fun forgotPassword(email: String) {
-        val user = userRepository.findByEmail(normalizeEmail(email)) ?: return
+        val user = findLiveAccountByEmail(email) ?: return
         // Only the most recently issued reset link may work: kill outstanding ones first.
         authTokenRepository.markAllUsedByUserIdAndPurpose(user.id, TokenPurpose.PASSWORD_RESET, clock.instant())
         val rawToken = createAuthToken(user.id, TokenPurpose.PASSWORD_RESET, properties.auth.resetTokenTtl)
@@ -155,8 +165,44 @@ class AuthService(
     ) {
         val token = consumeToken(rawToken, TokenPurpose.PASSWORD_RESET)
         val user = userRepository.findById(token.userId).orElseThrow { InvalidTokenException() }
+        // A tombstone has no password to reset (ADR-20). Unreachable via forgotPassword, which no longer
+        // issues tokens for erased accounts — kept as the second half of the pair so a reset token minted
+        // moments before the erasure committed cannot be redeemed after it.
+        if (user.isErased) throw InvalidTokenException()
         userRepository.save(user.copy(passwordHash = hashPassword(newPassword)))
         tokenService.revokeAllForUser(user.id)
+    }
+
+    /**
+     * Completes an email change (verify-new-first): swaps the account email to the parked
+     * [UserEntity.pendingEmail] and clears it, then notifies the OLD address that the change happened.
+     * The email_change token was mailed to the NEW address, so redeeming it proves control of that
+     * address — which is the whole point of the flow (the request step only re-authenticated the current
+     * password). Mirrors [verifyEmail]/[resetPassword]: consume the single-use token, load the account BY
+     * the token's user id, refuse an Art. 17 tombstone.
+     *
+     * The swap runs through [saveEnsuringEmailUniqueness] because the address could have been registered
+     * by another account in the window between request and confirmation — that surfaces as a 409
+     * EMAIL_IN_USE rather than a PII-leaking 500. A confirmed change also (re-)stamps [UserEntity.verifiedAt]:
+     * the click proves control of the address now bound to the account. A missing [UserEntity.pendingEmail]
+     * (a superseded change whose token should already be spent) falls back to the same generic
+     * [InvalidTokenException].
+     */
+    @Transactional
+    fun confirmEmailChange(rawToken: String): UserResponse {
+        val token = consumeToken(rawToken, TokenPurpose.EMAIL_CHANGE)
+        val user = userRepository.findById(token.userId).orElseThrow { InvalidTokenException() }
+        if (user.isErased) throw InvalidTokenException()
+        val newEmail = user.pendingEmail ?: throw InvalidTokenException()
+        val previousEmail = user.email
+        val saved =
+            saveEnsuringEmailUniqueness(
+                user.copy(email = newEmail, pendingEmail = null, verifiedAt = clock.instant()),
+            )
+        // Security heads-up to the address that just lost control of the account. AFTER_COMMIT + async, so
+        // a mail failure can never roll back the swap (see AuthEmailListener).
+        eventPublisher.publishEvent(EmailChangedNoticeRequested(saved.id, previousEmail, saved.locale))
+        return UserResponse.from(saved)
     }
 
     private fun issueSession(user: UserEntity): AuthSession =
@@ -203,6 +249,20 @@ class AuthService(
     }
 
     private fun normalizeEmail(email: String): String = email.trim().lowercase()
+
+    /**
+     * Looks up an account by email, treating an Art. 17 tombstone as no account at all (ADR-20).
+     *
+     * The erasure rewrites the address to `erased-<user id>@erased.invalid`, and that user id is printed in
+     * the customer's own Art. 20 export — so the tombstone's email is *derivable by anyone who ever held
+     * the export*, including a since-departed employee. Without this, `forgot-password` would happily mint
+     * a reset token for it and hand back a working login to the shell of a deleted account.
+     *
+     * Every email-keyed entry point routes through here rather than checking [UserEntity.isErased]
+     * individually, so a new one cannot silently omit the check.
+     */
+    private fun findLiveAccountByEmail(email: String): UserEntity? =
+        userRepository.findByEmail(normalizeEmail(email))?.takeUnless { it.isErased }
 
     private fun hashPassword(rawPassword: String): String =
         requireNotNull(passwordEncoder.encode(rawPassword)) { "Password encoder returned null" }

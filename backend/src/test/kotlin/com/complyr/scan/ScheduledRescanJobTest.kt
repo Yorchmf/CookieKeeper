@@ -123,6 +123,26 @@ class ScheduledRescanJobTest {
     }
 
     @Test
+    fun `a Business site's scheduled scan is enqueued at high priority`() {
+        // The batch resolves each owner's plan once (resolveAll) and stamps the claim priority from that
+        // same resolution — a Business site's re-scan must carry the high tier without any per-site lookup.
+        val site = seedSubscribedSite(Plan.BUSINESS, lastScanDaysAgo = 40)
+
+        job.enqueueDueRescans()
+
+        assertEquals(ScanQueue.PRIORITY_HIGH, scheduledScanPriority(site), "a Business re-scan claims at the high tier")
+    }
+
+    @Test
+    fun `a Starter site's scheduled scan is enqueued at normal priority`() {
+        val site = seedSubscribedSite(Plan.STARTER, lastScanDaysAgo = 40)
+
+        job.enqueueDueRescans()
+
+        assertEquals(ScanQueue.PRIORITY_NORMAL, scheduledScanPriority(site), "a Starter re-scan claims at the normal tier")
+    }
+
+    @Test
     fun `two runs of the same night enqueue exactly one scan`() {
         val site = seedSubscribedSite(Plan.PRO, lastScanDaysAgo = 40)
 
@@ -214,4 +234,17 @@ class ScheduledRescanJobTest {
             Int::class.java,
             siteId,
         ) ?: 0
+
+    /** The claim priority stamped on the job backing this site's scheduled scan (joined via the payload). */
+    private fun scheduledScanPriority(siteId: UUID): Int =
+        jdbcTemplate.queryForObject(
+            """
+            SELECT j.priority
+            FROM jobs j
+            JOIN scans s ON (j.payload_jsonb ->> 'scanId')::uuid = s.id
+            WHERE s.site_id = ? AND s.trigger_source = 'scheduled'
+            """.trimIndent(),
+            Int::class.java,
+            siteId,
+        ) ?: error("no scheduled scan job for site $siteId")
 }

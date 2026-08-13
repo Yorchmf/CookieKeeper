@@ -30,6 +30,10 @@ export interface BannerTexts {
   close: string;
   /** Shown beside required categories that can never be switched off. */
   alwaysActive: string;
+  /** Attribution label shown unless the site's plan removes branding. */
+  poweredBy: string;
+  /** Appended (SR-only) to the attribution link, which opens a new tab (WCAG 3.2.5). */
+  opensInNewTab: string;
   /** Category id → localized label + description shown in the preferences panel. */
   categoryLabels: Record<string, CategoryText>;
 }
@@ -54,6 +58,12 @@ export interface WidgetConfig {
   texts: Record<string, BannerTexts>;
   defaultLanguage: string;
   categories: CategoryDef[];
+  /**
+   * Suppress the "Powered by Complyr" attribution in the banner. Driven by the
+   * site owner's plan entitlement (paid plans only); absent/false on the free
+   * tier, where the attribution shows.
+   */
+  removeBranding?: boolean;
 }
 
 export const DEFAULT_CONFIG: WidgetConfig = {
@@ -77,6 +87,8 @@ export const DEFAULT_CONFIG: WidgetConfig = {
       save: 'Save my choices',
       close: 'Close',
       alwaysActive: 'Always active',
+      poweredBy: 'Powered by Complyr',
+      opensInNewTab: '(opens in a new tab)',
       categoryLabels: {
         necessary: {
           label: 'Strictly necessary',
@@ -130,8 +142,15 @@ export async function fetchConfig(siteKey: string): Promise<WidgetConfig> {
       return DEFAULT_CONFIG;
     }
     // Colors are interpolated verbatim into the shadow <style>; sanitize them
-    // so a hostile/malformed value can't inject arbitrary CSS rules.
-    return { ...config, colors: sanitizeColors(config.colors) };
+    // so a hostile/malformed value can't inject arbitrary CSS rules. Coerce
+    // removeBranding to a strict boolean so only a literal `true` suppresses the
+    // attribution — a malformed truthy value (e.g. "false", 1) can't silently
+    // remove branding a plan hasn't paid for.
+    return {
+      ...config,
+      colors: sanitizeColors(config.colors),
+      removeBranding: config.removeBranding === true,
+    };
   } catch (error) {
     warn('config fetch failed; using defaults', error);
     return DEFAULT_CONFIG;

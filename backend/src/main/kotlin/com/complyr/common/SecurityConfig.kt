@@ -59,6 +59,11 @@ class SecurityConfig(
                     .permitAll()
                     .requestMatchers("/api/v1/widget-config/**")
                     .permitAll()
+                    // The CDN-hosted widget config the embedded banner fetches (ADR-19). Same read,
+                    // same public/cacheable contract as /api/v1/widget-config — a different URL only
+                    // because Caddy's cdn. vhost proxies /cfg/* here and the widget parses it unenveloped.
+                    .requestMatchers(HttpMethod.GET, "/cfg/*")
+                    .permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/v1/consent")
                     .permitAll()
                     // Stateless origin-token mint for the consent path (ADR-13). Unauthenticated and
@@ -151,6 +156,9 @@ class SecurityConfig(
                 "/api/v1/auth/resend-verification",
                 "/api/v1/auth/forgot-password",
                 "/api/v1/auth/reset-password",
+                // Public: the clicker holds the mailed email_change token, not necessarily a session, and
+                // the token itself is the proof (verify-new-first). See AuthController.confirmEmailChange.
+                "/api/v1/auth/confirm-email-change",
             )
     }
 }

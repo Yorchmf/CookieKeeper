@@ -46,6 +46,17 @@ class StripeApiGateway(
     private companion object {
         /** Event-type prefix for the `customer.subscription.*` family the handler acts on. */
         const val SUBSCRIPTION_EVENT_PREFIX = "customer.subscription."
+
+        /** Stripe's error code for "this object does not exist" — see [cancelSubscription]. */
+        const val STRIPE_CODE_RESOURCE_MISSING = "resource_missing"
+        const val HTTP_NOT_FOUND = 404
+
+        /**
+         * Stripe subscription statuses from which there is no further billing and no valid cancel call.
+         * [cancelSubscription] treats reaching one of these as success so a retried account erasure is
+         * not blocked by its own earlier, partially-successful attempt.
+         */
+        val TERMINAL_SUBSCRIPTION_STATUSES = setOf("canceled", "incomplete_expired")
     }
 
     override fun createCheckoutSession(request: CheckoutRequest): String {
@@ -114,6 +125,38 @@ class StripeApiGateway(
                 .url ?: throw BillingUnavailableException()
         } catch (e: StripeException) {
             logStripeFailure("portal session", e)
+            throw BillingUnavailableException()
+        }
+    }
+
+    /**
+     * Cancels a subscription, idempotently — this must be safe to call more than once for the same id.
+     *
+     * The account erasure calls it before opening its transaction (ADR-20), so a failure anywhere in that
+     * transaction leaves an account whose subscription is already cancelled at Stripe but whose rows are
+     * all intact. The customer's only recourse is to press "delete my account" again, and Stripe rejects
+     * cancelling an already-cancelled subscription — so a naive implementation converts one transient
+     * database error into a permanently undeletable account, i.e. an Art. 17 request we can never fulfil.
+     * Reading the current status first and cancelling only a live subscription makes the retry succeed.
+     */
+    override fun cancelSubscription(subscriptionId: String) {
+        try {
+            // "Stripe has never heard of this subscription" and "it is already cancelled" are both the
+            // SUCCESS case: the caller needs the guarantee that the account is no longer billed, nothing
+            // more. Everything else (network, auth, rate limit) must abort the erasure before a single row
+            // is destroyed.
+            val subscription = stripeClient.v1().subscriptions().retrieve(subscriptionId)
+            if (subscription.status in TERMINAL_SUBSCRIPTION_STATUSES) {
+                log.info("Stripe subscription already in a terminal state at cancel; treating as cancelled")
+                return
+            }
+            stripeClient.v1().subscriptions().cancel(subscriptionId)
+        } catch (e: StripeException) {
+            if (e.statusCode == HTTP_NOT_FOUND || e.code == STRIPE_CODE_RESOURCE_MISSING) {
+                log.info("Stripe subscription already absent at cancel; treating as cancelled")
+                return
+            }
+            logStripeFailure("subscription cancel", e)
             throw BillingUnavailableException()
         }
     }

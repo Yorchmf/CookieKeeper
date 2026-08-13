@@ -212,6 +212,50 @@ class SiteServiceTest {
         assertThrows<SiteNotFoundException> { service.get(userId, foreignSiteId) }
         assertThrows<SiteNotFoundException> { service.update(userId, foreignSiteId, "new.example.com") }
         assertThrows<SiteNotFoundException> { service.archive(userId, foreignSiteId) }
+        assertThrows<SiteNotFoundException> { service.setBrandingPreference(userId, foreignSiteId, hideBranding = false) }
+    }
+
+    @Test
+    fun `setBrandingPreference persists the changed preference and stamps updatedAt`() {
+        // A site defaults to hide_branding=true; flipping it to false is a real change and must persist.
+        val existing = site()
+        every { siteRepository.findByIdAndUserId(existing.id, userId) } returns existing
+        val saved = slot<SiteEntity>()
+        every { siteRepository.save(capture(saved)) } answers { firstArg() }
+
+        val detail = service.setBrandingPreference(userId, existing.id, hideBranding = false)
+
+        assertEquals(false, saved.captured.hideBranding)
+        assertEquals(now, saved.captured.updatedAt)
+        assertEquals(false, detail.hideBranding, "the response echoes the stored preference")
+    }
+
+    @Test
+    fun `setBrandingPreference is a no-op that never writes when the preference is unchanged`() {
+        // The site already hides branding (the default); re-asserting it must not bump updatedAt or churn
+        // a row — an idempotent re-toggle should be free.
+        val existing = site()
+        every { siteRepository.findByIdAndUserId(existing.id, userId) } returns existing
+
+        val detail = service.setBrandingPreference(userId, existing.id, hideBranding = true)
+
+        assertEquals(true, detail.hideBranding)
+        verify(exactly = 0) { siteRepository.save(any<SiteEntity>()) }
+        verify(exactly = 0) { siteRepository.saveAndFlush(any<SiteEntity>()) }
+    }
+
+    @Test
+    fun `detail exposes whether the plan entitles branding removal, independent of the stored wish`() {
+        // brandingRemovalEntitled is the plan capability (best-effort billing read), separate from the
+        // site's own hide_branding preference — the dashboard needs both to render the gated toggle.
+        val existing = site()
+        every { siteRepository.findByIdAndUserId(existing.id, userId) } returns existing
+        every { entitlementService.removeBrandingOrDefault(userId) } returns true
+
+        val detail = service.get(userId, existing.id)
+
+        assertEquals(true, detail.brandingRemovalEntitled)
+        assertEquals(true, detail.hideBranding, "the default stored wish is surfaced too")
     }
 
     @Test

@@ -23,6 +23,13 @@ export interface SiteDetail extends Site {
   dnsRecordName: string;
   /** The DNS TXT record value to publish — the site key. */
   dnsRecordValue: string;
+  /** The customer's saved preference to hide the "Powered by Complyr" credit. */
+  hideBranding: boolean;
+  /**
+   * Whether the account's plan grants branding removal. The toggle only takes effect when this and
+   * `hideBranding` are both true; the UI locks the control and points at billing when it's false.
+   */
+  brandingRemovalEntitled: boolean;
 }
 
 /**
@@ -85,6 +92,25 @@ export async function verifySite(id: string): Promise<SiteVerification> {
   const { data } = await apiFetch<SiteVerification>(
     `/api/v1/sites/${encodeURIComponent(id)}/verify`,
     { method: "POST" },
+  );
+  return data;
+}
+
+/**
+ * Set the site's "hide the Powered by Complyr credit" preference. Returns the fresh site detail so the
+ * caller can re-render from server truth (the effective branding still depends on the plan entitlement,
+ * which the backend floors — this only records the customer's wish).
+ */
+export async function setSiteBranding(
+  id: string,
+  hideBranding: boolean,
+): Promise<SiteDetail> {
+  const { data } = await apiFetch<SiteDetail>(
+    `/api/v1/sites/${encodeURIComponent(id)}/branding`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ hideBranding }),
+    },
   );
   return data;
 }

@@ -5,6 +5,8 @@ import com.complyr.auth.UserRepository
 import com.complyr.notify.BestEffortEmailDelivery
 import com.complyr.notify.ComposedEmail
 import com.complyr.notify.EmailSender
+import com.complyr.notify.NotificationPreferenceService
+import com.complyr.notify.NotificationPreferences
 import com.complyr.site.SiteEntity
 import com.complyr.site.SiteRepository
 import com.complyr.site.SiteStatus
@@ -35,6 +37,7 @@ class ScanCompletionNotifierTest {
     private val scanCookieRepository = mockk<ScanCookieRepository>()
     private val siteRepository = mockk<SiteRepository>()
     private val userRepository = mockk<UserRepository>()
+    private val notificationPreferences = mockk<NotificationPreferenceService>()
 
     private val notifier =
         ScanCompletionNotifier(
@@ -44,6 +47,7 @@ class ScanCompletionNotifierTest {
             scanCookieRepository,
             siteRepository,
             userRepository,
+            notificationPreferences,
         )
 
     private val siteId: UUID = UUID.randomUUID()
@@ -57,6 +61,8 @@ class ScanCompletionNotifierTest {
         every { userRepository.findById(userId) } returns Optional.of(user())
         every { composer.scanCompletedEmail(any(), any()) } returns ComposedEmail("subject", "body")
         every { sender.send(any(), any(), any()) } just runs
+        // Default: the owner has not opted out of anything (the all-on default of an untouched account).
+        every { notificationPreferences.get(userId) } returns NotificationPreferences.DEFAULT
     }
 
     // ---- what gets an email ------------------------------------------------------------------
@@ -170,6 +176,44 @@ class ScanCompletionNotifierTest {
         notifier.sendScanCompleted(scanId, siteId, ScanTrigger.SITE_ADDED)
 
         verify(exactly = 0) { sender.send(any(), any(), any()) }
+    }
+
+    // ---- opt-out -----------------------------------------------------------------------------
+
+    @Test
+    fun `an owner who turned off first-scan emails is not mailed about a site-added scan`() {
+        givenScan(ScanTrigger.SITE_ADDED, cookies = listOf("_ga"), trackerCount = 1)
+        every { notificationPreferences.get(userId) } returns
+            NotificationPreferences(scanComplete = false, scanChanges = true)
+
+        notifier.sendScanCompleted(scanId, siteId, ScanTrigger.SITE_ADDED)
+
+        verify(exactly = 0) { sender.send(any(), any(), any()) }
+    }
+
+    @Test
+    fun `an owner who turned off change alerts is not mailed about a scheduled re-scan with new findings`() {
+        givenScan(ScanTrigger.SCHEDULED, cookies = listOf("_ga", "_fbp"), trackerCount = 2)
+        givenPreviousScan(cookies = listOf("_ga"), trackerCount = 2)
+        every { notificationPreferences.get(userId) } returns
+            NotificationPreferences(scanComplete = true, scanChanges = false)
+
+        notifier.sendScanCompleted(scanId, siteId, ScanTrigger.SCHEDULED)
+
+        verify(exactly = 0) { sender.send(any(), any(), any()) }
+    }
+
+    @Test
+    fun `the first-scan and change toggles are independent`() {
+        // scanComplete off must not silence a scheduled change alert.
+        givenScan(ScanTrigger.SCHEDULED, cookies = listOf("_ga", "_fbp"), trackerCount = 2)
+        givenPreviousScan(cookies = listOf("_ga"), trackerCount = 2)
+        every { notificationPreferences.get(userId) } returns
+            NotificationPreferences(scanComplete = false, scanChanges = true)
+
+        notifier.sendScanCompleted(scanId, siteId, ScanTrigger.SCHEDULED)
+
+        verify(exactly = 1) { sender.send("owner@example.com", "subject", "body") }
     }
 
     // ---- what the email says -----------------------------------------------------------------

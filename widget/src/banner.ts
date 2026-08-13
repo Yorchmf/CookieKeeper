@@ -67,6 +67,22 @@ export function renderBanner(
   );
 
   dialog.append(heading, message, actions);
+  // "Powered by Complyr" attribution, suppressed on plans that pay for branding
+  // removal (config.removeBranding). Free tier shows it; a link, not a bare label,
+  // so it is a real (keyboard-reachable) credit rather than decoration.
+  if (!config.removeBranding) {
+    const credit = document.createElement('a');
+    credit.className = 'credit';
+    credit.textContent = texts.poweredBy;
+    credit.href = 'https://complyr.eu';
+    credit.target = '_blank';
+    credit.rel = 'noopener noreferrer';
+    // The link opens a new tab; announce that so screen-reader and low-vision users aren't
+    // surprised by the context switch (WCAG 3.2.5). Kept out of the visible label to avoid
+    // cluttering the credit, and localised alongside the credit text itself.
+    credit.setAttribute('aria-label', `${texts.poweredBy} ${texts.opensInNewTab}`);
+    dialog.append(credit);
+  }
   root.append(style, dialog);
   document.body.appendChild(host);
 
@@ -120,6 +136,12 @@ button {
 }
 button.primary { background: ${colors.button}; color: ${colors.buttonText}; }
 button.ghost { background: transparent; color: ${colors.text}; text-decoration: underline; }
+.credit {
+  display: inline-block; margin: 12px 0 0; font-size: 11px; opacity: .85;
+  color: ${colors.text}; text-decoration: underline;
+}
+.credit:hover { opacity: 1; }
+.credit:focus-visible { outline: 2px solid ${colors.text}; outline-offset: 2px; }
 /* Ring contrasts with what it rings: colors.text over the panel, but the
    primary buttons' fill is colors.button, so their ring uses colors.buttonText. */
 button:focus-visible { outline: 2px solid ${colors.text}; outline-offset: 2px; }

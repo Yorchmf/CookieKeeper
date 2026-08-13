@@ -11,19 +11,35 @@
   },
   "marketing": {
     "hero": {
-      "title": "Complyr",
-      "pitch": "Dead-simple GDPR cookie consent for small European businesses — compliant banner, cookie scans, and audit-ready consent logs from €9/month.",
-      "cta": "Get started",
-      "euBadge": "Built and hosted in the EU"
+      "title": "GDPR cookie consent, minus the headache",
+      "pitch": "The compliant banner, cookie scanner, and audit-ready consent logs small European businesses actually need — set up in minutes, from €9/month.",
+      "cta": "Start free",
+      "euBadge": "Built and hosted in the EU",
+      "ctaSecondary": "See pricing",
+      "trust": "14-day free trial · No credit card · Cancel anytime"
     },
     "nav": {
       "features": "Features",
       "pricing": "Pricing",
-      "signIn": "Sign in"
+      "signIn": "Sign in",
+      "faq": "FAQ",
+      "cta": "Start free"
     },
     "footer": {
       "legal": "Legal",
-      "privacy": "Privacy"
+      "privacy": "Privacy",
+      "tagline": "Simple GDPR cookie consent for European businesses.",
+      "product": "Product",
+      "features": "Features",
+      "pricing": "Pricing",
+      "faq": "FAQ",
+      "terms": "Terms",
+      "imprint": "Imprint",
+      "account": "Account",
+      "signIn": "Sign in",
+      "cta": "Start free",
+      "rights": "© {year} Complyr. All rights reserved.",
+      "madeIn": "Made and hosted in the EU"
     },
     "scan": {
       "eyebrow": "Free cookie audit",
@@ -126,10 +142,177 @@
           "logs": {
             "label": "Consent records",
             "without": "No audit trail.",
-            "with": "A tamper-proof consent log, retained up to five years."
+            "with": "A tamper-proof consent log, retained for up to three years."
           }
         }
       }
+    },
+    "theme": {
+      "label": "Toggle theme",
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    },
+    "problem": {
+      "eyebrow": "Why Complyr",
+      "title": "Everything you need to be compliant. Nothing you don't.",
+      "subtitle": "Enterprise consent tools are powerful, pricey, and painful. Complyr does the 95% a small business actually needs — and gets out of your way.",
+      "cards": {
+        "design": {
+          "title": "Beautiful by default",
+          "body": "Banners your visitors won't hate. Modern designs, smooth animations, and full customisation — no CSS required."
+        },
+        "languages": {
+          "title": "5 EU languages, more coming",
+          "body": "Auto-detects your visitor's language. English, German, French, Spanish, and Italian today — with more on the way."
+        },
+        "scanner": {
+          "title": "Automatic scanner",
+          "body": "We crawl your site and detect every cookie and tracker for you. No manual lists, no guesswork."
+        },
+        "policy": {
+          "title": "Auto-generated policy",
+          "body": "A cookie policy written for you, always in sync with the trackers we actually find on your site."
+        },
+        "consentMode": {
+          "title": "Consent Mode v2",
+          "body": "Google Consent Mode v2 built in. One switch, done — mandatory for EU Google Ads since 2024."
+        },
+        "logs": {
+          "title": "Audit-ready logs",
+          "body": "Every consent choice stored as tamper-proof evidence — 12 months on Starter, 3 years on Pro and Business. Proof you're compliant when a regulator asks."
+        },
+        "hosting": {
+          "title": "Hosted in the EU",
+          "body": "Your visitors' data never leaves Europe. Stored in German data centres — full data sovereignty, no US transfer."
+        },
+        "performance": {
+          "title": "Lightning fast",
+          "body": "Our widget is under 20KB and fully async. It won't slow your site or dent your Core Web Vitals."
+        },
+        "analytics": {
+          "title": "Insights included",
+          "body": "Consent trends, opt-in rates by category, and your cookie inventory — all from your own data. No Google Analytics, no third-party trackers."
+        }
+      }
+    },
+    "how": {
+      "eyebrow": "How it works",
+      "title": "Compliant in three steps",
+      "subtitle": "No developers, no lawyers, no weekend lost to documentation.",
+      "steps": {
+        "scan": {
+          "step": "01",
+          "title": "Scan your site",
+          "body": "Enter your domain and we'll crawl it, finding every cookie and tracker automatically."
+        },
+        "customise": {
+          "step": "02",
+          "title": "Customise your banner",
+          "body": "Match your brand in a few clicks — colours, position, languages, categories. Live preview included."
+        },
+        "embed": {
+          "step": "03",
+          "title": "Paste one line",
+          "body": "Drop a single script tag before your closing head tag. That's it — you're compliant and collecting consent."
+        }
+      },
+      "snippet": {
+        "label": "Add to your site",
+        "copy": "Copy",
+        "copied": "Copied!"
+      }
+    },
+    "pricing": {
+      "eyebrow": "Pricing",
+      "title": "Simple pricing, no surprises",
+      "subtitle": "Start with a 14-day free trial. No credit card, cancel anytime. Prices exclude VAT.",
+      "perMonth": "/mo",
+      "mostPopular": "Most popular",
+      "cta": "Start free trial",
+      "plans": {
+        "starter": {
+          "name": "Starter",
+          "price": "€9",
+          "tagline": "For a single site.",
+          "features": [
+            "1 website",
+            "Monthly automatic re-scans",
+            "Compliant banner in 5 languages",
+            "Auto-generated cookie policy",
+            "Consent Mode v2 built in",
+            "12-month consent log retention"
+          ]
+        },
+        "pro": {
+          "name": "Pro",
+          "price": "€19",
+          "tagline": "For freelancers and growing sites.",
+          "features": [
+            "Everything in Starter",
+            "Up to 3 websites",
+            "Weekly + on-demand re-scans",
+            "3-year consent log retention",
+            "Remove Complyr branding"
+          ]
+        },
+        "business": {
+          "name": "Business",
+          "price": "€29",
+          "tagline": "For agencies and multiple brands.",
+          "features": [
+            "Everything in Pro",
+            "Up to 10 websites",
+            "Priority scans",
+            "CSV export API"
+          ]
+        }
+      }
+    },
+    "faq": {
+      "eyebrow": "FAQ",
+      "title": "Questions, answered",
+      "subtitle": "Still curious? Reach out any time — a real human will reply.",
+      "items": {
+        "compliant": {
+          "q": "Is Complyr really GDPR compliant?",
+          "a": "Yes. Complyr is built specifically for GDPR and ePrivacy compliance. We store consent logs as audit-ready evidence — 12 months on Starter, up to 3 years on Pro and Business — support granular per-category consent, and generate compliant cookie policies automatically. Your visitors' data is hosted entirely within the EU."
+        },
+        "different": {
+          "q": "How is Complyr different from Cookiebot or Osano?",
+          "a": "Two words: simplicity and price. Enterprise tools charge €50–500+/month and take training to use. Complyr does 95% of what they do, for a fraction of the price, with an interface you'll understand in 30 seconds."
+        },
+        "analytics": {
+          "q": "Do I need this if I only use Google Analytics?",
+          "a": "Yes. If your site uses Google Analytics, Facebook Pixel, YouTube embeds, or any tracking cookie, EU law requires prior consent. Complyr handles this properly, with Google Consent Mode v2 built in."
+        },
+        "consentMode": {
+          "q": "What is Google Consent Mode v2?",
+          "a": "It's Google's system for respecting user consent while still enabling analytics. Since March 2024 it's mandatory for Google Ads users in the EU. Complyr sets it up automatically — defaulting every signal to 'denied' until your visitor chooses."
+        },
+        "dataLocation": {
+          "q": "Where is my data stored?",
+          "a": "All visitor and consent data is stored in EU data centres in Germany. We use EU-based infrastructure exclusively — no US data transfer, no Schrems II headache."
+        },
+        "cancel": {
+          "q": "Can I cancel anytime?",
+          "a": "Yes. Cancel with one click — no contracts, no cancellation fees, no hoops. You keep access until the end of your billing period."
+        },
+        "platforms": {
+          "q": "Does it work with WordPress, Shopify, Wix, etc.?",
+          "a": "Yes. Complyr works on any website — just paste one line of code before your closing head tag. A dedicated WordPress plugin is on the way."
+        },
+        "freePlan": {
+          "q": "Do you offer a free plan?",
+          "a": "We offer a 14-day free trial — no credit card, up to 1,000 consent events. After the trial, pick a plan from €9/month to keep your banner live; until you do, new scans and adding sites are paused, though your consent log is never deleted. We keep prices low so we can invest in the product instead of subsidising a permanent free tier."
+        }
+      }
+    },
+    "finalCta": {
+      "title": "Ready to stop worrying about cookie consent?",
+      "subtitle": "Set up Complyr in minutes. 14-day free trial, no credit card required.",
+      "cta": "Start free",
+      "ctaSecondary": "Scan your site"
     }
   },
   "nav": {
@@ -168,7 +351,11 @@
       "INVALID_DOMAIN": "Enter a valid domain, e.g. www.example.eu",
       "ON_DEMAND_RESCAN_NOT_ENTITLED": "On-demand rescans are available on the Pro and Business plans",
       "SCAN_ALREADY_IN_PROGRESS": "A scan is already running for this site",
-      "GENERIC": "Something went wrong. Please try again."
+      "DELETE_CONFIRMATION_FAILED": "Incorrect password — your account has not been deleted",
+      "CURRENT_PASSWORD_INCORRECT": "Incorrect password — your password has not been changed",
+      "NEW_PASSWORD_SAME_AS_CURRENT": "Choose a password different from your current one",
+      "GENERIC": "Something went wrong. Please try again.",
+      "NEW_EMAIL_SAME_AS_CURRENT": "This is already your email address"
     },
     "login": {
       "title": "Sign in",
@@ -219,6 +406,16 @@
       "successTitle": "Password updated",
       "successDescription": "Your password has been changed. You can sign in with it now.",
       "goToLogin": "Go to sign-in"
+    },
+    "confirmEmailChange": {
+      "title": "Confirming your new email",
+      "confirming": "Hold on while we confirm your new email address…",
+      "successTitle": "Email address updated",
+      "successDescription": "Your new email address is now the one you use to sign in.",
+      "goToLogin": "Go to sign-in",
+      "invalidTitle": "Confirmation failed",
+      "invalidDescription": "This confirmation link is invalid or has expired.",
+      "invalidHelp": "Sign in and request the change again from your account settings."
     }
   },
   "sites": {
@@ -271,6 +468,14 @@
       "bannerTitle": "Consent banner",
       "bannerDescription": "Customize the look, wording, and categories of your cookie banner.",
       "bannerCta": "Customize banner",
+      "branding": {
+        "title": "Branding",
+        "description": "Control the “Powered by Complyr” credit shown on your banner and cookie policy.",
+        "toggleLabel": "Hide the Complyr credit",
+        "hiddenHint": "The “Powered by Complyr” credit is hidden on your banner and cookie policy.",
+        "shownHint": "The “Powered by Complyr” credit is shown on your banner and cookie policy.",
+        "lockedHint": "Removing the Complyr credit is available on the Pro and Business plans."
+      },
       "consentLogTitle": "Consent log",
       "consentLogDescription": "Browse and export the consent choices recorded for this site.",
       "consentLogCta": "View consent log",
@@ -306,20 +511,57 @@
         "starting": "Starting…",
         "started": "Re-scan started. Results will update automatically.",
         "inProgress": "A scan is already running for this site."
-      }
+      },
+      "analyticsTitle": "Analytics",
+      "analyticsDescription": "Consent trends, cookie inventory, and policy status for this site.",
+      "analyticsCta": "View analytics"
     }
   },
   "dashboard": {
     "title": "Dashboard",
-    "welcome": "Welcome to Complyr",
-    "placeholder": "Your sites, scans, and consent analytics will appear here.",
-    "cards": {
-      "sites": "Sites",
-      "sitesHint": "Registered domains running the widget",
+    "subtitle": "Everything across your sites, and what needs you next.",
+    "loadError": "We couldn't load your overview. Please try again.",
+    "headline": {
+      "sites": "Active sites",
+      "sitesHint": "Domains running the widget",
       "consents": "Consent events",
-      "consentsHint": "Recorded in the last 30 days",
-      "scans": "Scans",
-      "scansHint": "Latest cookie scan results"
+      "consentsHint": "Recorded in the last {days} days",
+      "acceptRate": "Accept-all rate",
+      "acceptRateHint": "Full acceptances only, partial choices excluded",
+      "cookies": "Cookies found",
+      "cookiesHint": "Last scan {date}",
+      "cookiesHintNever": "No completed scan yet"
+    },
+    "attention": {
+      "title": "Needs your attention",
+      "description": "The most important item per site. Each site page shows the rest.",
+      "allClear": "Everything looks compliant",
+      "allClearHint": "Every site is verified, scanned, and covered by a current cookie policy.",
+      "kind": {
+        "unverified": "Verify this domain",
+        "never_scanned": "Run the first scan",
+        "policy_missing": "Publish a cookie policy",
+        "policy_stale": "Update the cookie policy",
+        "insecure_cookies": "{count, plural, one {# insecure cookie} other {# insecure cookies}}"
+      },
+      "hint": {
+        "unverified": "We can't confirm your banner is live until the domain is verified.",
+        "never_scanned": "We don't know yet which cookies this site sets.",
+        "policy_missing": "Visitors must be able to read what you store and why.",
+        "policy_stale": "The published policy is older than the latest scan.",
+        "insecure_cookies": "Non-essential cookies sent without Secure or HttpOnly."
+      }
+    },
+    "empty": {
+      "title": "Add your first site",
+      "description": "Register a domain to scan its cookies, publish a policy, and start recording consent.",
+      "cta": "Go to sites"
+    },
+    "trial": {
+      "daysLeft": "{days, plural, =0 {Your trial ends today} one {# day left in your trial} other {# days left in your trial}}",
+      "usage": "{used, number} of {max, number} consent events used",
+      "expired": "Your trial has ended. Subscribe to add sites and run scans again.",
+      "cta": "See plans"
     }
   },
   "scans": {
@@ -490,8 +732,7 @@
       "label": "Position",
       "description": "Where the banner appears on the page.",
       "bottom": "Bottom",
-      "top": "Top",
-      "center": "Center"
+      "top": "Top"
     },
     "theme": {
       "label": "Colors",
@@ -535,7 +776,17 @@
       "rejectAll": "Reject-all button",
       "save": "Save button",
       "preferences": "Preferences button",
-      "blank": "This field can't be empty."
+      "preferencesTitle": "Panel heading",
+      "close": "Close button",
+      "alwaysActive": "Always-on badge",
+      "blank": "This field can't be empty.",
+      "panel": {
+        "label": "Preferences panel",
+        "description": "Wording for the detailed panel visitors open from “Manage preferences”. Leave a field empty to use our translation for this language.",
+        "usesDefault": "Empty — our wording is used.",
+        "categoryLabel": "Category name",
+        "categoryDescription": "Category explanation"
+      }
     },
     "preview": {
       "label": "Live preview",
@@ -565,6 +816,8 @@
     "usage": {
       "sitesLabel": "Sites",
       "sites": "{used} of {max} active sites",
+      "consentEventsLabel": "Consent events",
+      "consentEvents": "{used, number} of {max, number} consent events",
       "rescanLabel": "Automatic re-scans",
       "rescan": {
         "monthly": "Once a month",
@@ -662,6 +915,209 @@
       "label": "Export CSV",
       "businessOnly": "CSV export is available on the Business plan.",
       "upgrade": "Upgrade"
+    }
+  },
+  "analytics": {
+    "title": "Analytics",
+    "subtitle": "Consent decisions, cookie inventory, and policy status for this site — aggregated from your own data.",
+    "loadError": "We couldn't load analytics for this site. Please try again.",
+    "retry": "Try again",
+    "summary": {
+      "totalEvents": "Consent events",
+      "acceptShare": "Accept-all rate",
+      "policyVersion": "Policy version",
+      "noPolicy": "None",
+      "publishedAt": "Published {when}",
+      "languages": "Visitor languages",
+      "none": "None"
+    },
+    "actions": {
+      "accept_all": "Accept all",
+      "reject_all": "Reject all",
+      "custom": "Custom"
+    },
+    "consentTrend": {
+      "title": "Consent trend",
+      "description": "Daily consent decisions over the selected window.",
+      "ariaLabel": "Stacked area chart of daily accept-all, reject-all, and custom consent decisions.",
+      "empty": "No consent events recorded in this window yet.",
+      "dateColumn": "Date"
+    },
+    "categoryOptIn": {
+      "title": "Category opt-in rates",
+      "description": "Share of decisions that opted each cookie category in.",
+      "ariaLabel": "Bar chart of opt-in rate per consent category.",
+      "empty": "No category decisions recorded in this window yet.",
+      "categoryColumn": "Category",
+      "decisionsColumn": "Decisions",
+      "rateColumn": "Opt-in rate"
+    },
+    "categories": {
+      "necessary": "Necessary",
+      "preferences": "Preferences",
+      "statistics": "Statistics",
+      "marketing": "Marketing",
+      "unclassified": "Unclassified"
+    },
+    "cookies": {
+      "title": "Cookie inventory",
+      "description": "Cookies found in the most recent completed scan of this site.",
+      "total": "Total cookies",
+      "known": "Known",
+      "unknown": "Unknown",
+      "insecure": "Insecure",
+      "trackers": "Trackers",
+      "ariaLabel": "Donut chart of cookies grouped by category.",
+      "scannedAt": "Scanned {when}",
+      "empty": "No completed scan yet. Run a scan to see the cookie inventory."
+    },
+    "languages": {
+      "title": "Visitor languages",
+      "description": "Consent events by the visitor's browser language.",
+      "unknown": "Unknown",
+      "count": "{count} ({share}%)",
+      "barLabel": "{label}: {share}%",
+      "empty": "No consent events recorded in this window yet."
+    },
+    "range": {
+      "legend": "Time window",
+      "days": "{days}d"
+    },
+    "export": {
+      "label": "Export CSV",
+      "businessOnly": "CSV export is available on the Business plan."
+    },
+    "status": {
+      "loading": "Loading analytics for the last {days} days…",
+      "updated": "Analytics updated for the last {days} days."
+    },
+    "warningLabel": "Warning"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Manage your account and your data.",
+    "navLabel": "Settings sections",
+    "nav": {
+      "profile": "Profile",
+      "security": "Security",
+      "notifications": "Notifications",
+      "data": "Your data"
+    },
+    "profile": {
+      "name": {
+        "title": "Your name",
+        "description": "The name shown on your account. Optional — leave it empty to use your email address instead.",
+        "label": "Display name",
+        "placeholder": "e.g. Ada Lovelace",
+        "tooLong": "Use 120 characters or fewer.",
+        "save": "Save",
+        "saved": "Saved"
+      },
+      "password": {
+        "title": "Password",
+        "description": "Change the password you use to sign in. You will be signed out on all your devices.",
+        "currentLabel": "Current password",
+        "newLabel": "New password",
+        "confirmLabel": "Confirm new password",
+        "save": "Change password",
+        "done": {
+          "title": "Password changed",
+          "description": "You have been signed out everywhere. Sign in again with your new password.",
+          "login": "Go to sign in"
+        }
+      },
+      "email": {
+        "title": "Email address",
+        "description": "Change the address you use to sign in. We'll send a confirmation link to the new address — your current address stays active until you confirm.",
+        "currentLabel": "Current email",
+        "newLabel": "New email address",
+        "currentPasswordLabel": "Current password",
+        "save": "Send confirmation link",
+        "pending": "A change to {email} is waiting for confirmation. Open the link we emailed to that address to finish. Your current address stays active until then.",
+        "errors": {
+          "CURRENT_PASSWORD_INCORRECT": "Incorrect password — your email address has not been changed.",
+          "EMAIL_IN_USE": "That email address is already in use by another account.",
+          "NEW_EMAIL_SAME_AS_CURRENT": "That is already your email address.",
+          "RATE_LIMITED": "Too many attempts — please try again in a moment.",
+          "GENERIC": "Something went wrong. Please try again."
+        }
+      }
+    },
+    "security": {
+      "title": "Sign out everywhere",
+      "description": "Sign out of Complyr on every device where you're signed in.",
+      "currentPasswordLabel": "Current password",
+      "note": "This signs you out on your other devices too. They lose access within a few minutes; this browser is signed out right away.",
+      "submit": "Sign out all devices",
+      "errors": {
+        "CURRENT_PASSWORD_INCORRECT": "Incorrect password — you have not been signed out.",
+        "RATE_LIMITED": "Too many attempts — please try again in a moment.",
+        "GENERIC": "Something went wrong. Please try again."
+      },
+      "done": {
+        "title": "Signed out everywhere",
+        "description": "You've been signed out on all your devices. Sign in again to continue.",
+        "login": "Go to sign in"
+      }
+    },
+    "notifications": {
+      "title": "Email notifications",
+      "description": "Choose which emails Complyr sends you about your sites.",
+      "loadError": "We couldn't load your notification preferences. Refresh the page to try again.",
+      "scanComplete": {
+        "label": "First scan complete",
+        "description": "Email me the summary when a site's first scan finishes."
+      },
+      "scanChanges": {
+        "label": "New or changed trackers",
+        "description": "Email me when a scheduled re-scan finds cookies or trackers that changed."
+      }
+    },
+    "data": {
+      "export": {
+        "title": "Export your data",
+        "description": "Download everything we hold about your account as a machine-readable JSON file (GDPR Art. 20).",
+        "includesTitle": "The file contains",
+        "includes": {
+          "account": "Your account: email address, language and sign-up date",
+          "subscription": "Your subscription: plan, status and current period",
+          "sites": "Your sites: domain, embed key and verification status",
+          "banner": "The published banner configuration of each site",
+          "policy": "The published cookie policy of each site, with its public URL",
+          "scans": "Your scan history and the cookies found by the most recent scan"
+        },
+        "consentNote": "Consent records belong to your visitors, not to your account — you remain their controller. Download them per site as CSV from the consent log.",
+        "download": "Download JSON"
+      },
+      "delete": {
+        "title": "Delete your account",
+        "description": "Erase your account and everything it owns (GDPR Art. 17).",
+        "erasedTitle": "This erases",
+        "erased": {
+          "identity": "Your login: email address, password and every active session",
+          "sites": "Your sites: domains, embed keys and banner configuration",
+          "scans": "Every scan and every cookie it found",
+          "policies": "Your generated cookie policies, including their public pages",
+          "billing": "Your subscription — it is cancelled at Stripe before anything is erased"
+        },
+        "keptTitle": "What we cannot erase",
+        "keptBody": "Consent records are your visitors' evidence, not your data, and the law requires them to stay tamper-proof. Sites that recorded consent stay behind as an empty placeholder — no domain, no key, nothing linking them to you — until those records expire and are deleted automatically after three years.",
+        "irreversible": "This cannot be undone. Export your data first if you want to keep a copy.",
+        "trigger": "Delete my account",
+        "confirmTitle": "Delete your account?",
+        "confirmDescription": "Enter your password to confirm. Your account and its data are erased immediately.",
+        "passwordLabel": "Password",
+        "passwordRequired": "Enter your password to confirm",
+        "cancel": "Cancel",
+        "confirm": "Delete permanently",
+        "done": {
+          "title": "Your account has been deleted",
+          "description": "You have been signed out. Nothing links this browser to the account any more.",
+          "sitesDeleted": "{count, plural, =0 {No site was deleted} one {# site was deleted completely} other {# sites were deleted completely}}",
+          "sitesAnonymized": "{count, plural, =0 {No site had to be kept} one {# site was kept as an anonymous placeholder for visitor consent records} other {# sites were kept as anonymous placeholders for visitor consent records}}",
+          "home": "Back to the homepage"
+        }
+      }
     }
   }
 }

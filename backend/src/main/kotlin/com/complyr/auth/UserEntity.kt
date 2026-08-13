@@ -21,8 +21,18 @@ data class UserEntity(
     val email: String,
     @Column(name = "password_hash", nullable = false)
     val passwordHash: String,
+    // Optional account-holder display name (V23, <=120 chars). Null when never set; callers fall back to
+    // the email. Cleared to null when the user submits a blank name.
+    @Column(name = "name")
+    val name: String? = null,
     @Column(nullable = false)
     val locale: String = "en",
+    // New email awaiting confirmation in the "verify the new address first" change flow (V24). Null in the
+    // steady state. The account email swaps to this value only when the mailed email_change token is
+    // confirmed (see [com.complyr.auth.AuthService.confirmEmailChange]); it is cleared to null on that swap
+    // and on Art. 17 erasure. Deliberately NOT unique — uniqueness is enforced against [email] at swap time.
+    @Column(name = "pending_email")
+    val pendingEmail: String? = null,
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
     @Column(name = "verified_at")
@@ -38,10 +48,27 @@ data class UserEntity(
     // off; this column is it. Claimed atomically by [UserRepository.markTrialEndingEmailSent].
     @Column(name = "trial_ending_email_sent_at")
     val trialEndingEmailSentAt: Instant? = null,
-)
+    // Non-null once the account was erased under Art. 17 (ADR-20, V22). The row is then a tombstone:
+    // no personal data left, kept only because the surviving consent-bearing sites reference it. Login
+    // cannot reach a tombstone (the email is destroyed), but an access JWT minted just before the
+    // erasure stays verifiable for its remaining TTL — so every path that loads a user BY ID and acts
+    // on it must reject a tombstone. [isErased] is that check.
+    @Column(name = "deleted_at")
+    val deletedAt: Instant? = null,
+) {
+    /** True for an Art. 17 tombstone: authenticate/act-as paths must treat it as a non-existent user. */
+    val isErased: Boolean get() = deletedAt != null
+}
 
 interface UserRepository : JpaRepository<UserEntity, UUID> {
     fun findByEmail(email: String): UserEntity?
+
+    /**
+     * True when [id] names an Art. 17 tombstone. A primary-key existence check rather than a full entity
+     * load because [com.complyr.common.ErasedAccountFilter] runs it on every authenticated request — it
+     * touches only the `users` PK index and materializes no row.
+     */
+    fun existsByIdAndDeletedAtIsNotNull(id: UUID): Boolean
 
     /**
      * Transaction-scoped Postgres advisory lock keyed on a user, taken at the top of the failed-login
@@ -80,7 +107,9 @@ interface UserRepository : JpaRepository<UserEntity, UUID> {
      * Unverified accounts are excluded: someone who never confirmed their email is not an account we
      * should be nudging about payment. So are accounts with a live subscription — [activeStatuses] is
      * passed in from [com.complyr.billing.SubscriptionEntity.ACTIVE_STATUSES] rather than inlined, so the
-     * definition of "active" lives in exactly one place.
+     * definition of "active" lives in exactly one place. Art. 17 tombstones are excluded explicitly
+     * (ADR-20): the erasure also clears `verifiedAt`, but relying on that to keep us from mailing an
+     * `@erased.invalid` address would be an accident waiting for the next change to the verify rule.
      *
      * Ordered oldest-first (closest to trial end) and bounded by [pageable] so a backlog drains over
      * successive runs instead of arriving at the mail provider as one burst.
@@ -88,7 +117,8 @@ interface UserRepository : JpaRepository<UserEntity, UUID> {
     @Query(
         """
         SELECT u FROM UserEntity u
-        WHERE u.verifiedAt IS NOT NULL
+        WHERE u.deletedAt IS NULL
+          AND u.verifiedAt IS NOT NULL
           AND u.trialEndingEmailSentAt IS NULL
           AND u.createdAt > :createdAtAfter
           AND u.createdAt <= :createdAtUpTo

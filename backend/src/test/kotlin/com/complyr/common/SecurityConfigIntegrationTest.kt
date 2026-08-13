@@ -77,4 +77,11 @@ class SecurityConfigIntegrationTest {
         mockMvc.perform(get("/api/v1/widget-config/pk_test")).andExpect(status().isNotFound)
         mockMvc.perform(post("/api/v1/consent")).andExpect(status().isBadRequest)
     }
+
+    @Test
+    fun `the CDN widget-config URL stays public`() {
+        // `/cfg/{siteKey}.json` sits outside /api/v1 (ADR-19) and so is NOT covered by the
+        // widget-config matcher above — an unknown key must 404, never 401.
+        mockMvc.perform(get("/cfg/pk_test.json")).andExpect(status().isNotFound)
+    }
 }

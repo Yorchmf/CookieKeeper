@@ -16,6 +16,12 @@ function texts(title: string): BannerTexts {
     rejectAll: "Reject",
     save: "Save",
     preferences: "Manage",
+    preferencesTitle: "Privacy preferences",
+    close: "Close",
+    alwaysActive: "Always active",
+    categoryLabels: {
+      necessary: { label: "Strictly necessary", description: "Required." },
+    },
   };
 }
 
@@ -39,9 +45,16 @@ function config(): BannerConfig {
 
 describe("asPosition", () => {
   test("passes through a known position and falls back for anything else", () => {
-    expect(asPosition("center")).toBe("center");
+    expect(asPosition("top")).toBe("top");
     expect(asPosition("floating")).toBe("bottom");
     expect(asPosition("")).toBe("bottom");
+  });
+
+  test("folds a legacy center config onto the layout the widget can render", () => {
+    // The editor used to offer `center`, but the widget only implements bottom/top and the
+    // backend serves such a config as `bottom` (ADR-19). Loading it as `bottom` keeps the
+    // preview honest — and matches what visitors already see today.
+    expect(asPosition("center")).toBe("bottom");
   });
 });
 
@@ -110,6 +123,31 @@ describe("toEditorState", () => {
     expect(Object.keys(state.texts).sort()).toEqual(["de", "en", "es", "fr", "it"]);
     expect(state.texts.fr.title).toBe("Privacy");
     expect(state.texts.de.title).toBe("Datenschutz");
+  });
+
+  test("gives every language its own category-label objects", () => {
+    // Seeded languages share the default's bundle by reference unless it is deep-copied, which would
+    // make editing the French category label silently rewrite the Italian one too.
+    const state = toEditorState(config());
+    state.texts.fr.categoryLabels.necessary.label = "Strictement nécessaire";
+
+    expect(state.texts.it.categoryLabels.necessary.label).toBe(
+      "Strictly necessary",
+    );
+    expect(state.texts.en.categoryLabels.necessary.label).toBe(
+      "Strictly necessary",
+    );
+  });
+
+  test("seeds a blank bundle with an empty category-label map", () => {
+    const base = config();
+    const missing: BannerConfig = {
+      ...base,
+      config: { ...base.config, texts: {} },
+    };
+    const state = toEditorState(missing);
+    expect(state.texts.en.categoryLabels).toEqual({});
+    expect(state.texts.en.preferencesTitle).toBe("");
   });
 });
 

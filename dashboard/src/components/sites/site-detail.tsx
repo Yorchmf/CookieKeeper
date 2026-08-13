@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ScanHistory } from "@/components/scans/scan-history";
+import { BrandingCard } from "@/components/sites/branding-card";
 import { EmbedSnippet } from "@/components/sites/embed-snippet";
 import { VerifySiteCard } from "@/components/sites/verify-site-card";
 import { Badge } from "@/components/ui/badge";
@@ -134,6 +135,12 @@ export function SiteDetail({ siteId }: { siteId: string }) {
           </CardContent>
         </Card>
 
+        <BrandingCard
+          siteId={siteId}
+          hideBranding={data.hideBranding}
+          isEntitled={data.brandingRemovalEntitled}
+        />
+
         <Card>
           <CardHeader>
             <CardTitle>{t("detail.policyTitle")}</CardTitle>
@@ -160,6 +167,21 @@ export function SiteDetail({ siteId }: { siteId: string }) {
               render={<Link href={`/sites/${siteId}/consent-log`} />}
             >
               {t("detail.consentLogCta")}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("detail.analyticsTitle")}</CardTitle>
+            <CardDescription>{t("detail.analyticsDescription")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="outline"
+              render={<Link href={`/sites/${siteId}/analytics`} />}
+            >
+              {t("detail.analyticsCta")}
             </Button>
           </CardContent>
         </Card>

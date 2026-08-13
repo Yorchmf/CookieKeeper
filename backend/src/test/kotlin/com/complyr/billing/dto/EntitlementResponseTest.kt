@@ -23,6 +23,7 @@ class EntitlementResponseTest {
             EntitlementSummary(
                 entitlement = AccountEntitlement.Trial(endsAt = trialEndsAt, entitlements = Plan.STARTER.entitlements),
                 activeSites = 0,
+                consentEventsUsed = 250,
             )
 
         val response = EntitlementResponse.from(summary)
@@ -32,6 +33,8 @@ class EntitlementResponseTest {
         assertEquals(trialEndsAt, response.trialEndsAt)
         assertEquals(1, response.limits.maxSites)
         assertEquals(0, response.activeSites)
+        // The trial usage count feeds the dashboard meter against limits.consentEventCap.
+        assertEquals(250, response.consentEventsUsed)
     }
 
     @Test
@@ -43,6 +46,7 @@ class EntitlementResponseTest {
         assertEquals("subscribed", response.state)
         assertEquals("BUSINESS", response.plan)
         assertNull(response.trialEndsAt)
+        assertNull(response.consentEventsUsed, "the consent cap and its meter are trial-only")
         assertEquals(10, response.limits.maxSites)
         assertEquals(true, response.limits.csvExport, "Business unlocks CSV export")
         assertEquals(3, response.activeSites)

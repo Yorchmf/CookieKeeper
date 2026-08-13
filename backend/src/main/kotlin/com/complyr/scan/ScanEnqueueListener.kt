@@ -1,5 +1,6 @@
 package com.complyr.scan
 
+import com.complyr.billing.EntitlementService
 import com.complyr.site.SiteCreatedEvent
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
@@ -14,11 +15,15 @@ import java.time.Clock
 @Component
 class ScanEnqueueListener(
     private val scanQueue: ScanQueue,
+    private val entitlementService: EntitlementService,
     private val clock: Clock,
 ) {
     @EventListener
     fun onSiteCreated(event: SiteCreatedEvent) {
         // Claimable immediately: the first scan is what the customer is watching for right after signup.
-        scanQueue.enqueue(event.siteId, ScanTrigger.SITE_ADDED, clock.instant())
+        // Priority is resolved best-effort from the new site's owner (defaults to normal on any billing
+        // read failure) so the first scan is never dropped over an SLA nicety.
+        val priority = ScanQueue.priorityFor(entitlementService.priorityScanForSite(event.siteId))
+        scanQueue.enqueue(event.siteId, ScanTrigger.SITE_ADDED, clock.instant(), priority)
     }
 }
