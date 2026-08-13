@@ -514,7 +514,17 @@
       },
       "analyticsTitle": "Analysen",
       "analyticsDescription": "Einwilligungstrends, Cookie-Bestand und Richtlinienstatus für diese Website.",
-      "analyticsCta": "Analysen ansehen"
+      "analyticsCta": "Analysen ansehen",
+      "rename": {
+        "title": "Domain",
+        "description": "Die Domain, auf der das Consent-Banner dieser Website läuft – die Kennung der Website in Ihrem Dashboard.",
+        "label": "Domain",
+        "placeholder": "www.example.eu",
+        "invalidDomain": "Geben Sie eine gültige Domain ein, z. B. www.example.eu",
+        "resetHint": "Beim Ändern der Domain wird die Verifizierung zurückgesetzt – Sie müssen die neue Domain erneut verifizieren.",
+        "save": "Domain speichern",
+        "saved": "Domain in {domain} geändert"
+      }
     }
   },
   "dashboard": {

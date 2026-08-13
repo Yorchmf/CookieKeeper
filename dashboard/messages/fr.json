@@ -514,7 +514,17 @@
       },
       "analyticsTitle": "Analytique",
       "analyticsDescription": "Tendances de consentement, inventaire des cookies et statut de la politique pour ce site.",
-      "analyticsCta": "Voir l'analytique"
+      "analyticsCta": "Voir l'analytique",
+      "rename": {
+        "title": "Domaine",
+        "description": "Le domaine sur lequel s'affiche la bannière de consentement de ce site — l'identifiant du site dans votre tableau de bord.",
+        "label": "Domaine",
+        "placeholder": "www.example.eu",
+        "invalidDomain": "Saisissez un domaine valide, par ex. www.example.eu",
+        "resetHint": "Changer de domaine réinitialise la vérification — vous devrez vérifier à nouveau le nouveau domaine.",
+        "save": "Enregistrer le domaine",
+        "saved": "Domaine remplacé par {domain}"
+      }
     }
   },
   "dashboard": {

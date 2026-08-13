@@ -514,7 +514,17 @@
       },
       "analyticsTitle": "Analytics",
       "analyticsDescription": "Consent trends, cookie inventory, and policy status for this site.",
-      "analyticsCta": "View analytics"
+      "analyticsCta": "View analytics",
+      "rename": {
+        "title": "Domain",
+        "description": "The domain where this site's consent banner runs — the site's identity across your dashboard.",
+        "label": "Domain",
+        "placeholder": "www.example.eu",
+        "invalidDomain": "Enter a valid domain, e.g. www.example.eu",
+        "resetHint": "Changing the domain restarts verification — you'll need to verify the new domain again.",
+        "save": "Save domain",
+        "saved": "Domain changed to {domain}"
+      }
     }
   },
   "dashboard": {

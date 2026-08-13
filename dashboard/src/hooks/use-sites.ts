@@ -39,11 +39,18 @@ export function useCreateSite() {
   });
 }
 
+/**
+ * Update a site's mutable fields (currently its domain). The PATCH echoes the full authoritative detail,
+ * so we write it straight into this site's cache — the detail heading, verified/unverified badge, and the
+ * rename card's seed all reflect the change immediately, with no stale window while a refetch is in flight.
+ * The list query is invalidated separately so the sites index picks up the new domain on its next read.
+ */
 export function useUpdateSite(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: { domain?: string }) => updateSite(id, input),
-    onSuccess: () => {
+    onSuccess: (site: SiteDetail) => {
+      queryClient.setQueryData([...SITES_QUERY_KEY, id], site);
       void queryClient.invalidateQueries({ queryKey: SITES_QUERY_KEY });
     },
   });

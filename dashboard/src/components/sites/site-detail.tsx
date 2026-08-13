@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { ScanHistory } from "@/components/scans/scan-history";
 import { BrandingCard } from "@/components/sites/branding-card";
 import { EmbedSnippet } from "@/components/sites/embed-snippet";
+import { RenameSiteCard } from "@/components/sites/rename-site-card";
 import { VerifySiteCard } from "@/components/sites/verify-site-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -185,6 +186,12 @@ export function SiteDetail({ siteId }: { siteId: string }) {
             </Button>
           </CardContent>
         </Card>
+
+        <RenameSiteCard
+          siteId={siteId}
+          domain={data.domain}
+          isVerified={data.verifiedAt !== null}
+        />
 
         <Card>
           <CardHeader>
