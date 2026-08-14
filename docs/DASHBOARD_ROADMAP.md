@@ -223,7 +223,9 @@ Builds on what already ships.
 ## Track 5 — Trust and activation polish
 
 - **Onboarding checklist** — add site → scan → customise → embed → verify. The flow exists; nothing
-  guides a new user through it.
+  guides a new user through it. **Shipped (18fdc65)** — first-run getting-started card on the dashboard
+  home, backed by real signals from `GET /api/v1/overview` (`OnboardingProgress`), auto-hides once every
+  step is done.
 - **Empty states** with real next actions.
 - **Trial status** — days remaining and consent-event usage against the 1,000 cap; graceful expired-state
   UX instead of a silent `maxSites = 0` freeze.
@@ -242,7 +244,7 @@ Builds on what already ships.
 | **1** | 0.1 retention, 0.6 auth gate, 0.2/0.3/0.7 copy, 0.4 branding, 0.5 priority scans | Launch blockers: compliance exposure plus features already being charged for | Shipped |
 | **1.5** | **ADR-19 widget-config transport** | Without it every published banner config — branding included — is inert | Shipped — Slice 1 (path + schema mapper) and Slice 2 (panel texts) |
 | **2** | Track 1 dashboard home, Track 2 settings, Track 3 site gaps | Product stops feeling half-built | Track 1 shipped; Track 2 shipped; Track 3 shipped — Phase 2 complete |
-| **3** | Track 4 evidence pack + cross-site analytics, Track 5 onboarding | Justifies the price ladder | Open |
+| **3** | Track 4 evidence pack + cross-site analytics, Track 5 onboarding | Justifies the price ladder | Track 4 shipped (Slices A–C); Track 5 onboarding shipped; remaining Track 5 polish open |
 
 ## Cross-cutting constraints
 
