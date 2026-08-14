@@ -288,5 +288,47 @@ class ScanApiIntegrationTest {
             .perform(get("/api/v1/sites/${UUID.randomUUID()}/scans"))
             .andExpect(status().isUnauthorized)
             .andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED"))
+        // The schedule read sits on the same prefix but a different suffix; assert it at the HTTP layer
+        // too, so a future SecurityConfig matcher that exempts it can't pass on the service unit tests.
+        mockMvc
+            .perform(get("/api/v1/sites/${UUID.randomUUID()}/scan-schedule"))
+            .andExpect(status().isUnauthorized)
+            .andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED"))
+    }
+
+    @Test
+    fun `a paid plan's schedule names the next scan date, and user B cannot read it`() {
+        val alice = registeredUser(Plan.PRO)
+        val bob = registeredUser()
+        // Creating the site enqueues its first scan, so the site has a "last scan" to count forward from.
+        val siteId = createSite(alice, "schedule-${UUID.randomUUID().toString().take(8)}.example.com")
+
+        mockMvc
+            .perform(get("/api/v1/sites/$siteId/scan-schedule").cookie(alice))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.scheduled").value(true))
+            .andExpect(jsonPath("$.data.frequency").value("weekly"))
+            .andExpect(jsonPath("$.data.nextScanAt").isNotEmpty)
+            .andExpect(jsonPath("$.data.reason").isEmpty)
+
+        mockMvc
+            .perform(get("/api/v1/sites/$siteId/scan-schedule").cookie(bob))
+            .andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.error.code").value("SITE_NOT_FOUND"))
+    }
+
+    @Test
+    fun `a trial account is told its trial ends first rather than a date past it`() {
+        // No subscription: a 14-day trial on Starter's monthly cadence, so the first cycle after the
+        // site's initial scan falls due roughly two weeks after the account has already lapsed.
+        val alice = registeredUser()
+        val siteId = createSite(alice, "trial-${UUID.randomUUID().toString().take(8)}.example.com")
+
+        mockMvc
+            .perform(get("/api/v1/sites/$siteId/scan-schedule").cookie(alice))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.scheduled").value(false))
+            .andExpect(jsonPath("$.data.reason").value("trial_ends_first"))
+            .andExpect(jsonPath("$.data.nextScanAt").isEmpty)
     }
 }

@@ -19,17 +19,38 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useEntitlement } from "@/hooks/use-billing";
 import { useCreateSite } from "@/hooks/use-sites";
+import { Link } from "@/i18n/navigation";
 import { getApiErrorCode } from "@/lib/api-error-codes";
 import { resendVerification } from "@/lib/api/auth";
 import { createDomainSchema } from "@/lib/domain";
 import { useMe } from "@/hooks/use-auth";
+
+/** Ties the cap explanation to the submit button, so the reason reaches anyone who tabs straight to it. */
+const CAP_NOTICE_ID = "add-site-cap-notice";
 
 export function AddSiteDialog() {
   const t = useTranslations("sites.addDialog");
   const tErrors = useTranslations("auth.errors");
   const me = useMe();
   const createSite = useCreateSite();
+  // Site count vs. plan cap. The backend stays the authority (403 SITE_LIMIT_REACHED, taken under an
+  // advisory lock); this only moves the news forward so the cap is visible *before* the domain is typed
+  // and submitted. It deliberately does not disable the submit: the count comes from a cache that can
+  // lag a change made in another tab, so a stale read must not lock someone out of a slot they have.
+  // While the entitlement is loading there is no count, so nothing is claimed either way.
+  const entitlement = useEntitlement();
+  const cap = entitlement.data
+    ? {
+        maxSites: entitlement.data.limits.maxSites,
+        remaining: entitlement.data.limits.maxSites - entitlement.data.activeSites,
+      }
+    : null;
+  // A lapsed account reports zero sites while still owning the ones it created, so it lands here with a
+  // negative remainder — "your plan includes 0 sites" would be nonsense where "your trial ended" is true.
+  const isExpired = cap !== null && cap.maxSites === 0;
+  const isAtCap = cap !== null && cap.remaining <= 0;
 
   const [isOpen, setIsOpen] = useState(false);
   const [errorCode, setErrorCode] = useState<string | null>(null);
@@ -111,6 +132,32 @@ export function AddSiteDialog() {
           <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+          {isAtCap ? (
+            <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm">
+              {/* Text-only live region: it announces the cap if the entitlement lands after the dialog
+                  opened, and the id makes the submit button carry the same explanation for anyone who
+                  tabs straight to it. The CTA sits outside so it is not read as part of the message. */}
+              <p role="status" id={CAP_NOTICE_ID}>
+                {isExpired
+                  ? t("capExpired")
+                  : t("capReached", { max: cap.maxSites })}
+              </p>
+              <div>
+                <Button
+                  nativeButton={false}
+                  variant="outline"
+                  size="sm"
+                  render={<Link href="/billing" />}
+                >
+                  {t("capUpgrade")}
+                </Button>
+              </div>
+            </div>
+          ) : cap?.remaining === 1 ? (
+            <p className="text-sm text-muted-foreground">
+              {t("capLastSlot", { max: cap.maxSites })}
+            </p>
+          ) : null}
           <FormError message={errorCode ? tErrors(errorCode) : null} />
           {errorCode === "EMAIL_NOT_VERIFIED" ? (
             <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm">
@@ -146,7 +193,11 @@ export function AddSiteDialog() {
             >
               {t("cancel")}
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              aria-describedby={isAtCap ? CAP_NOTICE_ID : undefined}
+            >
               {t("submit")}
             </Button>
           </DialogFooter>

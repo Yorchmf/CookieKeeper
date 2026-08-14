@@ -355,7 +355,8 @@
       "CURRENT_PASSWORD_INCORRECT": "Contraseña incorrecta: tu contraseña no se ha cambiado",
       "NEW_PASSWORD_SAME_AS_CURRENT": "Elige una contraseña distinta de la actual",
       "GENERIC": "Algo ha salido mal. Inténtalo de nuevo.",
-      "NEW_EMAIL_SAME_AS_CURRENT": "Esa ya es tu dirección de correo"
+      "NEW_EMAIL_SAME_AS_CURRENT": "Esa ya es tu dirección de correo",
+      "SITE_LIMIT_REACHED": "Has usado todos los sitios que incluye tu plan. Mejora tu plan para añadir otro."
     },
     "login": {
       "title": "Iniciar sesión",
@@ -450,7 +451,11 @@
       "created": "{domain} se ha añadido",
       "notVerifiedHint": "Debes verificar tu dirección de correo antes de añadir un sitio.",
       "resendVerification": "Reenviar correo de verificación",
-      "verificationResent": "Correo de verificación enviado"
+      "verificationResent": "Correo de verificación enviado",
+      "capReached": "{max, plural, one {Tu plan incluye un sitio y ya está en uso.} other {Tu plan incluye # sitios y todos están en uso.}} Mejora tu plan para añadir otro.",
+      "capExpired": "Tu prueba ha terminado, así que no puedes añadir sitios hasta que elijas un plan.",
+      "capUpgrade": "Ver planes",
+      "capLastSlot": "{max, plural, one {Tu plan incluye un sitio, así que este será el único.} other {Este es el último de los # sitios que incluye tu plan.}}"
     },
     "detail": {
       "loadError": "No se ha podido cargar este sitio. Puede que haya sido archivado o eliminado.",
@@ -627,7 +632,16 @@
       },
       "empty": "Aún no hay escaneos. El primer escaneo se ejecuta poco después de añadir un sitio.",
       "loadError": "No se pudo cargar el historial de escaneos. Inténtalo de nuevo.",
-      "pagesCrawled": "{count, plural, one {# página} other {# páginas}}"
+      "pagesCrawled": "{count, plural, one {# página} other {# páginas}}",
+      "paused": {
+        "archived": "Este sitio está archivado, así que los escaneos automáticos están pausados.",
+        "lapsed": "Tu prueba ha terminado, así que los escaneos automáticos están pausados hasta que elijas un plan.",
+        "trial_ends_first": "Tu prueba termina antes del próximo escaneo automático. Elige un plan para que los escaneos sigan ejecutándose."
+      },
+      "nextScan": {
+        "on": "Próximo escaneo automático: {date}.",
+        "due": "El próximo escaneo automático ya toca y se ejecutará en la siguiente pasada nocturna."
+      }
     },
     "results": {
       "title": "Resultados del escaneo",

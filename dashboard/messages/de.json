@@ -355,7 +355,8 @@
       "CURRENT_PASSWORD_INCORRECT": "Falsches Passwort – Ihr Passwort wurde nicht geändert",
       "NEW_PASSWORD_SAME_AS_CURRENT": "Wählen Sie ein anderes Passwort als Ihr aktuelles",
       "GENERIC": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
-      "NEW_EMAIL_SAME_AS_CURRENT": "Das ist bereits Ihre E-Mail-Adresse"
+      "NEW_EMAIL_SAME_AS_CURRENT": "Das ist bereits Ihre E-Mail-Adresse",
+      "SITE_LIMIT_REACHED": "Sie nutzen bereits alle Websites Ihres Tarifs. Führen Sie ein Upgrade durch, um eine weitere hinzuzufügen."
     },
     "login": {
       "title": "Anmelden",
@@ -450,7 +451,11 @@
       "created": "{domain} wurde hinzugefügt",
       "notVerifiedHint": "Sie müssen zuerst Ihre E-Mail-Adresse bestätigen, bevor Sie eine Website hinzufügen können.",
       "resendVerification": "Bestätigungs-E-Mail erneut senden",
-      "verificationResent": "Bestätigungs-E-Mail wurde gesendet"
+      "verificationResent": "Bestätigungs-E-Mail wurde gesendet",
+      "capReached": "{max, plural, one {Ihr Tarif umfasst eine Website und diese wird bereits genutzt.} other {Ihr Tarif umfasst # Websites und alle werden bereits genutzt.}} Führen Sie ein Upgrade durch, um eine weitere hinzuzufügen.",
+      "capExpired": "Ihre Testphase ist beendet – Sie können erst wieder Websites hinzufügen, wenn Sie einen Tarif wählen.",
+      "capUpgrade": "Tarife ansehen",
+      "capLastSlot": "{max, plural, one {Ihr Tarif umfasst eine Website – dies wird also Ihre einzige sein.} other {Dies ist die letzte der # Websites, die Ihr Tarif umfasst.}}"
     },
     "detail": {
       "loadError": "Diese Website konnte nicht geladen werden. Sie wurde möglicherweise archiviert oder entfernt.",
@@ -627,7 +632,16 @@
       },
       "empty": "Noch keine Scans. Der erste Scan startet kurz nach dem Hinzufügen einer Website.",
       "loadError": "Der Scan-Verlauf konnte nicht geladen werden. Bitte versuchen Sie es erneut.",
-      "pagesCrawled": "{count, plural, one {# Seite} other {# Seiten}}"
+      "pagesCrawled": "{count, plural, one {# Seite} other {# Seiten}}",
+      "paused": {
+        "archived": "Diese Website ist archiviert, daher sind automatische Scans pausiert.",
+        "lapsed": "Ihre Testphase ist beendet, daher sind automatische Scans pausiert, bis Sie einen Tarif wählen.",
+        "trial_ends_first": "Ihre Testphase endet, bevor der nächste automatische Scan fällig wird. Wählen Sie einen Tarif, damit die Scans weiterlaufen."
+      },
+      "nextScan": {
+        "on": "Nächster automatischer Scan: {date}.",
+        "due": "Der nächste automatische Scan ist fällig und läuft im nächsten nächtlichen Durchlauf."
+      }
     },
     "results": {
       "title": "Scan-Ergebnisse",

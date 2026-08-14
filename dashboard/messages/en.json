@@ -355,7 +355,8 @@
       "CURRENT_PASSWORD_INCORRECT": "Incorrect password — your password has not been changed",
       "NEW_PASSWORD_SAME_AS_CURRENT": "Choose a password different from your current one",
       "GENERIC": "Something went wrong. Please try again.",
-      "NEW_EMAIL_SAME_AS_CURRENT": "This is already your email address"
+      "NEW_EMAIL_SAME_AS_CURRENT": "This is already your email address",
+      "SITE_LIMIT_REACHED": "You have used every site your plan includes. Upgrade your plan to add another."
     },
     "login": {
       "title": "Sign in",
@@ -450,7 +451,11 @@
       "created": "{domain} has been added",
       "notVerifiedHint": "You need to verify your email address before adding a site.",
       "resendVerification": "Resend verification email",
-      "verificationResent": "Verification email sent"
+      "verificationResent": "Verification email sent",
+      "capReached": "{max, plural, one {Your plan includes one site and it is already in use.} other {Your plan includes # sites and all of them are in use.}} Upgrade your plan to add another.",
+      "capExpired": "Your trial has ended, so you cannot add sites until you choose a plan.",
+      "capUpgrade": "View plans",
+      "capLastSlot": "{max, plural, one {Your plan includes one site, so this will be your only one.} other {This is the last of the # sites your plan includes.}}"
     },
     "detail": {
       "loadError": "This site could not be loaded. It may have been archived or removed.",
@@ -627,7 +632,16 @@
       },
       "empty": "No scans yet. The first scan runs shortly after a site is added.",
       "loadError": "Scan history could not be loaded. Please try again.",
-      "pagesCrawled": "{count, plural, one {# page} other {# pages}}"
+      "pagesCrawled": "{count, plural, one {# page} other {# pages}}",
+      "paused": {
+        "archived": "This site is archived, so automatic re-scans are paused.",
+        "lapsed": "Your trial has ended, so automatic re-scans are paused until you choose a plan.",
+        "trial_ends_first": "Your trial ends before the next automatic scan is due. Choose a plan to keep re-scans running."
+      },
+      "nextScan": {
+        "on": "Next automatic scan: {date}.",
+        "due": "The next automatic scan is due and runs in the next nightly window."
+      }
     },
     "results": {
       "title": "Scan results",

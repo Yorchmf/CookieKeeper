@@ -355,7 +355,8 @@
       "CURRENT_PASSWORD_INCORRECT": "Password errata: la tua password non è stata modificata",
       "NEW_PASSWORD_SAME_AS_CURRENT": "Scegli una password diversa da quella attuale",
       "GENERIC": "Qualcosa è andato storto. Riprova.",
-      "NEW_EMAIL_SAME_AS_CURRENT": "Questo è già il tuo indirizzo email"
+      "NEW_EMAIL_SAME_AS_CURRENT": "Questo è già il tuo indirizzo email",
+      "SITE_LIMIT_REACHED": "Hai utilizzato tutti i siti inclusi nel tuo piano. Passa a un piano superiore per aggiungerne un altro."
     },
     "login": {
       "title": "Accedi",
@@ -450,7 +451,11 @@
       "created": "{domain} è stato aggiunto",
       "notVerifiedHint": "Devi verificare il tuo indirizzo e-mail prima di aggiungere un sito.",
       "resendVerification": "Invia di nuovo l'e-mail di verifica",
-      "verificationResent": "E-mail di verifica inviata"
+      "verificationResent": "E-mail di verifica inviata",
+      "capReached": "{max, plural, one {Il tuo piano include un sito ed è già in uso.} other {Il tuo piano include # siti e sono tutti in uso.}} Passa a un piano superiore per aggiungerne un altro.",
+      "capExpired": "La tua prova è terminata, quindi non puoi aggiungere siti finché non scegli un piano.",
+      "capUpgrade": "Vedi i piani",
+      "capLastSlot": "{max, plural, one {Il tuo piano include un solo sito, quindi sarà l’unico.} other {Questo è l’ultimo dei # siti inclusi nel tuo piano.}}"
     },
     "detail": {
       "loadError": "Impossibile caricare questo sito. Potrebbe essere stato archiviato o rimosso.",
@@ -627,7 +632,16 @@
       },
       "empty": "Nessuna scansione ancora. La prima scansione parte poco dopo l'aggiunta di un sito.",
       "loadError": "Impossibile caricare la cronologia delle scansioni. Riprova.",
-      "pagesCrawled": "{count, plural, one {# pagina} other {# pagine}}"
+      "pagesCrawled": "{count, plural, one {# pagina} other {# pagine}}",
+      "paused": {
+        "archived": "Questo sito è archiviato, quindi le scansioni automatiche sono in pausa.",
+        "lapsed": "La tua prova è terminata, quindi le scansioni automatiche sono in pausa finché non scegli un piano.",
+        "trial_ends_first": "La tua prova termina prima della prossima scansione automatica. Scegli un piano per continuare le scansioni."
+      },
+      "nextScan": {
+        "on": "Prossima scansione automatica: {date}.",
+        "due": "La prossima scansione automatica è dovuta e verrà eseguita nel prossimo ciclo notturno."
+      }
     },
     "results": {
       "title": "Risultati della scansione",

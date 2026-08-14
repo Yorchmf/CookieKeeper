@@ -11,7 +11,7 @@ Status: planned 2026-08-10, last updated 2026-08-14. Scope: the logged-in custom
 | Phase 2 — Track 1 dashboard home | **Shipped** (see Track 1) |
 | Phase 1.5 — ADR-19 widget-config transport (Slices 1 + 2) | **Shipped** |
 | Phase 2 — Track 2 settings | **Shipped** — all four surfaces (data, profile, security, notifications) |
-| Phase 2 — Track 3 site gaps | **3 of 5 shipped** — rename, archived view, scan diff; site-cap pre-warning and next-scan date open |
+| Phase 2 — Track 3 site gaps | **shipped (5 of 5)** — rename, archived view, scan diff, site-cap pre-warning, next-scan date |
 | Phase 3 — Track 4, Track 5 | Not started |
 
 **ADR-19 — the widget-config transport — is live.** The widget fetches
@@ -177,7 +177,7 @@ surface that exists — the other three drop into it as they are built, no furth
 
 ---
 
-## Track 3 — Close the site-management gaps — **3 of 5 shipped**
+## Track 3 — Close the site-management gaps — **shipped (5 of 5)**
 
 - **Site rename** — **shipped** (`components/sites/rename-site-card.tsx`), consuming the previously
   orphaned `useUpdateSite`.
@@ -190,9 +190,17 @@ surface that exists — the other three drop into it as they are built, no furth
   does the precise cross-page previous-scan lookup; the history list's "+N new" badge diffs adjacent
   completed scans *within the page* via one batch read, so the oldest scan on a page carries no badge and
   the detail view stays authoritative.
-- **Site-cap pre-warning** — open. Hitting `maxSites` still surfaces only as a raw 403 toast from
-  `AddSiteDialog` (`components/sites/add-site-dialog.tsx`, untouched since the original build).
-- **Next scheduled scan** — open. Cadence text is shown (`scan-history.tsx`) but never a date.
+- **Site-cap pre-warning** — **shipped.** `AddSiteDialog` reads `activeSites` vs `limits.maxSites` from
+  the entitlement it already fetches (no backend change) and states the cap *before* the domain is typed:
+  a last-slot notice at one remaining, and at the cap an explanation plus a link to the plans page. The
+  submit stays live on purpose: the count comes from a cache that can lag a change made in another tab,
+  and the 403 `SITE_LIMIT_REACHED` guard (taken under an advisory lock) remains the authority. The client
+  gate only moves the news forward.
+- **Next scheduled scan** — **shipped.** `GET /api/v1/sites/{siteId}/scan-schedule` answers it from
+  `ScanScheduleService`, and `RescanCadence.dueAt` is now the single definition of "when is a site due",
+  shared with `ScheduledRescanJob.isDue` so the date we promise is the instant the job gates on. The card
+  states "paused" rather than a cadence for the two cases the job would skip (archived site, lapsed
+  account), and "due in the next nightly window" for a never-scanned or already-overdue site.
 
 ---
 
@@ -233,7 +241,7 @@ Builds on what already ships.
 |---|---|---|---|
 | **1** | 0.1 retention, 0.6 auth gate, 0.2/0.3/0.7 copy, 0.4 branding, 0.5 priority scans | Launch blockers: compliance exposure plus features already being charged for | Shipped |
 | **1.5** | **ADR-19 widget-config transport** | Without it every published banner config — branding included — is inert | Shipped — Slice 1 (path + schema mapper) and Slice 2 (panel texts) |
-| **2** | Track 1 dashboard home, Track 2 settings, Track 3 site gaps | Product stops feeling half-built | Track 1 shipped; Track 2 shipped; Track 3 3-of-5 (site-cap pre-warning, next-scan date open) |
+| **2** | Track 1 dashboard home, Track 2 settings, Track 3 site gaps | Product stops feeling half-built | Track 1 shipped; Track 2 shipped; Track 3 shipped — Phase 2 complete |
 | **3** | Track 4 evidence pack + cross-site analytics, Track 5 onboarding | Justifies the price ladder | Open |
 
 ## Cross-cutting constraints

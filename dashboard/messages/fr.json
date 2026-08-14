@@ -355,7 +355,8 @@
       "CURRENT_PASSWORD_INCORRECT": "Mot de passe incorrect — votre mot de passe n’a pas été modifié",
       "NEW_PASSWORD_SAME_AS_CURRENT": "Choisissez un mot de passe différent de l’actuel",
       "GENERIC": "Une erreur est survenue. Veuillez réessayer.",
-      "NEW_EMAIL_SAME_AS_CURRENT": "C'est déjà votre adresse e-mail"
+      "NEW_EMAIL_SAME_AS_CURRENT": "C'est déjà votre adresse e-mail",
+      "SITE_LIMIT_REACHED": "Vous avez utilisé tous les sites inclus dans votre formule. Passez à une formule supérieure pour en ajouter un autre."
     },
     "login": {
       "title": "Se connecter",
@@ -450,7 +451,11 @@
       "created": "{domain} a été ajouté",
       "notVerifiedHint": "Vous devez vérifier votre adresse e-mail avant d'ajouter un site.",
       "resendVerification": "Renvoyer l'e-mail de vérification",
-      "verificationResent": "E-mail de vérification envoyé"
+      "verificationResent": "E-mail de vérification envoyé",
+      "capReached": "{max, plural, one {Votre formule inclut un site et il est déjà utilisé.} other {Votre formule inclut # sites et ils sont tous utilisés.}} Passez à une formule supérieure pour en ajouter un autre.",
+      "capExpired": "Votre essai est terminé : vous ne pouvez plus ajouter de site tant que vous n’avez pas choisi une formule.",
+      "capUpgrade": "Voir les formules",
+      "capLastSlot": "{max, plural, one {Votre formule inclut un seul site : ce sera donc le vôtre.} other {C’est le dernier des # sites inclus dans votre formule.}}"
     },
     "detail": {
       "loadError": "Impossible de charger ce site. Il a peut-être été archivé ou supprimé.",
@@ -627,7 +632,16 @@
       },
       "empty": "Aucun scan pour le moment. Le premier scan démarre peu après l'ajout d'un site.",
       "loadError": "L'historique des scans n'a pas pu être chargé. Veuillez réessayer.",
-      "pagesCrawled": "{count, plural, one {# page} other {# pages}}"
+      "pagesCrawled": "{count, plural, one {# page} other {# pages}}",
+      "paused": {
+        "archived": "Ce site est archivé, les scans automatiques sont donc suspendus.",
+        "lapsed": "Votre essai est terminé : les scans automatiques sont suspendus jusqu’à ce que vous choisissiez une formule.",
+        "trial_ends_first": "Votre essai se termine avant le prochain scan automatique. Choisissez une formule pour que les scans continuent."
+      },
+      "nextScan": {
+        "on": "Prochain scan automatique : {date}.",
+        "due": "Le prochain scan automatique est dû et sera lancé lors du prochain passage nocturne."
+      }
     },
     "results": {
       "title": "Résultats du scan",

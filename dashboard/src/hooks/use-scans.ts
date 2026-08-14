@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-query";
 import {
   getScan,
+  getScanSchedule,
   listScans,
   requestScan,
   type ScanStatus,
@@ -50,6 +51,25 @@ export function useRequestScan(siteId: string) {
         queryKey: [...SCANS_QUERY_KEY, siteId],
       });
     },
+  });
+}
+
+/**
+ * When the scheduler next returns to a site. Not polled: the date only moves when a *new* scan is
+ * enqueued or the site's status changes, and both of those paths already invalidate the `[scans, siteId]`
+ * prefix this key sits under. A scan progressing queued → done leaves its `createdAt`, and therefore this
+ * date, unchanged.
+ *
+ * It does refetch on window focus, against the app-wide default: the answer also decays with nothing but
+ * time passing (a due date drifts into the past, and the nightly job enqueues scans with no client
+ * involvement), and the card compares the date against this query's own fetch timestamp. Left frozen on a
+ * tab someone returns to the next morning, it would present yesterday as "next".
+ */
+export function useScanSchedule(siteId: string) {
+  return useQuery({
+    queryKey: [...SCANS_QUERY_KEY, siteId, "schedule"],
+    queryFn: () => getScanSchedule(siteId),
+    refetchOnWindowFocus: true,
   });
 }
 

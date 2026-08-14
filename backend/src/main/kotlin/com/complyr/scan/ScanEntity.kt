@@ -120,6 +120,13 @@ interface ScanRepository : JpaRepository<ScanEntity, UUID> {
     ): ScanEntity?
 
     /**
+     * The site's most recent scan of ANY status — what the re-scan scheduler measures due-ness from
+     * (`max(created_at)`, no status filter), so a queued or failed scan pushes the next scheduled one out
+     * exactly as a completed one does. Rides `idx_scans_site_id_created_at`; null for a never-scanned site.
+     */
+    fun findFirstBySiteIdOrderByCreatedAtDesc(siteId: UUID): ScanEntity?
+
+    /**
      * The site's most recent scan in a given status — the policy generator reads this with
      * [ScanStatus.DONE] to source the cookies it lists (null when the site has never completed a scan,
      * in which case the policy legitimately states none were found).

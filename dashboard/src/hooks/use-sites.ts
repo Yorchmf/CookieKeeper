@@ -1,6 +1,8 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { BILLING_QUERY_KEY } from "@/hooks/use-billing";
+import { SCANS_QUERY_KEY } from "@/hooks/use-scans";
 import {
   archiveSite,
   createSite,
@@ -30,12 +32,18 @@ export function useSite(id: string) {
   });
 }
 
+/**
+ * Add a site. Also invalidates the entitlement, because `activeSites` in that payload is what the add
+ * dialog counts against the plan cap: without this the cap warning keeps reading the count from before
+ * this very site existed, and the "one slot left" line survives into the state where there are none.
+ */
 export function useCreateSite() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (domain: string) => createSite(domain),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: SITES_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: BILLING_QUERY_KEY });
     },
   });
 }
@@ -87,12 +95,19 @@ export function useSetSiteBranding(id: string) {
   });
 }
 
+/**
+ * Archive a site: it stops counting against the plan cap (entitlement) and the nightly re-scan job stops
+ * visiting it (scan schedule), so both of those caches are stale the moment this succeeds. The scan
+ * prefix covers the schedule key, which would otherwise keep promising a date for a site nothing revisits.
+ */
 export function useArchiveSite(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => archiveSite(id),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: SITES_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: BILLING_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: [...SCANS_QUERY_KEY, id] });
     },
   });
 }
@@ -100,7 +115,8 @@ export function useArchiveSite(id: string) {
 /**
  * Reactivate an archived site. Seeds this site's detail cache from the authoritative response so the
  * status badge and detail actions flip immediately, then invalidates the list so both the active and
- * archived filtered views drop/pick up the site on their next read.
+ * archived filtered views drop/pick up the site on their next read. Restoring consumes a plan slot and
+ * puts the site back in the re-scan rotation, so it invalidates the same two caches as archiving.
  */
 export function useRestoreSite(id: string) {
   const queryClient = useQueryClient();
@@ -109,6 +125,8 @@ export function useRestoreSite(id: string) {
     onSuccess: (site: SiteDetail) => {
       queryClient.setQueryData([...SITES_QUERY_KEY, id], site);
       void queryClient.invalidateQueries({ queryKey: SITES_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: BILLING_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: [...SCANS_QUERY_KEY, id] });
     },
   });
 }

@@ -163,9 +163,9 @@ class ScheduledRescanJob(
     /**
      * Whether [candidate] should be re-scanned this run. Skipped when its owner has no live entitlement
      * (a since-deleted account) or an [AccountEntitlement.Expired] one — the plan freezes the dashboard,
-     * "no new sites, no scans". Otherwise a never-scanned site is always due, and a scanned one is due
-     * once its plan cadence has elapsed. The cadence is a [Period] (calendar months/weeks), which an
-     * [Instant] can't add directly, so it is applied in the clock's zone.
+     * "no new sites, no scans". Otherwise a never-scanned site is always due, and a scanned one is due once
+     * its plan cadence has elapsed. The cadence arithmetic itself lives in [RescanCadence], shared with the
+     * dashboard's schedule read so the date a customer is shown is the same instant gated on here.
      */
     private fun isDue(
         candidate: RescanCandidate,
@@ -174,8 +174,7 @@ class ScheduledRescanJob(
     ): Boolean {
         if (entitlement == null || entitlement is AccountEntitlement.Expired) return false
         val lastScanAt = candidate.lastScanAt ?: return true
-        val interval = entitlement.entitlements.rescanFrequency.interval
-        val dueAt = lastScanAt.atZone(clock.zone).plus(interval).toInstant()
+        val dueAt = RescanCadence.dueAt(lastScanAt, entitlement.entitlements.rescanFrequency, clock.zone)
         return !now.isBefore(dueAt)
     }
 

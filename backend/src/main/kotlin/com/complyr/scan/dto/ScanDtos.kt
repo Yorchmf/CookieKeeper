@@ -1,5 +1,6 @@
 package com.complyr.scan.dto
 
+import com.complyr.billing.RescanFrequency
 import com.complyr.scan.ComplianceAnalyzer
 import com.complyr.scan.ScanCookieEntity
 import com.complyr.scan.ScanDiff
@@ -176,5 +177,60 @@ data class ScanDetailResponse(
                 diff = if (scan.status == ScanStatus.DONE) diff?.let(ScanDiffResponse::from) else null,
             )
         }
+    }
+}
+
+/** Why the nightly re-scan job would never come back to a site — the `reason` on an unscheduled answer. */
+enum class UnscheduledReason {
+    /** The site is archived, so it is filtered out of the candidate query entirely. */
+    ARCHIVED,
+
+    /** The trial elapsed with no subscription: the job skips the account ("no new sites, no scans"). */
+    LAPSED,
+
+    /** On trial, but the next cycle falls due after the trial ends — see [ScanScheduleResponse]. */
+    TRIAL_ENDS_FIRST,
+    ;
+
+    /** Lowercased wire token, matching how `frequency` is rendered. */
+    fun token(): String = name.lowercase()
+}
+
+/**
+ * When the nightly re-scan job will next come back to a site (`GET /api/v1/sites/{siteId}/scan-schedule`),
+ * so the scan-history card can answer "why does this look stale?" with a date instead of only a cadence.
+ *
+ * [scheduled] is false when the job would never pick the site up at all, and [reason] then says which of
+ * [UnscheduledReason] applies so the dashboard can explain it rather than showing one vague line. The
+ * `TRIAL_ENDS_FIRST` case is the subtle one: a trial carries Starter's monthly cadence but runs for two
+ * weeks, so a site scanned today comes due after the account has already lapsed to `Expired`.
+ *
+ * When [scheduled] is true, [frequency] is the plan cadence (lowercased `weekly` / `monthly`, the same
+ * token `EntitlementLimits.rescanFrequency` uses, so the dashboard maps it with one message set) and
+ * [nextScanAt] is the exact instant the job treats the site as due — null only for a never-scanned site,
+ * which is due immediately rather than on a date. A [nextScanAt] in the past means the site is already due
+ * and will be picked up by an upcoming nightly run (the job caps how many sites it enqueues per night, so
+ * a large backlog can take more than one).
+ *
+ * Build it through [scheduled] / [unscheduled] rather than the constructor: those are what keep "scheduled
+ * with no cadence" and "unscheduled but here's a date anyway" from being representable.
+ */
+data class ScanScheduleResponse(
+    val scheduled: Boolean,
+    val frequency: String? = null,
+    val nextScanAt: Instant? = null,
+    val reason: String? = null,
+) {
+    companion object {
+        fun scheduled(
+            frequency: RescanFrequency,
+            nextScanAt: Instant?,
+        ) = ScanScheduleResponse(
+            scheduled = true,
+            frequency = frequency.name.lowercase(),
+            nextScanAt = nextScanAt,
+        )
+
+        fun unscheduled(reason: UnscheduledReason) = ScanScheduleResponse(scheduled = false, reason = reason.token())
     }
 }

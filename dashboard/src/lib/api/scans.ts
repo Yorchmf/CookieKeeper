@@ -1,5 +1,6 @@
 /** Typed client for the `/api/v1/sites/{siteId}/scans` read endpoints. */
 import { apiFetch } from "@/lib/api";
+import type { RescanFrequency } from "@/lib/api/billing";
 
 /** Mirrors the backend ScanStatus dbValues (ScanEntity.kt). */
 export type ScanStatus = "queued" | "running" | "done" | "failed";
@@ -125,6 +126,34 @@ export async function requestScan(siteId: string): Promise<ScanRequested> {
   const { data } = await apiFetch<ScanRequested>(
     `/api/v1/sites/${encodeURIComponent(siteId)}/scans`,
     { method: "POST" },
+  );
+  return data;
+}
+
+/** Why the job would never come back to a site — the `reason` on an unscheduled answer. */
+export type UnscheduledReason = "archived" | "lapsed" | "trial_ends_first";
+
+/**
+ * When the nightly re-scan job will next come back to this site (ScanScheduleResponse).
+ *
+ * `scheduled` is false when the job would never pick the site up, and `reason` says which case applies
+ * so the UI can explain it rather than promising a scan that never runs. `nextScanAt` is null for a
+ * never-scanned site (due immediately, so there is no date), and may be in the past for a site that is
+ * already due and waiting for an upcoming nightly run.
+ *
+ * `frequency` and `reason` are typed as closed unions but arrive as open backend strings, so treat an
+ * unrecognized value as "no answer" rather than assuming a message key exists for it.
+ */
+export interface ScanSchedule {
+  scheduled: boolean;
+  frequency: RescanFrequency | null;
+  nextScanAt: string | null;
+  reason: UnscheduledReason | null;
+}
+
+export async function getScanSchedule(siteId: string): Promise<ScanSchedule> {
+  const { data } = await apiFetch<ScanSchedule>(
+    `/api/v1/sites/${encodeURIComponent(siteId)}/scan-schedule`,
   );
   return data;
 }

@@ -13,8 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useEntitlement } from "@/hooks/use-billing";
-import { useScans } from "@/hooks/use-scans";
+import { useScanSchedule, useScans } from "@/hooks/use-scans";
 import { Link } from "@/i18n/navigation";
 import type { ScanSummary } from "@/lib/api/scans";
 
@@ -70,14 +69,65 @@ function ScanRow({ siteId, scan }: { siteId: string; scan: ScanSummary }) {
   );
 }
 
+/**
+ * The one line that answers the question this card actually raises: "when does the next scan run?".
+ *
+ * The backend owns the answer (`ScanScheduleService`) because it is the same instant the nightly job
+ * gates on — computing it here from the plan cadence would let the promise drift from the job. Renders
+ * nothing until it has loaded: no line at all beats a date we are not sure about.
+ */
+function ScheduleNote({ siteId }: { siteId: string }) {
+  const t = useTranslations("scans.history");
+  const format = useFormatter();
+  const schedule = useScanSchedule(siteId);
+  // One line's worth of space is held from the first paint so the answer arriving does not push the
+  // card's content down.
+  const line = "block min-h-[1lh]";
+
+  if (!schedule.data) {
+    return <span className={line} />;
+  }
+  const { scheduled, frequency, nextScanAt, reason } = schedule.data;
+
+  // Archived site, lapsed account, or a trial that ends before the next cycle: the job would never come
+  // back, so name the cause instead of a date. `reason` and `frequency` are backend tokens typed as
+  // closed unions, so a value shipped ahead of its message stays silent rather than rendering an error.
+  if (!scheduled) {
+    return (
+      <span className={line}>
+        {reason && t.has(`paused.${reason}`) ? t(`paused.${reason}`) : null}
+      </span>
+    );
+  }
+
+  const dueAt = nextScanAt ? new Date(nextScanAt) : null;
+  // A never-scanned site (no date) and an overdue one both resolve the same way for the customer:
+  // it happens in the next nightly run, not on some future date. "Now" is the query's own fetch
+  // timestamp rather than `Date.now()` — reading the clock during render is impure, and the moment
+  // the answer was fetched is exactly the clock this answer was true at.
+  const isDueNow = dueAt === null || dueAt.getTime() <= schedule.dataUpdatedAt;
+
+  return (
+    <span className={line}>
+      {frequency && t.has(`cadence.${frequency}`)
+        ? `${t(`cadence.${frequency}`)} `
+        : null}
+      {isDueNow
+        ? t("nextScan.due")
+        : t("nextScan.on", {
+            date: format.dateTime(dueAt, {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            }),
+          })}
+    </span>
+  );
+}
+
 export function ScanHistory({ siteId }: { siteId: string }) {
   const t = useTranslations("scans");
   const scans = useScans(siteId, HISTORY_LIMIT);
-  // The plan decides how often the scheduler comes back. Stating it here answers the question this
-  // card actually raises ("when does the next one run?") and explains a history that looks stale.
-  // Rendered only once the entitlement has loaded — a wrong cadence is worse than a missing line.
-  const entitlement = useEntitlement();
-  const cadence = entitlement.data?.limits.rescanFrequency;
 
   return (
     <Card>
@@ -87,9 +137,7 @@ export function ScanHistory({ siteId }: { siteId: string }) {
         </CardTitle>
         <CardDescription>
           {t("history.subtitle")}
-          {cadence ? (
-            <span className="block">{t(`history.cadence.${cadence}`)}</span>
-          ) : null}
+          <ScheduleNote siteId={siteId} />
         </CardDescription>
         <CardAction>
           <RescanButton siteId={siteId} />
