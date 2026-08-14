@@ -1,6 +1,6 @@
 # Dashboard Enrichment Roadmap
 
-Status: planned 2026-08-10, last updated 2026-08-12. Scope: the logged-in customer dashboard
+Status: planned 2026-08-10, last updated 2026-08-14. Scope: the logged-in customer dashboard
 (`dashboard/src/app/[locale]/(app)/**`) and the backend capabilities it needs.
 
 ## Progress
@@ -10,8 +10,8 @@ Status: planned 2026-08-10, last updated 2026-08-12. Scope: the logged-in custom
 | Phase 1 — Track 0 (launch blockers) | **Shipped** — every item 0.1–0.7 |
 | Phase 2 — Track 1 dashboard home | **Shipped** (see Track 1) |
 | Phase 1.5 — ADR-19 widget-config transport (Slices 1 + 2) | **Shipped** |
-| Phase 2 — Track 2 settings | **`/settings/data` shipped** (shell + nav + Art. 20 export + Art. 17 erasure, ADR-20); profile / security / notifications open |
-| Phase 2 — Track 3 site gaps | Not started |
+| Phase 2 — Track 2 settings | **Shipped** — all four surfaces (data, profile, security, notifications) |
+| Phase 2 — Track 3 site gaps | **3 of 5 shipped** — rename, archived view, scan diff; site-cap pre-warning and next-scan date open |
 | Phase 3 — Track 4, Track 5 | Not started |
 
 **ADR-19 — the widget-config transport — is live.** The widget fetches
@@ -154,7 +154,7 @@ worth revisiting alongside Track 2's notifications, which read the same signals.
 
 ---
 
-## Track 2 — Account and settings — **`/settings/data` shipped, rest open**
+## Track 2 — Account and settings — **shipped**
 
 The settings **shell** now exists: `(app)/settings/layout.tsx` owns the `<main>` landmark, header and
 sub-nav, `/settings` redirects to the first real surface, `/settings` is in the proxy's
@@ -169,23 +169,30 @@ surface that exists — the other three drop into it as they are built, no furth
   cancelled before anything is erased, then one transaction; the UI states plainly what is destroyed
   *and* that consent evidence survives as an anonymized site tombstone until the 3-year partition drop,
   then reports how many sites were deleted vs. kept. Full rationale: **ADR-20**.
-- `/settings/profile` — name, change password, change email with re-verification
-- `/settings/security` — active sessions, "sign out everywhere" (ties into the deferred JWT-revocation ADR)
-- `/settings/notifications` — the `notify/` package has no REST surface and no UI. Scan complete,
-  new cookies detected, trial ending, payment failed.
+- `/settings/profile` — **shipped.** Self-service display name, change password, and change email with
+  verify-new-address-first confirmation (ADR-20).
+- `/settings/security` — **shipped.** Sign out of all devices.
+- `/settings/notifications` — **shipped.** Per-account email notification preferences; the `scanChanges`
+  toggle is what Track 3's scan diff gates the scheduled-scan email on.
 
 ---
 
-## Track 3 — Close the site-management gaps
+## Track 3 — Close the site-management gaps — **3 of 5 shipped**
 
-- **Site rename** — `updateSite` / `useUpdateSite` are fully wired with zero component usages
-  (`lib/api/sites.ts:65`, `hooks/use-sites.ts:40`). Pure UI work.
-- **Archived sites view** — `useSites(status)` supports the filter; nothing ever passes `"archived"`,
-  so archived sites are unrecoverable from the UI.
-- **Site-cap pre-warning** — hitting `maxSites` surfaces only as a raw 403 toast from `AddSiteDialog`.
-- **Next scheduled scan** — cadence text is shown (`scan-history.tsx:74`) but never a date.
-- **Scan diff / change detection** — "3 new cookies since your last scan". Makes the scanner promise
-  concrete and is the natural trigger for Track 2's notifications.
+- **Site rename** — **shipped** (`components/sites/rename-site-card.tsx`), consuming the previously
+  orphaned `useUpdateSite`.
+- **Archived sites view** — **shipped** (`components/sites/site-status-filter.tsx`); the status filter is
+  URL state, so an archived set is linkable and archived sites are recoverable again.
+- **Scan diff / change detection** — **shipped.** `ScanDiff` + `ScanDiffCalculator` are the single
+  definition of "what changed since the previous completed scan" (compared by cookie *name*, since
+  `scan_cookies` are replaceable rather than audit rows), shared by the scheduled-scan email gate and the
+  dashboard so the two can never drift. Computed on read — no migration, no worker change. The detail view
+  does the precise cross-page previous-scan lookup; the history list's "+N new" badge diffs adjacent
+  completed scans *within the page* via one batch read, so the oldest scan on a page carries no badge and
+  the detail view stays authoritative.
+- **Site-cap pre-warning** — open. Hitting `maxSites` still surfaces only as a raw 403 toast from
+  `AddSiteDialog` (`components/sites/add-site-dialog.tsx`, untouched since the original build).
+- **Next scheduled scan** — open. Cadence text is shown (`scan-history.tsx`) but never a date.
 
 ---
 
@@ -226,7 +233,7 @@ Builds on what already ships.
 |---|---|---|---|
 | **1** | 0.1 retention, 0.6 auth gate, 0.2/0.3/0.7 copy, 0.4 branding, 0.5 priority scans | Launch blockers: compliance exposure plus features already being charged for | Shipped |
 | **1.5** | **ADR-19 widget-config transport** | Without it every published banner config — branding included — is inert | Shipped — Slice 1 (path + schema mapper) and Slice 2 (panel texts) |
-| **2** | Track 1 dashboard home, Track 2 settings, Track 3 site gaps | Product stops feeling half-built | Track 1 shipped; Track 2 `/settings/data` shipped (profile/security/notifications open); Track 3 open |
+| **2** | Track 1 dashboard home, Track 2 settings, Track 3 site gaps | Product stops feeling half-built | Track 1 shipped; Track 2 shipped; Track 3 3-of-5 (site-cap pre-warning, next-scan date open) |
 | **3** | Track 4 evidence pack + cross-site analytics, Track 5 onboarding | Justifies the price ladder | Open |
 
 ## Cross-cutting constraints
