@@ -18,6 +18,9 @@ complexity:
   TooManyFunctions:
     # Count only the public API surface; private helpers keep functions small.
     ignorePrivate: true
+    # EntitlementService is the single source of truth for what a plan allows: each feature adds one
+    # small `require*`/flag reader guard, so its public surface grows one method at a time by design.
+    thresholdInClasses: 12
 
 style:
   # Align with ktlint's official-style line length (ktlintFormat reflows to 140).

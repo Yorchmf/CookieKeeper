@@ -19,7 +19,7 @@ enum class RescanFrequency(
 /**
  * The concrete limits enforced across the app for a given billing state — site create (count cap),
  * scan enqueue (rescan cadence / on-demand / priority), consent retention, dashboard branding, CSV
- * export. Mirrors the pricing table in docs/ARCHITECTURE.md §10. [consentEventCap] bounds how many
+ * export, cross-site analytics roll-up. Mirrors the pricing table in docs/ARCHITECTURE.md §10. [consentEventCap] bounds how many
  * consent events an account may INGEST (null = unbounded, all paid plans); it never blocks recording
  * an already-accepted event — that would drop audit evidence (CLAUDE.md constraint #3).
  */
@@ -31,6 +31,7 @@ data class Entitlements(
     val consentRetention: Period,
     val removeBranding: Boolean,
     val csvExport: Boolean,
+    val crossSiteAnalytics: Boolean,
     val consentEventCap: Long?,
 )
 
@@ -48,6 +49,7 @@ val EXPIRED_ENTITLEMENTS =
         consentRetention = Period.ofMonths(RETENTION_MONTHS_ENTRY),
         removeBranding = false,
         csvExport = false,
+        crossSiteAnalytics = false,
         consentEventCap = null,
     )
 
@@ -73,6 +75,7 @@ enum class Plan(
             consentRetention = Period.ofMonths(RETENTION_MONTHS_ENTRY),
             removeBranding = false,
             csvExport = false,
+            crossSiteAnalytics = false,
             consentEventCap = null,
         ),
     ),
@@ -85,6 +88,7 @@ enum class Plan(
             consentRetention = Period.ofYears(RETENTION_YEARS_PAID),
             removeBranding = true,
             csvExport = false,
+            crossSiteAnalytics = true,
             consentEventCap = null,
         ),
     ),
@@ -97,6 +101,7 @@ enum class Plan(
             consentRetention = Period.ofYears(RETENTION_YEARS_PAID),
             removeBranding = true,
             csvExport = true,
+            crossSiteAnalytics = true,
             consentEventCap = null,
         ),
     ),

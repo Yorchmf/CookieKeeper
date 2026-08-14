@@ -156,6 +156,17 @@ class EntitlementService(
     }
 
     /**
+     * Guard the cross-site ("All Sites") analytics roll-up against the plan's
+     * [Entitlements.crossSiteAnalytics] flag (Pro and Business). Throws
+     * [CrossSiteAnalyticsNotEntitledException] (403) otherwise, which also freezes it for a Trial or
+     * Starter account (both single-site — an aggregate over one site is just the site view). Read-only —
+     * the roll-up never touches the consent-ingestion path, so no lock is needed.
+     */
+    fun requireCrossSiteAnalytics(userId: UUID) {
+        if (!resolve(userId).entitlements.crossSiteAnalytics) throw CrossSiteAnalyticsNotEntitledException()
+    }
+
+    /**
      * Guard the "Re-scan now" action against the plan's [Entitlements.onDemandRescan] flag (Pro and
      * Business). Throws [OnDemandRescanNotEntitledException] (403) otherwise, which also freezes it for an
      * Expired account. Read-only — the scan queue's own advisory lock is what serializes the enqueue, so
