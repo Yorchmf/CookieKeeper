@@ -588,6 +588,7 @@
     "trial": {
       "daysLeft": "{days, plural, =0 {Your trial ends today} one {# day left in your trial} other {# days left in your trial}}",
       "usage": "{used, number} of {max, number} consent events used",
+      "usageLabel": "Trial consent-event usage",
       "expired": "Your trial has ended. Subscribe to add sites and run scans again.",
       "cta": "See plans"
     },

@@ -588,6 +588,7 @@
     "trial": {
       "daysLeft": "{days, plural, =0 {Tu prueba termina hoy} one {Queda # día de prueba} other {Quedan # días de prueba}}",
       "usage": "{used, number} de {max, number} eventos de consentimiento usados",
+      "usageLabel": "Uso de eventos de consentimiento en la prueba",
       "expired": "Tu prueba ha terminado. Suscríbete para volver a añadir sitios y ejecutar escaneos.",
       "cta": "Ver planes"
     },

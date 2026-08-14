@@ -588,6 +588,7 @@
     "trial": {
       "daysLeft": "{days, plural, =0 {Votre essai se termine aujourd'hui} one {# jour restant dans votre essai} other {# jours restants dans votre essai}}",
       "usage": "{used, number} sur {max, number} événements de consentement utilisés",
+      "usageLabel": "Utilisation des événements de consentement (essai)",
       "expired": "Votre essai est terminé. Abonnez-vous pour ajouter des sites et relancer des analyses.",
       "cta": "Voir les forfaits"
     },

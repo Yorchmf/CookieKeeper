@@ -588,6 +588,7 @@
     "trial": {
       "daysLeft": "{days, plural, =0 {Ihre Testphase endet heute} one {noch # Tag in Ihrer Testphase} other {noch # Tage in Ihrer Testphase}}",
       "usage": "{used, number} von {max, number} Einwilligungsereignissen genutzt",
+      "usageLabel": "Nutzung der Einwilligungsereignisse im Test",
       "expired": "Ihre Testphase ist beendet. Abonnieren Sie, um wieder Websites hinzuzufügen und Scans zu starten.",
       "cta": "Tarife ansehen"
     },
