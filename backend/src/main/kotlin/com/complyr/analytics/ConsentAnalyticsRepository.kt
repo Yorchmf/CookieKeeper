@@ -139,6 +139,39 @@ class ConsentAnalyticsRepository(
         }
     }
 
+    /**
+     * Daily decision counts aggregated across all ACTIVE sites owned by a user within `[from, to)`.
+     * Excludes archived sites so the rollup reflects only the customer's current property portfolio.
+     * Same partition pruning applies: the subquery filters sites by user_id and status, then the
+     * outer query prunes by created_at bounds on the relevant partitions.
+     */
+    fun dailyActionCountsMultiSite(
+        userId: UUID,
+        from: Instant,
+        to: Instant,
+    ): List<DailyActionCount> {
+        val sql =
+            """
+            SELECT (date_trunc('day', ce.created_at AT TIME ZONE 'UTC'))::date AS day,
+                   ce.action,
+                   count(*) AS cnt
+            FROM consent_events ce
+            WHERE ce.site_id IN (
+              SELECT id FROM sites WHERE user_id = :userId AND status = 'ACTIVE'
+            )
+            AND ce.created_at >= :from AND ce.created_at < :to
+            GROUP BY day, ce.action
+            ORDER BY day ASC
+            """.trimIndent()
+        return rows(sql, mapOf("userId" to userId, "from" to from, "to" to to)).map {
+            DailyActionCount(
+                day = it[0] as LocalDate,
+                action = it[1] as String,
+                count = (it[2] as Number).toLong(),
+            )
+        }
+    }
+
     private fun rows(
         sql: String,
         siteId: UUID,
