@@ -186,28 +186,36 @@ class AccountAnalyticsApiIntegrationTest {
         seedEvent(siteA, day2, "reject_all", mapOf("statistics" to false, "marketing" to false), "en")
         seedEvent(siteB, day1, "custom", mapOf("statistics" to true, "marketing" to false), "fr")
 
-        mockMvc
-            .perform(
-                get("/api/v1/analytics/accounts/rollup")
-                    .param("from", "2026-08-01T00:00:00Z")
-                    .param("to", "2026-08-10T00:00:00Z")
-                    .cookie(account.cookie),
-            ).andExpect(status().isOk)
-            .andExpect(jsonPath("$.data.siteCount").value(2))
-            .andExpect(jsonPath("$.data.consent.totalEvents").value(4))
-            .andExpect(jsonPath("$.data.consent.byAction.acceptAll").value(2))
-            .andExpect(jsonPath("$.data.consent.byAction.rejectAll").value(1))
-            .andExpect(jsonPath("$.data.consent.byAction.custom").value(1))
-            // day1 (3 events across both sites) then day2 (1), oldest-first.
-            .andExpect(jsonPath("$.data.consent.trend.length()").value(2))
-            .andExpect(jsonPath("$.data.consent.trend[0].date").value("2026-08-05"))
-            .andExpect(jsonPath("$.data.consent.trend[0].total").value(3))
-            .andExpect(jsonPath("$.data.consent.trend[1].total").value(1))
-            // statistics opted in on 3 of 4 decisions, merged across sites.
-            .andExpect(jsonPath("$.data.consent.categoryOptIn[?(@.category == 'statistics')].optIns").value(3))
-            .andExpect(jsonPath("$.data.consent.categoryOptIn[?(@.category == 'statistics')].decisions").value(4))
-            // language split merged across sites: en appears twice.
-            .andExpect(jsonPath("$.data.consent.languageSplit[?(@.lang == 'en')].count").value(2))
+        val response =
+            mockMvc
+                .perform(
+                    get("/api/v1/analytics/accounts/rollup")
+                        .param("from", "2026-08-01T00:00:00Z")
+                        .param("to", "2026-08-10T00:00:00Z")
+                        .cookie(account.cookie),
+                ).andExpect(status().isOk)
+                .andExpect(jsonPath("$.data.siteCount").value(2))
+                .andExpect(jsonPath("$.data.consent.totalEvents").value(4))
+                .andExpect(jsonPath("$.data.consent.byAction.acceptAll").value(2))
+                .andExpect(jsonPath("$.data.consent.byAction.rejectAll").value(1))
+                .andExpect(jsonPath("$.data.consent.byAction.custom").value(1))
+                // day1 (3 events across both sites) then day2 (1), oldest-first.
+                .andExpect(jsonPath("$.data.consent.trend.length()").value(2))
+                .andExpect(jsonPath("$.data.consent.trend[0].date").value("2026-08-05"))
+                .andExpect(jsonPath("$.data.consent.trend[0].total").value(3))
+                .andExpect(jsonPath("$.data.consent.trend[1].total").value(1))
+                // statistics opted in on 3 of 4 decisions, merged across sites.
+                .andExpect(jsonPath("$.data.consent.categoryOptIn[?(@.category == 'statistics')].optIns").value(3))
+                .andExpect(jsonPath("$.data.consent.categoryOptIn[?(@.category == 'statistics')].decisions").value(4))
+                // language split merged across sites: en appears twice.
+                .andExpect(jsonPath("$.data.consent.languageSplit[?(@.lang == 'en')].count").value(2))
+                .andReturn()
+
+        // No visitor PII (ip hash, user agent) may ever reach the aggregate response — the roll-up projects
+        // only counts, categories, and language. Locks the no-leak invariant against a future field regression.
+        val body = response.response.contentAsString
+        assert(!body.contains("test-agent")) { "user agent leaked into roll-up response" }
+        assert(!body.contains("hash-")) { "ip hash leaked into roll-up response" }
     }
 
     @Test

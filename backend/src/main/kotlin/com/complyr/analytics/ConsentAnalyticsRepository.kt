@@ -120,13 +120,14 @@ class ConsentAnalyticsRepository(
      * bounds still select the relevant monthly partitions, and `site_id IN (...)` narrows within them.
      *
      * [siteIds] must not be empty — `IN ()` is not valid SQL. The caller returns early for an account with
-     * no sites (see [OverviewRepository]).
+     * no sites (see [OverviewService]); the empty guard below is defence in depth for any future caller.
      */
     fun accountActionCounts(
         siteIds: Collection<UUID>,
         from: Instant,
         to: Instant,
     ): List<ActionCountRow> {
+        if (siteIds.isEmpty()) return emptyList()
         val sql =
             """
             SELECT action, count(*) AS cnt
@@ -155,6 +156,7 @@ class ConsentAnalyticsRepository(
         from: Instant,
         to: Instant,
     ): List<DailyActionCount> {
+        if (siteIds.isEmpty()) return emptyList()
         val sql =
             """
             SELECT (date_trunc('day', created_at AT TIME ZONE 'UTC'))::date AS day, action, count(*) AS cnt
@@ -182,6 +184,7 @@ class ConsentAnalyticsRepository(
         from: Instant,
         to: Instant,
     ): List<CategoryOptInCount> {
+        if (siteIds.isEmpty()) return emptyList()
         val sql =
             """
             SELECT kv.key AS category,
@@ -209,6 +212,7 @@ class ConsentAnalyticsRepository(
         from: Instant,
         to: Instant,
     ): List<LanguageCountRow> {
+        if (siteIds.isEmpty()) return emptyList()
         val sql =
             """
             SELECT coalesce(lang, '') AS lang, count(*) AS cnt
