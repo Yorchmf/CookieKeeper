@@ -140,30 +140,30 @@ class ConsentAnalyticsRepository(
     }
 
     /**
-     * Daily decision counts aggregated across all ACTIVE sites owned by a user within `[from, to)`.
-     * Excludes archived sites so the rollup reflects only the customer's current property portfolio.
-     * Same partition pruning applies: the subquery filters sites by user_id and status, then the
-     * outer query prunes by created_at bounds on the relevant partitions.
+     * Daily decision counts by action across MANY sites within `[from, to)` — the multi-site trend behind the
+     * cross-site analytics roll-up ([AccountAnalyticsService]). The account-level companion to the single-site
+     * [dailyActionCounts], and the daily-bucketed sibling of [accountActionCounts]: same partition pruning, and
+     * scoped by an explicit [siteIds] collection on purpose. Which sites belong to the account and are ACTIVE is
+     * decided in the service (in Kotlin, against [com.complyr.site.SiteStatus] via its converter) — never
+     * re-encoded as a `status = '...'` literal in SQL, where the enum's DB value is easy to get wrong.
+     *
+     * [siteIds] must not be empty — `site_id IN ()` is not valid SQL; the caller returns early for an account
+     * with no active sites (mirroring [OverviewService]).
      */
-    fun dailyActionCountsMultiSite(
-        userId: UUID,
+    fun accountDailyActionCounts(
+        siteIds: Collection<UUID>,
         from: Instant,
         to: Instant,
     ): List<DailyActionCount> {
         val sql =
             """
-            SELECT (date_trunc('day', ce.created_at AT TIME ZONE 'UTC'))::date AS day,
-                   ce.action,
-                   count(*) AS cnt
-            FROM consent_events ce
-            WHERE ce.site_id IN (
-              SELECT id FROM sites WHERE user_id = :userId AND status = 'ACTIVE'
-            )
-            AND ce.created_at >= :from AND ce.created_at < :to
-            GROUP BY day, ce.action
+            SELECT (date_trunc('day', created_at AT TIME ZONE 'UTC'))::date AS day, action, count(*) AS cnt
+            FROM consent_events
+            WHERE site_id IN (:siteIds) AND created_at >= :from AND created_at < :to
+            GROUP BY day, action
             ORDER BY day ASC
             """.trimIndent()
-        return rows(sql, mapOf("userId" to userId, "from" to from, "to" to to)).map {
+        return rows(sql, mapOf("siteIds" to siteIds, "from" to from, "to" to to)).map {
             DailyActionCount(
                 day = it[0] as LocalDate,
                 action = it[1] as String,
