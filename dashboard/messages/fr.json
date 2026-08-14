@@ -585,16 +585,41 @@
         "insecure_cookies": "Cookies non essentiels envoyés sans Secure ni HttpOnly."
       }
     },
-    "empty": {
-      "title": "Ajoutez votre premier site",
-      "description": "Enregistrez un domaine pour analyser ses cookies, publier une politique et commencer à enregistrer les consentements.",
-      "cta": "Aller aux sites"
-    },
     "trial": {
       "daysLeft": "{days, plural, =0 {Votre essai se termine aujourd'hui} one {# jour restant dans votre essai} other {# jours restants dans votre essai}}",
       "usage": "{used, number} sur {max, number} événements de consentement utilisés",
       "expired": "Votre essai est terminé. Abonnez-vous pour ajouter des sites et relancer des analyses.",
       "cta": "Voir les forfaits"
+    },
+    "onboarding": {
+      "title": "Configuration",
+      "subtitle": "Quelques étapes vers un bandeau de consentement conforme et actif.",
+      "progress": "{done} sur {total} terminé",
+      "doneLabel": "Terminé",
+      "progressLabel": "Progression de la configuration",
+      "currentLabel": "Étape en cours",
+      "steps": {
+        "addSite": {
+          "title": "Ajouter votre site",
+          "description": "Enregistrez le domaine que vous souhaitez protéger.",
+          "cta": "Ajouter votre site"
+        },
+        "scan": {
+          "title": "Rechercher les cookies",
+          "description": "Découvrez quels traceurs votre site dépose réellement.",
+          "cta": "Lancer une analyse"
+        },
+        "customise": {
+          "title": "Personnaliser le bandeau",
+          "description": "Adaptez le bandeau de consentement à votre marque et vos langues.",
+          "cta": "Personnaliser le bandeau"
+        },
+        "verify": {
+          "title": "Intégrer et vérifier",
+          "description": "Ajoutez le snippet, puis confirmez que le widget est actif.",
+          "cta": "Intégrer et vérifier"
+        }
+      }
     }
   },
   "scans": {

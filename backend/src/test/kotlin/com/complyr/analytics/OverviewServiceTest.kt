@@ -61,10 +61,58 @@ class OverviewServiceTest {
         assertNull(result.headline.acceptAllRate)
         assertNull(result.headline.lastScanAt)
         assertTrue(result.actions.isEmpty())
+        // An account with no sites has completed no onboarding step — the checklist shows every one to do.
+        assertEquals(false, result.onboarding.addedSite)
+        assertEquals(false, result.onboarding.scanned)
+        assertEquals(false, result.onboarding.customisedBanner)
+        assertEquals(false, result.onboarding.verified)
         // The batch queries take `site_id IN (...)`, which is invalid SQL for an empty set — the service
         // must return before reaching them, not merely produce an empty result.
         verify(exactly = 0) { overviewRepository.latestCompletedScans(any()) }
+        verify(exactly = 0) { overviewRepository.maxBannerVersions(any()) }
         verify(exactly = 0) { consentRepository.accountActionCounts(any(), any(), any()) }
+    }
+
+    @Test
+    fun `onboarding reports a step done when any active site has reached it`() {
+        val verifiedUnscanned = site("verified.com")
+        val scannedUnverified = site("scanned.com", verified = false)
+        val scanId = UUID.randomUUID()
+        stub(
+            sites = listOf(verifiedUnscanned, scannedUnverified),
+            scans = listOf(LatestScanRow(scannedUnverified.id, scanId, now.minusSeconds(3_600))),
+            // Only the scanned site has an edited banner (v2); the other still carries the seeded v1.
+            bannerVersions =
+                listOf(
+                    BannerVersionRow(verifiedUnscanned.id, version = 1),
+                    BannerVersionRow(scannedUnverified.id, version = 2),
+                ),
+        )
+
+        val onboarding = service.overview(userId, AnalyticsFilter()).onboarding
+
+        assertTrue(onboarding.addedSite)
+        // Neither site is both scanned and verified, but each step is satisfied by *some* site.
+        assertTrue(onboarding.scanned)
+        assertTrue(onboarding.customisedBanner)
+        assertTrue(onboarding.verified)
+    }
+
+    @Test
+    fun `a site still on the seeded v1 banner does not count as customised`() {
+        val site = site("example.com", verified = false)
+        stub(
+            sites = listOf(site),
+            // v1 is the default seeded on creation — no customer edit yet.
+            bannerVersions = listOf(BannerVersionRow(site.id, version = 1)),
+        )
+
+        val onboarding = service.overview(userId, AnalyticsFilter()).onboarding
+
+        assertTrue(onboarding.addedSite)
+        assertEquals(false, onboarding.scanned)
+        assertEquals(false, onboarding.customisedBanner)
+        assertEquals(false, onboarding.verified)
     }
 
     @Test
@@ -162,11 +210,13 @@ class OverviewServiceTest {
         cookies: List<ScanCookieTotals> = emptyList(),
         policies: List<LatestPolicyRow> = emptyList(),
         consent: List<ActionCountRow> = emptyList(),
+        bannerVersions: List<BannerVersionRow> = emptyList(),
     ) {
         every { siteRepository.findAllByUserIdAndStatus(userId, SiteStatus.ACTIVE) } returns sites
         every { overviewRepository.latestCompletedScans(any()) } returns scans
         every { overviewRepository.cookieTotals(any(), ConsentCategory.NECESSARY.key) } returns cookies
         every { overviewRepository.latestPublishedPolicies(any()) } returns policies
+        every { overviewRepository.maxBannerVersions(any()) } returns bannerVersions
         every { consentRepository.accountActionCounts(any(), range.from, range.to) } returns consent
     }
 }

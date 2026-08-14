@@ -4,6 +4,8 @@ import com.complyr.TestcontainersConfiguration
 import com.complyr.auth.RecordingEmailConfig
 import com.complyr.auth.RecordingEmailSender
 import com.complyr.auth.UserRepository
+import com.complyr.banner.BannerConfigEntity
+import com.complyr.banner.BannerConfigRepository
 import com.complyr.billing.Plan
 import com.complyr.billing.SubscriptionEntity
 import com.complyr.billing.SubscriptionRepository
@@ -64,6 +66,8 @@ class OverviewApiIntegrationTest {
     @Autowired private lateinit var userRepository: UserRepository
 
     @Autowired private lateinit var subscriptionRepository: SubscriptionRepository
+
+    @Autowired private lateinit var bannerConfigRepository: BannerConfigRepository
 
     private data class Account(
         val cookie: Cookie,
@@ -208,6 +212,15 @@ class OverviewApiIntegrationTest {
             httpOnly = httpOnly,
         )
 
+    // Appends a banner version past the seeded v1 to mark the site as "customised". Reuses the seed's
+    // document so the test doesn't have to build a valid config — only the version bump matters here.
+    private fun customiseBanner(siteId: UUID) {
+        val seed = assertNotNull(bannerConfigRepository.findFirstBySiteIdOrderByVersionDesc(siteId))
+        bannerConfigRepository.save(
+            BannerConfigEntity(siteId = siteId, version = seed.version + 1, config = seed.config, publishedAt = PUBLISHED_AT),
+        )
+    }
+
     private fun uniqueDomain(prefix: String): String = "$prefix-${UUID.randomUUID().toString().take(8)}.example.com"
 
     private fun overview(cookie: Cookie) =
@@ -236,6 +249,30 @@ class OverviewApiIntegrationTest {
             .andExpect(jsonPath("$.data.headline.acceptAllRate").doesNotExist())
             .andExpect(jsonPath("$.data.headline.lastScanAt").doesNotExist())
             .andExpect(jsonPath("$.data.actions.length()").value(0))
+            // No sites yet — every onboarding step is still to do.
+            .andExpect(jsonPath("$.data.onboarding.addedSite").value(false))
+            .andExpect(jsonPath("$.data.onboarding.scanned").value(false))
+            .andExpect(jsonPath("$.data.onboarding.customisedBanner").value(false))
+            .andExpect(jsonPath("$.data.onboarding.verified").value(false))
+    }
+
+    @Test
+    fun `onboarding reflects add, scan, customise and verify against the real data`() {
+        val account = registeredUser(Plan.BUSINESS)
+        // One site carries the account through scan + verify; another carries the customise step, so the
+        // flags exercise the account-wide "any site" rule end to end.
+        val live = createSite(account.cookie, uniqueDomain("live"))
+        seedCompletedScan(live, listOf(cookie("sid", "necessary", isKnown = true)))
+        val customised = createSite(account.cookie, uniqueDomain("customised"), verified = false)
+        customiseBanner(customised)
+
+        overview(account.cookie)
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.onboarding.addedSite").value(true))
+            .andExpect(jsonPath("$.data.onboarding.scanned").value(true))
+            // max(version) > 1 for the second site: the SQL rollup, not just the unit-tested threshold.
+            .andExpect(jsonPath("$.data.onboarding.customisedBanner").value(true))
+            .andExpect(jsonPath("$.data.onboarding.verified").value(true))
     }
 
     @Test
@@ -268,6 +305,9 @@ class OverviewApiIntegrationTest {
             // The most recent scan across all sites, not the first one found.
             .andExpect(jsonPath("$.data.headline.lastScanAt").value(SCANNED_AT.plusSeconds(3_600).toString()))
             .andExpect(jsonPath("$.data.actions.length()").value(0))
+            // Both sites are added, scanned and verified, but neither edited its seeded v1 banner.
+            .andExpect(jsonPath("$.data.onboarding.customisedBanner").value(false))
+            .andExpect(jsonPath("$.data.onboarding.verified").value(true))
     }
 
     @Test

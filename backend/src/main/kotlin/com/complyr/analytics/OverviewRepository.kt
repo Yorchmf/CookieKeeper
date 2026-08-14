@@ -27,6 +27,17 @@ data class LatestPolicyRow(
 )
 
 /**
+ * A site's highest banner-config version. Every site is seeded a published v1 on creation
+ * ([com.complyr.banner.BannerConfigService.createDefaultFor]) and edits append v2+, so a [version] above
+ * the seed is the signal that the customer has customised their banner — the onboarding checklist reads it
+ * that way. Includes drafts: a saved-but-unpublished edit still counts as the customer having engaged.
+ */
+data class BannerVersionRow(
+    val siteId: UUID,
+    val version: Int,
+)
+
+/**
  * Batch reads backing the account-level dashboard home ([OverviewService]). Every query takes the whole set
  * of the account's site ids and returns one row per site, because the alternative — looping the per-site
  * finders in [AnalyticsService] — is an N+1 on the page a customer hits most often.
@@ -120,6 +131,27 @@ class OverviewRepository(
                 siteId = it[0] as UUID,
                 version = (it[1] as Number).toInt(),
                 publishedAt = it[2] as Instant,
+            )
+        }
+    }
+
+    /**
+     * Each site's highest banner-config version — the max over all versions (published or draft), since any
+     * version beyond the seeded v1 means the customer has edited the banner. One `GROUP BY` pass keyed on
+     * the account's site ids, mirroring the batch shape of the other reads here.
+     */
+    fun maxBannerVersions(siteIds: Collection<UUID>): List<BannerVersionRow> {
+        val sql =
+            """
+            SELECT site_id, max(version) AS version
+            FROM banner_configs
+            WHERE site_id IN (:siteIds)
+            GROUP BY site_id
+            """.trimIndent()
+        return rows(sql, mapOf("siteIds" to siteIds)).map {
+            BannerVersionRow(
+                siteId = it[0] as UUID,
+                version = (it[1] as Number).toInt(),
             )
         }
     }

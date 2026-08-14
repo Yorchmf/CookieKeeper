@@ -2,10 +2,12 @@ package com.complyr.analytics
 
 import com.complyr.analytics.dto.AccountOverviewResponse
 import com.complyr.analytics.dto.AnalyticsFilter
+import com.complyr.analytics.dto.OnboardingProgress
 import com.complyr.analytics.dto.OverviewAction
 import com.complyr.analytics.dto.OverviewActionKind
 import com.complyr.analytics.dto.OverviewHeadline
 import com.complyr.banner.ConsentCategory
+import com.complyr.banner.DefaultBannerConfig
 import com.complyr.site.SiteEntity
 import com.complyr.site.SiteRepository
 import com.complyr.site.SiteStatus
@@ -40,8 +42,9 @@ class OverviewService(
         val sites = siteRepository.findAllByUserIdAndStatus(userId, SiteStatus.ACTIVE)
 
         // Early return before any batch query: `IN ()` is not valid SQL, and a brand-new account with no
-        // sites is the single most common state on this page.
-        if (sites.isEmpty()) return AccountOverviewResponse(range, EMPTY_HEADLINE, emptyList())
+        // sites is the single most common state on this page. An empty account has completed no step, so
+        // the checklist shows every one still to do.
+        if (sites.isEmpty()) return AccountOverviewResponse(range, EMPTY_HEADLINE, emptyList(), EMPTY_ONBOARDING)
 
         val siteIds = sites.map { it.id }
         val scans = overviewRepository.latestCompletedScans(siteIds).associateBy { it.siteId }
@@ -54,14 +57,41 @@ class OverviewService(
                     .associateBy { it.scanId }
             }
         val policies = overviewRepository.latestPublishedPolicies(siteIds).associateBy { it.siteId }
+        val bannerVersions = overviewRepository.maxBannerVersions(siteIds).associateBy { it.siteId }
         val consent = consentAnalyticsRepository.accountActionCounts(siteIds, range.from, range.to)
 
         return AccountOverviewResponse(
             range = range,
             headline = headline(sites, scans, cookies, consent),
             actions = sites.mapNotNull { action(it, scans, cookies, policies) }.sortedBy { severity(it) },
+            onboarding = onboarding(sites, scans, bannerVersions),
         )
     }
+
+    /**
+     * Account-wide first-run progress: for each step, has ANY active site reached it. Reuses the same batch
+     * maps as the headline and action list, plus one banner-version read — no per-site round-trips.
+     *
+     * "Verified" doubles as "widget embedded": snippet-on-homepage is itself a verification method, and we
+     * have no independent live-widget heartbeat, so verification is the honest proxy for the embed step.
+     */
+    private fun onboarding(
+        sites: List<SiteEntity>,
+        scans: Map<UUID, LatestScanRow>,
+        bannerVersions: Map<UUID, BannerVersionRow>,
+    ): OnboardingProgress =
+        OnboardingProgress(
+            addedSite = sites.isNotEmpty(),
+            scanned = sites.any { scans.containsKey(it.id) },
+            // A version past the seeded v1 is an edit the customer made; the seed alone is not "customised".
+            // (Relies on the invariant that only customer edits bump banner version — no background job does.)
+            customisedBanner =
+                sites.any { site ->
+                    val seedVersion = DefaultBannerConfig.FIRST_VERSION
+                    (bannerVersions[site.id]?.version ?: seedVersion) > seedVersion
+                },
+            verified = sites.any { it.verifiedAt != null },
+        )
 
     private fun headline(
         sites: List<SiteEntity>,
@@ -123,6 +153,14 @@ class OverviewService(
                 acceptAllRate = null,
                 cookiesFound = 0,
                 lastScanAt = null,
+            )
+
+        private val EMPTY_ONBOARDING =
+            OnboardingProgress(
+                addedSite = false,
+                scanned = false,
+                customisedBanner = false,
+                verified = false,
             )
     }
 }

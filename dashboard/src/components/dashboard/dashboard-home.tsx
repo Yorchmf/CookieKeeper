@@ -5,14 +5,28 @@ import { useMemo, useState } from "react";
 
 import { StatTile } from "@/components/analytics/stat-tile";
 import { AttentionList } from "@/components/dashboard/attention-list";
+import { OnboardingChecklist } from "@/components/dashboard/onboarding-checklist";
 import { TrialStrip } from "@/components/dashboard/trial-strip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOverview } from "@/hooks/use-overview";
-import { Link } from "@/i18n/navigation";
 import type { AnalyticsFilter } from "@/lib/api/analytics";
+import type { OnboardingProgress } from "@/lib/api/overview";
 
 const MS_PER_DAY = 86_400_000;
 const WINDOW_DAYS = 30;
+
+/**
+ * Whether every getting-started step is done. The payload carries no `complete` flag by design — it is this
+ * trivial `&&`, derived on the client so there is one fewer field to keep in sync with the backend.
+ */
+function isOnboardingComplete(onboarding: OnboardingProgress): boolean {
+  return (
+    onboarding.addedSite &&
+    onboarding.scanned &&
+    onboarding.customisedBanner &&
+    onboarding.verified
+  );
+}
 
 /** Loading placeholder mirroring the real layout so the page doesn't jump when data lands. */
 function OverviewSkeleton() {
@@ -67,8 +81,22 @@ export function DashboardHome() {
           <p role="alert" className="text-sm text-destructive">
             {t("loadError")}
           </p>
-        ) : query.data.headline.activeSites === 0 ? (
-          <EmptyState />
+        ) : !isOnboardingComplete(query.data.onboarding) ? (
+          // Setup isn't finished: guide the customer through the funnel instead of a health summary. The
+          // headline only appears once a site exists (there is nothing to summarise before that), and the
+          // attention list stays hidden — it would just echo the same "verify / scan" steps.
+          <>
+            {query.data.headline.activeSites > 0 ? (
+              <Headline
+                activeSites={query.data.headline.activeSites}
+                consentEvents={query.data.headline.consentEvents}
+                acceptAllRate={query.data.headline.acceptAllRate}
+                cookiesFound={query.data.headline.cookiesFound}
+                lastScanAt={query.data.headline.lastScanAt}
+              />
+            ) : null}
+            <OnboardingChecklist progress={query.data.onboarding} />
+          </>
         ) : (
           <>
             <Headline
@@ -140,24 +168,6 @@ function Headline({
             : t("cookiesHintNever")
         }
       />
-    </div>
-  );
-}
-
-/** First-run state: nothing to summarise yet, so the page is a single instruction. */
-function EmptyState() {
-  const t = useTranslations("dashboard.empty");
-
-  return (
-    <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border p-10 text-center">
-      <p className="font-medium">{t("title")}</p>
-      <p className="max-w-md text-sm text-muted-foreground">{t("description")}</p>
-      <Link
-        href="/sites"
-        className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:ring-3 focus-visible:ring-ring/50 outline-none"
-      >
-        {t("cta")}
-      </Link>
     </div>
   );
 }

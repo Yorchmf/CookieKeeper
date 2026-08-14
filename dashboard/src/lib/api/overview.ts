@@ -49,11 +49,28 @@ export interface OverviewHeadline {
   lastScanAt: string | null;
 }
 
+/**
+ * First-run progress for the getting-started checklist (backend `OnboardingProgress`). Each flag is
+ * account-wide — "has ANY active site reached this step" — so it is exact for the single-site accounts
+ * onboarding targets. Every flag is false for an account with no sites; the checklist hides itself once
+ * all four are true (derive that `&&` on the client — the payload carries no `complete` field).
+ *
+ * `verified` doubles as "widget embedded": snippet-on-homepage is itself a verification method and there
+ * is no independent live-widget signal, so verification is the honest proxy for the embed step.
+ */
+export interface OnboardingProgress {
+  addedSite: boolean;
+  scanned: boolean;
+  customisedBanner: boolean;
+  verified: boolean;
+}
+
 /** The dashboard home payload (backend `AccountOverviewResponse`). */
 export interface AccountOverview {
   range: AnalyticsRange;
   headline: OverviewHeadline;
   actions: OverviewAction[];
+  onboarding: OnboardingProgress;
 }
 
 /** Fetch the account overview within the (optional) window. */

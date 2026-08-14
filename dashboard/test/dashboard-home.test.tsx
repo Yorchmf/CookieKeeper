@@ -38,6 +38,9 @@ function overview(partial: Partial<AccountOverview> = {}): AccountOverview {
       lastScanAt: "2026-08-10T09:00:00Z",
     },
     actions: [],
+    // Default to a fully onboarded account so the headline/attention surface renders; the first-run tests
+    // override this to drive the checklist.
+    onboarding: { addedSite: true, scanned: true, customisedBanner: true, verified: true },
     ...partial,
   };
 }
@@ -127,7 +130,7 @@ describe("DashboardHome", () => {
     expect(screen.queryAllByRole("listitem")).toHaveLength(0);
   });
 
-  test("an account with no active sites gets the first-run instruction instead of zeroed tiles", () => {
+  test("an account with no active sites gets the onboarding checklist instead of zeroed tiles", () => {
     useOverview.mockReturnValue({
       isPending: false,
       isError: false,
@@ -139,14 +142,38 @@ describe("DashboardHome", () => {
           cookiesFound: 0,
           lastScanAt: null,
         },
+        onboarding: { addedSite: false, scanned: false, customisedBanner: false, verified: false },
       }),
     });
 
     renderHome();
 
-    expect(screen.getByText("Add your first site")).toBeDefined();
-    expect(screen.getByRole("link", { name: "Go to sites" })).toBeDefined();
+    // The checklist is the first-run surface; before any site exists there are no figures to summarise.
+    expect(screen.getByRole("heading", { name: "Get set up" })).toBeDefined();
+    expect(screen.getByRole("link", { name: "Add your site" }).getAttribute("href")).toBe("/sites");
+    expect(screen.queryByText("Active sites")).toBeNull();
     expect(screen.queryByText("Needs your attention")).toBeNull();
+  });
+
+  test("a part-way account still onboarding gets the checklist and headline, not the attention list", () => {
+    useOverview.mockReturnValue({
+      isPending: false,
+      isError: false,
+      data: overview({
+        actions: [action({ kind: "unverified", siteId: "s1" })],
+        // Site added and scanned, banner customised, but not yet verified — one step to go.
+        onboarding: { addedSite: true, scanned: true, customisedBanner: true, verified: false },
+      }),
+    });
+
+    renderHome();
+
+    expect(screen.getByRole("heading", { name: "Get set up" })).toBeDefined();
+    // Figures still render once a site exists, but the attention list stays hidden during onboarding.
+    expect(screen.getByText("Active sites")).toBeDefined();
+    expect(screen.queryByText("Needs your attention")).toBeNull();
+    // The CTA points at the one remaining step, not back to the start.
+    expect(screen.getByRole("link", { name: "Embed and verify" }).getAttribute("href")).toBe("/sites");
   });
 
   test("a failed load is announced, not silently rendered as an empty account", () => {
@@ -155,7 +182,7 @@ describe("DashboardHome", () => {
     renderHome();
 
     expect(screen.getByRole("alert").textContent).toContain("couldn't load");
-    expect(screen.queryByText("Add your first site")).toBeNull();
+    expect(screen.queryByText("Get set up")).toBeNull();
   });
 
   test("the loading state marks the region busy so assistive tech doesn't read a half-built page", () => {

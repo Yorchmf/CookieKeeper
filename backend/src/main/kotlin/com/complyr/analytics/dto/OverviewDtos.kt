@@ -20,6 +20,27 @@ data class AccountOverviewResponse(
     val range: AnalyticsRange,
     val headline: OverviewHeadline,
     val actions: List<OverviewAction>,
+    val onboarding: OnboardingProgress,
+)
+
+/**
+ * First-run progress for the dashboard's getting-started checklist: has the account walked a site through
+ * add → scan → customise banner → verify. Each flag is account-wide ("has ANY active site reached this
+ * step"), which is exact for the single-site accounts onboarding targets and lenient — never blocking — for
+ * the rare multi-site case, where a specific site's full state lives on its own page.
+ *
+ * Every flag is false for an account with no sites, so the checklist is the natural first-run surface. The
+ * client hides it once all four are true; the server does not carry a `complete` flag because that is a
+ * trivial `&&` the client can derive, and one fewer field is one fewer thing to keep in sync.
+ *
+ * Deliberately account-wide and unwindowed: "have you done this yet" is a lifetime question, unlike the
+ * consent figures in [OverviewHeadline].
+ */
+data class OnboardingProgress(
+    val addedSite: Boolean,
+    val scanned: Boolean,
+    val customisedBanner: Boolean,
+    val verified: Boolean,
 )
 
 /**

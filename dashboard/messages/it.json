@@ -585,16 +585,41 @@
         "insecure_cookies": "Cookie non essenziali inviati senza Secure o HttpOnly."
       }
     },
-    "empty": {
-      "title": "Aggiungi il tuo primo sito",
-      "description": "Registra un dominio per scansionarne i cookie, pubblicare una policy e iniziare a registrare i consensi.",
-      "cta": "Vai ai siti"
-    },
     "trial": {
       "daysLeft": "{days, plural, =0 {La tua prova termina oggi} one {# giorno rimasto di prova} other {# giorni rimasti di prova}}",
       "usage": "{used, number} di {max, number} eventi di consenso utilizzati",
       "expired": "La tua prova è terminata. Abbonati per aggiungere siti ed eseguire nuove scansioni.",
       "cta": "Vedi i piani"
+    },
+    "onboarding": {
+      "title": "Configurazione",
+      "subtitle": "Pochi passaggi per un banner di consenso conforme e attivo.",
+      "progress": "{done} di {total} completati",
+      "doneLabel": "Completato",
+      "progressLabel": "Avanzamento configurazione",
+      "currentLabel": "Passaggio attuale",
+      "steps": {
+        "addSite": {
+          "title": "Aggiungi il tuo sito",
+          "description": "Registra il dominio che vuoi proteggere.",
+          "cta": "Aggiungi il tuo sito"
+        },
+        "scan": {
+          "title": "Cerca i cookie",
+          "description": "Scopri quali tracker imposta davvero il tuo sito.",
+          "cta": "Avvia una scansione"
+        },
+        "customise": {
+          "title": "Personalizza il banner",
+          "description": "Adatta il banner di consenso al tuo marchio e alle tue lingue.",
+          "cta": "Personalizza banner"
+        },
+        "verify": {
+          "title": "Integra e verifica",
+          "description": "Aggiungi lo snippet e conferma che il widget sia attivo.",
+          "cta": "Integra e verifica"
+        }
+      }
     }
   },
   "scans": {

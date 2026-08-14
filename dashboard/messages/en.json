@@ -585,16 +585,41 @@
         "insecure_cookies": "Non-essential cookies sent without Secure or HttpOnly."
       }
     },
-    "empty": {
-      "title": "Add your first site",
-      "description": "Register a domain to scan its cookies, publish a policy, and start recording consent.",
-      "cta": "Go to sites"
-    },
     "trial": {
       "daysLeft": "{days, plural, =0 {Your trial ends today} one {# day left in your trial} other {# days left in your trial}}",
       "usage": "{used, number} of {max, number} consent events used",
       "expired": "Your trial has ended. Subscribe to add sites and run scans again.",
       "cta": "See plans"
+    },
+    "onboarding": {
+      "title": "Get set up",
+      "subtitle": "A few steps to a compliant, live consent banner.",
+      "progress": "{done} of {total} done",
+      "doneLabel": "Done",
+      "progressLabel": "Setup progress",
+      "currentLabel": "Current step",
+      "steps": {
+        "addSite": {
+          "title": "Add your site",
+          "description": "Register the domain you want to protect.",
+          "cta": "Add your site"
+        },
+        "scan": {
+          "title": "Scan for cookies",
+          "description": "Discover which trackers your site actually sets.",
+          "cta": "Run a scan"
+        },
+        "customise": {
+          "title": "Customise your banner",
+          "description": "Match the consent banner to your brand and languages.",
+          "cta": "Customise banner"
+        },
+        "verify": {
+          "title": "Embed and verify",
+          "description": "Add the snippet, then confirm the widget is live.",
+          "cta": "Embed and verify"
+        }
+      }
     }
   },
   "scans": {

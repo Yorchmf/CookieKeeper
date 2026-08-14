@@ -585,16 +585,41 @@
         "insecure_cookies": "Nicht notwendige Cookies ohne Secure oder HttpOnly."
       }
     },
-    "empty": {
-      "title": "Fügen Sie Ihre erste Website hinzu",
-      "description": "Registrieren Sie eine Domain, um ihre Cookies zu scannen, eine Richtlinie zu veröffentlichen und Einwilligungen zu erfassen.",
-      "cta": "Zu den Websites"
-    },
     "trial": {
       "daysLeft": "{days, plural, =0 {Ihre Testphase endet heute} one {noch # Tag in Ihrer Testphase} other {noch # Tage in Ihrer Testphase}}",
       "usage": "{used, number} von {max, number} Einwilligungsereignissen genutzt",
       "expired": "Ihre Testphase ist beendet. Abonnieren Sie, um wieder Websites hinzuzufügen und Scans zu starten.",
       "cta": "Tarife ansehen"
+    },
+    "onboarding": {
+      "title": "Einrichtung",
+      "subtitle": "Ein paar Schritte zu einem rechtskonformen, aktiven Consent-Banner.",
+      "progress": "{done} von {total} erledigt",
+      "doneLabel": "Erledigt",
+      "progressLabel": "Einrichtungsfortschritt",
+      "currentLabel": "Aktueller Schritt",
+      "steps": {
+        "addSite": {
+          "title": "Website hinzufügen",
+          "description": "Registrieren Sie die Domain, die Sie schützen möchten.",
+          "cta": "Website hinzufügen"
+        },
+        "scan": {
+          "title": "Nach Cookies scannen",
+          "description": "Finden Sie heraus, welche Tracker Ihre Website tatsächlich setzt.",
+          "cta": "Scan starten"
+        },
+        "customise": {
+          "title": "Banner anpassen",
+          "description": "Passen Sie das Consent-Banner an Ihre Marke und Sprachen an.",
+          "cta": "Banner anpassen"
+        },
+        "verify": {
+          "title": "Einbinden und verifizieren",
+          "description": "Fügen Sie das Snippet ein und bestätigen Sie, dass das Widget aktiv ist.",
+          "cta": "Einbinden und verifizieren"
+        }
+      }
     }
   },
   "scans": {
