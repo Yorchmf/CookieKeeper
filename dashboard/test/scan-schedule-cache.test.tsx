@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, type UseMutationResult } from "@tanstack/react-query";
 import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -34,7 +34,9 @@ const SITE_ID = "site-1";
  * Mounts the schedule query and one site mutation under one client, so the assertion is on the cache
  * contract between two separately-authored hooks rather than on either hook's internals.
  */
-function renderPair(useMutationHook: typeof useArchiveSite) {
+function renderPair<TData>(
+  useMutationHook: (id: string) => UseMutationResult<TData, Error, void, unknown>,
+) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
