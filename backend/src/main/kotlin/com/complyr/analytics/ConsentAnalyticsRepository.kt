@@ -172,6 +172,56 @@ class ConsentAnalyticsRepository(
         }
     }
 
+    /**
+     * Per-category opt-in aggregate across MANY sites within `[from, to)` — the account-level companion to
+     * [categoryOptInCounts]. Category keys are shared across a customer's sites (the banner taxonomy), so the
+     * tallies sum cleanly. [siteIds] must not be empty (see [accountDailyActionCounts]).
+     */
+    fun accountCategoryOptInCounts(
+        siteIds: Collection<UUID>,
+        from: Instant,
+        to: Instant,
+    ): List<CategoryOptInCount> {
+        val sql =
+            """
+            SELECT kv.key AS category,
+                   count(*) FILTER (WHERE kv.value = 'true') AS optins,
+                   count(*) AS decisions
+            FROM consent_events ce, LATERAL jsonb_each_text(ce.categories_jsonb) AS kv
+            WHERE ce.site_id IN (:siteIds) AND ce.created_at >= :from AND ce.created_at < :to
+            GROUP BY kv.key
+            """.trimIndent()
+        return rows(sql, mapOf("siteIds" to siteIds, "from" to from, "to" to to)).map {
+            CategoryOptInCount(
+                category = it[0] as String,
+                optIns = (it[1] as Number).toLong(),
+                decisions = (it[2] as Number).toLong(),
+            )
+        }
+    }
+
+    /**
+     * Event counts by visitor language across MANY sites within `[from, to)` — the account-level companion to
+     * [languageCounts], most-frequent first. [siteIds] must not be empty (see [accountDailyActionCounts]).
+     */
+    fun accountLanguageCounts(
+        siteIds: Collection<UUID>,
+        from: Instant,
+        to: Instant,
+    ): List<LanguageCountRow> {
+        val sql =
+            """
+            SELECT coalesce(lang, '') AS lang, count(*) AS cnt
+            FROM consent_events
+            WHERE site_id IN (:siteIds) AND created_at >= :from AND created_at < :to
+            GROUP BY lang
+            ORDER BY cnt DESC, lang ASC
+            """.trimIndent()
+        return rows(sql, mapOf("siteIds" to siteIds, "from" to from, "to" to to)).map {
+            LanguageCountRow(lang = it[0] as String, count = (it[1] as Number).toLong())
+        }
+    }
+
     private fun rows(
         sql: String,
         siteId: UUID,

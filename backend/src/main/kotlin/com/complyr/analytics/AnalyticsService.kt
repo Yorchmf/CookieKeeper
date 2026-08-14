@@ -1,14 +1,11 @@
 package com.complyr.analytics
 
-import com.complyr.analytics.dto.ActionBreakdown
 import com.complyr.analytics.dto.AnalyticsFilter
 import com.complyr.analytics.dto.AnalyticsRange
 import com.complyr.analytics.dto.CategoryCount
-import com.complyr.analytics.dto.CategoryOptIn
 import com.complyr.analytics.dto.ConsentAnalytics
 import com.complyr.analytics.dto.ConsentTrendPoint
 import com.complyr.analytics.dto.CookieAnalytics
-import com.complyr.analytics.dto.LanguageCount
 import com.complyr.analytics.dto.PolicyAnalytics
 import com.complyr.analytics.dto.SiteAnalyticsResponse
 import com.complyr.banner.ConsentCategory
@@ -40,6 +37,7 @@ class AnalyticsService(
     private val scanCookieRepository: ScanCookieRepository,
     private val policyRepository: PolicyRepository,
     private val rangeResolver: AnalyticsRangeResolver,
+    private val consentAnalyticsAssembler: ConsentAnalyticsAssembler,
 ) {
     @Transactional(readOnly = true)
     fun summarize(
@@ -66,60 +64,18 @@ class AnalyticsService(
     ): List<ConsentTrendPoint> {
         requireOwnedSite(userId, siteId)
         val range = rangeResolver.resolve(userId, filter)
-        return trendPoints(consentAnalyticsRepository.dailyActionCounts(siteId, range.from, range.to))
+        return consentAnalyticsAssembler.trend(consentAnalyticsRepository.dailyActionCounts(siteId, range.from, range.to))
     }
 
     private fun consentAnalytics(
         siteId: UUID,
         range: AnalyticsRange,
-    ): ConsentAnalytics {
-        val daily = consentAnalyticsRepository.dailyActionCounts(siteId, range.from, range.to)
-        val trend = trendPoints(daily)
-        val byAction =
-            ActionBreakdown(
-                acceptAll = daily.filter { it.action == ACTION_ACCEPT_ALL }.sumOf { it.count },
-                rejectAll = daily.filter { it.action == ACTION_REJECT_ALL }.sumOf { it.count },
-                custom = daily.filter { it.action == ACTION_CUSTOM }.sumOf { it.count },
-            )
-        val optIn =
-            consentAnalyticsRepository.categoryOptInCounts(siteId, range.from, range.to).map {
-                CategoryOptIn(
-                    category = it.category,
-                    optIns = it.optIns,
-                    decisions = it.decisions,
-                    rate = if (it.decisions == 0L) 0.0 else it.optIns.toDouble() / it.decisions,
-                )
-            }
-        val languages =
-            consentAnalyticsRepository.languageCounts(siteId, range.from, range.to).map {
-                LanguageCount(lang = it.lang, count = it.count)
-            }
-        return ConsentAnalytics(
-            totalEvents = byAction.acceptAll + byAction.rejectAll + byAction.custom,
-            byAction = byAction,
-            trend = trend,
-            categoryOptIn = optIn,
-            languageSplit = languages,
+    ): ConsentAnalytics =
+        consentAnalyticsAssembler.assemble(
+            daily = consentAnalyticsRepository.dailyActionCounts(siteId, range.from, range.to),
+            optIn = consentAnalyticsRepository.categoryOptInCounts(siteId, range.from, range.to),
+            languages = consentAnalyticsRepository.languageCounts(siteId, range.from, range.to),
         )
-    }
-
-    // Collapse the (day, action) rows into one point per day so the client gets a dense series to chart.
-    private fun trendPoints(daily: List<DailyActionCount>): List<ConsentTrendPoint> =
-        daily
-            .groupBy { it.day }
-            .toSortedMap()
-            .map { (day, rows) ->
-                val accept = rows.filter { it.action == ACTION_ACCEPT_ALL }.sumOf { it.count }
-                val reject = rows.filter { it.action == ACTION_REJECT_ALL }.sumOf { it.count }
-                val custom = rows.filter { it.action == ACTION_CUSTOM }.sumOf { it.count }
-                ConsentTrendPoint(
-                    date = day,
-                    acceptAll = accept,
-                    rejectAll = reject,
-                    custom = custom,
-                    total = accept + reject + custom,
-                )
-            }
 
     private fun cookieAnalytics(siteId: UUID): CookieAnalytics? {
         val scan = scanRepository.findFirstBySiteIdAndStatusOrderByCreatedAtDesc(siteId, ScanStatus.DONE) ?: return null

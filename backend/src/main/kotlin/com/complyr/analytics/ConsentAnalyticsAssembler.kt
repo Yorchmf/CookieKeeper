@@ -1,0 +1,72 @@
+package com.complyr.analytics
+
+import com.complyr.analytics.dto.ActionBreakdown
+import com.complyr.analytics.dto.CategoryOptIn
+import com.complyr.analytics.dto.ConsentAnalytics
+import com.complyr.analytics.dto.ConsentTrendPoint
+import com.complyr.analytics.dto.LanguageCount
+import org.springframework.stereotype.Component
+
+/**
+ * Builds the [ConsentAnalytics] view from the three raw aggregate row sets a consent read produces: the daily
+ * per-action counts, the per-category opt-in tallies, and the language tallies.
+ *
+ * Extracted so the per-site read ([AnalyticsService]) and the cross-site roll-up ([AccountAnalyticsService])
+ * share ONE definition of the daily trend series, the accept/reject/custom breakdown, and the opt-in rate
+ * math. In a compliance product these figures must be identical whether a customer looks at one site or all
+ * of them; a divergence between two copies of this arithmetic would be a reporting bug, so there is only one
+ * copy. Pure and stateless — the SQL lives in [ConsentAnalyticsRepository], the windowing in
+ * [AnalyticsRangeResolver].
+ */
+@Component
+class ConsentAnalyticsAssembler {
+    fun assemble(
+        daily: List<DailyActionCount>,
+        optIn: List<CategoryOptInCount>,
+        languages: List<LanguageCountRow>,
+    ): ConsentAnalytics {
+        val byAction =
+            ActionBreakdown(
+                acceptAll = daily.filter { it.action == AnalyticsService.ACTION_ACCEPT_ALL }.sumOf { it.count },
+                rejectAll = daily.filter { it.action == AnalyticsService.ACTION_REJECT_ALL }.sumOf { it.count },
+                custom = daily.filter { it.action == AnalyticsService.ACTION_CUSTOM }.sumOf { it.count },
+            )
+        return ConsentAnalytics(
+            totalEvents = byAction.acceptAll + byAction.rejectAll + byAction.custom,
+            byAction = byAction,
+            trend = trend(daily),
+            categoryOptIn =
+                optIn.map {
+                    CategoryOptIn(
+                        category = it.category,
+                        optIns = it.optIns,
+                        decisions = it.decisions,
+                        // 0.0 (not a division-by-zero) when the category was carried by no decision.
+                        rate = if (it.decisions == 0L) 0.0 else it.optIns.toDouble() / it.decisions,
+                    )
+                },
+            languageSplit = languages.map { LanguageCount(lang = it.lang, count = it.count) },
+        )
+    }
+
+    /**
+     * Collapse the (day, action) rows into one dense point per day, ascending — the series the client charts,
+     * and the CSV export payload ([AnalyticsService.consentTrend]).
+     */
+    fun trend(daily: List<DailyActionCount>): List<ConsentTrendPoint> =
+        daily
+            .groupBy { it.day }
+            .toSortedMap()
+            .map { (day, rows) ->
+                val accept = rows.filter { it.action == AnalyticsService.ACTION_ACCEPT_ALL }.sumOf { it.count }
+                val reject = rows.filter { it.action == AnalyticsService.ACTION_REJECT_ALL }.sumOf { it.count }
+                val custom = rows.filter { it.action == AnalyticsService.ACTION_CUSTOM }.sumOf { it.count }
+                ConsentTrendPoint(
+                    date = day,
+                    acceptAll = accept,
+                    rejectAll = reject,
+                    custom = custom,
+                    total = accept + reject + custom,
+                )
+            }
+}
