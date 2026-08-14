@@ -973,6 +973,22 @@
     "title": "Analysen",
     "subtitle": "Einwilligungsentscheidungen, Cookie-Bestand und Richtlinienstatus für diese Website – aus Ihren eigenen Daten aggregiert.",
     "loadError": "Die Analysen für diese Website konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
+    "evidence_pack": {
+      "label": "Nachweispaket",
+      "businessOnly": "Das Compliance-Nachweispaket ist im Business-Tarif verfügbar.",
+      "dialog": {
+        "title": "Compliance-Nachweispaket herunterladen",
+        "description": "Eine einzige ZIP-Datei, die Sie einer Aufsichtsbehörde oder einem Datenschutzbeauftragten übergeben können. Sie bündelt die aktuellen Compliance-Nachweise dieser Website:",
+        "contents": {
+          "policy": "Ihre veröffentlichte Cookie-Richtlinie in allen Sprachen",
+          "consent": "Einwilligungsentscheidungen der letzten 30 Tage als CSV-Prüfprotokoll",
+          "scan": "Zusammenfassung Ihres letzten abgeschlossenen Scans – Cookies, Tracker und Compliance-Score",
+          "manifest": "Ein Manifest, das alles verbindet, mit Zeitstempeln und einem Hinweis zur Aufbewahrung"
+        },
+        "cancel": "Abbrechen",
+        "confirm": "ZIP herunterladen"
+      }
+    },
     "retry": "Erneut versuchen",
     "summary": {
       "totalEvents": "Einwilligungsereignisse",

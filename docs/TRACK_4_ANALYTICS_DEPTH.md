@@ -101,6 +101,12 @@
 
 ### Slice C — Compliance Evidence Pack (Download Bundle)
 
+**Status: ✅ SHIPPED** (branch `feat/track-4-analytics`). Streaming ZIP (not in-memory), Business-plan gated, scan report as JSON.
+
+- **Backend:** `ComplianceEvidenceService.prepare(userId, siteId)` resolves entitlement (403) → ownership (404) → ADR-20 tombstone eagerly, then returns a `PreparedEvidencePack(filename, write)`. `EvidencePackAssembler.write(...)` streams the ZIP via `java.util.zip.ZipOutputStream`: `manifest.json`, `policy/{lang}.html` per published language, `consent-events.csv` (trailing 30 days, streamed through the keyset-batched `ConsentCsvExportService`), `scan-report.json` (latest DONE scan; explicit `EMPTY` when none). Endpoint `GET /api/v1/sites/{siteId}/analytics/evidence-pack.zip` returns a `StreamingResponseBody` with `Content-Disposition: attachment; filename="evidence-pack-{safeDomain}-{yyyyMMdd-HHmmss}.zip"` (domain sanitized to `[A-Za-z0-9.-]`) and `Cache-Control: no-store`. Gates resolve before the first byte so a denial is a clean JSON envelope. Read-only — never touches the consent-ingestion path.
+- **Frontend:** `DownloadEvidencePackButton` (in the site analytics header) — Business-gated via `useEntitlement` (display-only; `LockedFeature` when not entitled), a confirmation `Dialog` listing the pack contents, download via a real `<a download>` styled with `buttonVariants`, and a PII-free Sentry breadcrumb on confirm. i18n under `analytics.evidence_pack.*` across all 5 locales.
+- **Tests:** `ComplianceEvidenceServiceTest` (gate order, filename, full ZIP structure + manifest + 30-day window, empty-state scan report, erased-account rejection), 3 new cases in `AnalyticsApiIntegrationTest` (happy path unzips + asserts entries/manifest/CSV/scan-report; 403 non-Business; 404 non-owner), and `download-evidence-pack-button.test.tsx` (locked upsell, busy-while-pending, confirm→download+one breadcrumb).
+
 **What:** One-click `<a download>` that bundles the current policy version + consent-log extract (last 30 days, CSV) + latest scan report (JSON/PDF? — TBD).
 
 **Backend:**

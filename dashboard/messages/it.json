@@ -973,6 +973,22 @@
     "title": "Analisi",
     "subtitle": "Decisioni di consenso, inventario dei cookie e stato dell'informativa per questo sito, aggregati dai tuoi dati.",
     "loadError": "Impossibile caricare le analisi di questo sito. Riprova.",
+    "evidence_pack": {
+      "label": "Pacchetto di prove",
+      "businessOnly": "Il pacchetto di prove di conformità è disponibile con il piano Business.",
+      "dialog": {
+        "title": "Scarica il pacchetto di prove di conformità",
+        "description": "Un unico file ZIP da consegnare a un'autorità di controllo o a un DPO. Raccoglie le prove di conformità attuali di questo sito:",
+        "contents": {
+          "policy": "La tua informativa sui cookie pubblicata, in tutte le lingue",
+          "consent": "Le decisioni di consenso degli ultimi 30 giorni, come registro di audit CSV",
+          "scan": "Il riepilogo della tua ultima scansione completata: cookie, tracker e punteggio di conformità",
+          "manifest": "Un manifesto che collega il tutto, con marche temporali e un avviso di conservazione"
+        },
+        "cancel": "Annulla",
+        "confirm": "Scarica ZIP"
+      }
+    },
     "retry": "Riprova",
     "summary": {
       "totalEvents": "Eventi di consenso",

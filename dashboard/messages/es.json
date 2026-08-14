@@ -973,6 +973,22 @@
     "title": "Analíticas",
     "subtitle": "Decisiones de consentimiento, inventario de cookies y estado de la política de este sitio, agregados a partir de tus propios datos.",
     "loadError": "No pudimos cargar las analíticas de este sitio. Inténtalo de nuevo.",
+    "evidence_pack": {
+      "label": "Paquete de pruebas",
+      "businessOnly": "El paquete de pruebas de cumplimiento está disponible en el plan Business.",
+      "dialog": {
+        "title": "Descargar el paquete de pruebas de cumplimiento",
+        "description": "Un único archivo ZIP que puedes entregar a un organismo regulador o a un DPO. Reúne las pruebas de cumplimiento actuales de este sitio:",
+        "contents": {
+          "policy": "Tu política de cookies publicada, en todos los idiomas",
+          "consent": "Las decisiones de consentimiento de los últimos 30 días, como registro de auditoría CSV",
+          "scan": "El resumen de tu último escaneo completado: cookies, rastreadores y puntuación de cumplimiento",
+          "manifest": "Un manifiesto que lo enlaza todo, con marcas de tiempo y un aviso de conservación"
+        },
+        "cancel": "Cancelar",
+        "confirm": "Descargar ZIP"
+      }
+    },
     "retry": "Reintentar",
     "summary": {
       "totalEvents": "Eventos de consentimiento",

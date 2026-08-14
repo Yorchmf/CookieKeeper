@@ -973,6 +973,22 @@
     "title": "Analytique",
     "subtitle": "Décisions de consentement, inventaire des cookies et statut de la politique pour ce site — agrégés à partir de vos propres données.",
     "loadError": "Impossible de charger l'analytique de ce site. Veuillez réessayer.",
+    "evidence_pack": {
+      "label": "Dossier de preuves",
+      "businessOnly": "Le dossier de preuves de conformité est disponible avec le plan Business.",
+      "dialog": {
+        "title": "Télécharger le dossier de preuves de conformité",
+        "description": "Un unique fichier ZIP à remettre à une autorité de contrôle ou à un DPO. Il regroupe les preuves de conformité actuelles de ce site :",
+        "contents": {
+          "policy": "Votre politique de cookies publiée, dans toutes les langues",
+          "consent": "Les décisions de consentement des 30 derniers jours, sous forme de journal d'audit CSV",
+          "scan": "Le résumé de votre dernier scan terminé — cookies, traceurs et score de conformité",
+          "manifest": "Un manifeste reliant le tout, avec horodatages et mention de conservation"
+        },
+        "cancel": "Annuler",
+        "confirm": "Télécharger le ZIP"
+      }
+    },
     "retry": "Réessayer",
     "summary": {
       "totalEvents": "Événements de consentement",

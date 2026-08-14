@@ -10,6 +10,7 @@ import { ACTION_COLORS } from "@/components/analytics/chart-theme";
 import { ChartCard } from "@/components/analytics/chart-card";
 import { ConsentTrendChart } from "@/components/analytics/consent-trend-chart";
 import { CookieInventory } from "@/components/analytics/cookie-inventory";
+import { DownloadEvidencePackButton } from "@/components/analytics/download-evidence-pack-button";
 import { ExportAnalyticsButton } from "@/components/analytics/export-analytics-button";
 import { LanguageSplit } from "@/components/analytics/language-split";
 import { parseRange, type RangeDays, RangeSelector } from "@/components/analytics/range-selector";
@@ -98,6 +99,7 @@ export function Analytics({ siteId }: { siteId: string }) {
       <div className="flex flex-wrap items-center gap-3">
         <RangeSelector value={range} onChange={applyRange} />
         <ExportAnalyticsButton siteId={siteId} filter={filter} />
+        <DownloadEvidencePackButton siteId={siteId} />
       </div>
       <p role="status" aria-live="polite" className="sr-only">
         {statusText}

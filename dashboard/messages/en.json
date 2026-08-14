@@ -974,6 +974,22 @@
     "subtitle": "Consent decisions, cookie inventory, and policy status for this site — aggregated from your own data.",
     "loadError": "We couldn't load analytics for this site. Please try again.",
     "retry": "Try again",
+    "evidence_pack": {
+      "label": "Evidence pack",
+      "businessOnly": "The compliance evidence pack is available on the Business plan.",
+      "dialog": {
+        "title": "Download compliance evidence pack",
+        "description": "A single ZIP you can hand to a regulator or DPO. It bundles this site's current compliance evidence:",
+        "contents": {
+          "policy": "Your published cookie policy, in every language",
+          "consent": "Consent decisions from the last 30 days, as a CSV audit log",
+          "scan": "Your latest completed scan summary — cookies, trackers, and compliance score",
+          "manifest": "A manifest tying it all together, with timestamps and a retention notice"
+        },
+        "cancel": "Cancel",
+        "confirm": "Download ZIP"
+      }
+    },
     "summary": {
       "totalEvents": "Consent events",
       "acceptShare": "Accept-all rate",

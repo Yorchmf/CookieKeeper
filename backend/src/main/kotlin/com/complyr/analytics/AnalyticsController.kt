@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody
 import java.util.UUID
 
 /**
@@ -25,6 +26,7 @@ import java.util.UUID
 class AnalyticsController(
     private val analyticsService: AnalyticsService,
     private val entitlementService: EntitlementService,
+    private val complianceEvidenceService: ComplianceEvidenceService,
 ) {
     @GetMapping
     fun summarize(
@@ -55,5 +57,25 @@ class AnalyticsController(
             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"analytics-trend.csv\"")
             .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
             .body(csv.toByteArray(Charsets.UTF_8))
+    }
+
+    /**
+     * Business-plan compliance evidence pack: a ZIP of the published policy, the trailing 30 days of consent
+     * audit evidence, the latest scan's compliance summary, and a manifest. Both gates — entitlement (403)
+     * then ownership (404) — resolve in [ComplianceEvidenceService.prepare] before any byte is streamed, so a
+     * denial is a clean JSON envelope rather than a truncated 200. The body is assembled lazily inside the
+     * [StreamingResponseBody] so the consent log streams in bounded keyset pages.
+     */
+    @GetMapping("/evidence-pack.zip", produces = ["application/zip"])
+    fun evidencePack(
+        @PathVariable siteId: UUID,
+    ): ResponseEntity<StreamingResponseBody> {
+        val prepared = complianceEvidenceService.prepare(CurrentUser.id(), siteId)
+        return ResponseEntity
+            .ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"${prepared.filename}\"")
+            .header(HttpHeaders.CACHE_CONTROL, "no-store")
+            .contentType(MediaType.parseMediaType("application/zip"))
+            .body(StreamingResponseBody { out -> prepared.write(out) })
     }
 }

@@ -25,13 +25,17 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import tools.jackson.databind.ObjectMapper
 import java.time.Instant
 import java.util.UUID
+import java.util.zip.ZipInputStream
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
@@ -375,5 +379,116 @@ class AnalyticsApiIntegrationTest {
 
         assertFalse(csv.contains("hash-"), "ip hash must never reach an aggregate export")
         assertFalse(csv.contains("test-agent"), "user agent must never reach an aggregate export")
+    }
+
+    /** Drives a streaming (async) GET to completion and returns the ZIP entry name → bytes map. */
+    private fun downloadEvidencePack(
+        siteId: UUID,
+        cookie: Cookie,
+    ): Pair<String, Map<String, ByteArray>> {
+        val started =
+            mockMvc
+                .perform(get("/api/v1/sites/$siteId/analytics/evidence-pack.zip").cookie(cookie))
+                .andExpect(status().isOk)
+                .andReturn()
+        val response =
+            mockMvc
+                .perform(asyncDispatch(started))
+                .andExpect(status().isOk)
+                .andExpect(header().string("Content-Type", "application/zip"))
+                .andReturn()
+                .response
+        val disposition = assertNotNull(response.getHeader("Content-Disposition"))
+        val entries = mutableMapOf<String, ByteArray>()
+        ZipInputStream(response.contentAsByteArray.inputStream()).use { zip ->
+            var entry = zip.nextEntry
+            while (entry != null) {
+                entries[entry.name] = zip.readBytes()
+                zip.closeEntry()
+                entry = zip.nextEntry
+            }
+        }
+        return disposition to entries
+    }
+
+    @Test
+    fun `business account downloads a compliance evidence pack zip`() {
+        val account = businessUser()
+        val domain = uniqueDomain("evidence")
+        val siteId = createSite(account.cookie, domain)
+        seedEvent(siteId, Instant.parse("2026-08-05T10:00:00Z"), "accept_all", mapOf("statistics" to true), "en")
+        seedCompletedScan(
+            siteId,
+            cookies = listOf(cookie("_ga", "statistics", isKnown = true, secure = false, httpOnly = false)),
+            trackerCount = 2,
+        )
+        val publishedAt = Instant.parse("2026-08-04T00:00:00Z")
+        policyRepository.save(PolicyEntity(siteId = siteId, version = 3, language = "en", html = "<p>en</p>", publishedAt = publishedAt))
+
+        val (disposition, entries) = downloadEvidencePack(siteId, account.cookie)
+
+        assertTrue(disposition.contains("evidence-pack-$domain-"), "filename should carry the domain; got: $disposition")
+        assertTrue(disposition.endsWith(".zip\""))
+        assertEquals(
+            setOf("manifest.json", "policy/en.html", "consent-events.csv", "scan-report.json"),
+            entries.keys,
+        )
+        // The manifest is a self-describing English document naming the site and the 30-day consent window.
+        val manifest = objectMapper.readTree(entries.getValue("manifest.json"))
+        assertEquals(domain, manifest.path("site").path("domain").asString())
+        assertEquals(30, manifest.path("consentEventsWindowDays").asInt())
+        // The embedded consent CSV carries the real audit header, and the scan report the real score.
+        assertTrue(entries.getValue("consent-events.csv").decodeToString().startsWith("created_at,"))
+        assertTrue(objectMapper.readTree(entries.getValue("scan-report.json")).path("complianceScore").isNumber)
+    }
+
+    @Test
+    fun `non-business account is denied the evidence pack with 403`() {
+        val account = registeredUser() // trial: csvExport = false
+        val siteId = createSite(account.cookie, uniqueDomain("trial-pack"))
+
+        mockMvc
+            .perform(get("/api/v1/sites/$siteId/analytics/evidence-pack.zip").cookie(account.cookie))
+            .andExpect(status().isForbidden)
+            .andExpect(jsonPath("$.error.code").value("CSV_EXPORT_NOT_ENTITLED"))
+    }
+
+    @Test
+    fun `entitled user cannot download an evidence pack for a site they do not own`() {
+        val owner = registeredUser()
+        val siteId = createSite(owner.cookie, uniqueDomain("owned-pack"))
+        val intruder = businessUser()
+
+        mockMvc
+            .perform(get("/api/v1/sites/$siteId/analytics/evidence-pack.zip").cookie(intruder.cookie))
+            .andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.error.code").value("SITE_NOT_FOUND"))
+    }
+
+    @Test
+    fun `anonymous request for an evidence pack is rejected with 401`() {
+        val account = businessUser()
+        val siteId = createSite(account.cookie, uniqueDomain("anon-pack"))
+
+        mockMvc
+            .perform(get("/api/v1/sites/$siteId/analytics/evidence-pack.zip"))
+            .andExpect(status().isUnauthorized)
+            .andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED"))
+    }
+
+    @Test
+    fun `an erased account cannot download an evidence pack with a still-valid token`() {
+        val account = businessUser()
+        val siteId = createSite(account.cookie, uniqueDomain("erased-pack"))
+        // Art. 17 tombstone (ADR-20): the row survives to anchor consent-bearing sites, but ErasedAccountFilter
+        // must block every authenticated request before the controller — the still-valid access cookie above
+        // must not stream a single byte of the (Business-gated, PII-bearing) pack.
+        val user = assertNotNull(userRepository.findById(account.id).orElse(null))
+        userRepository.save(user.copy(deletedAt = Instant.parse("2026-08-10T00:00:00Z")))
+
+        mockMvc
+            .perform(get("/api/v1/sites/$siteId/analytics/evidence-pack.zip").cookie(account.cookie))
+            .andExpect(status().isUnauthorized)
+            .andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED"))
     }
 }

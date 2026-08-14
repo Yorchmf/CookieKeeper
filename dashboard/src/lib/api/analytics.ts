@@ -140,3 +140,14 @@ export function analyticsExportPath(siteId: string, filter: AnalyticsFilter): st
   const query = buildAnalyticsParams(filter).toString();
   return `/api/v1/sites/${encodeURIComponent(siteId)}/analytics/export.csv${query ? `?${query}` : ""}`;
 }
+
+/**
+ * Same-origin path for the Business-plan compliance evidence pack (ZIP: published policy, trailing 30
+ * days of consent audit evidence, latest scan summary, manifest). Window-independent — the pack always
+ * bundles the current published policy and a fixed trailing consent window — so it takes no filter. Used
+ * as an `<a download>` href so the browser streams straight from the backend with auth cookies attached;
+ * the backend enforces the Business gate (403) and ownership (404).
+ */
+export function evidencePackPath(siteId: string): string {
+  return `/api/v1/sites/${encodeURIComponent(siteId)}/analytics/evidence-pack.zip`;
+}
