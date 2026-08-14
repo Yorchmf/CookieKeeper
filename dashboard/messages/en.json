@@ -325,7 +325,8 @@
     "settings": "Settings",
     "account": "Account",
     "signOut": "Sign out",
-    "signOutError": "Sign-out failed. Please try again."
+    "signOutError": "Sign-out failed. Please try again.",
+    "analytics": "Analytics"
   },
   "auth": {
     "fields": {
@@ -1042,7 +1043,14 @@
       "loading": "Loading analytics for the last {days} days…",
       "updated": "Analytics updated for the last {days} days."
     },
-    "warningLabel": "Warning"
+    "warningLabel": "Warning",
+    "crossSite": {
+      "title": "All Sites",
+      "subtitle": "Consent decisions aggregated across every site on your account.",
+      "siteCount": "Active sites",
+      "locked": "Cross-site analytics is a Pro and Business feature.",
+      "loadError": "We couldn't load cross-site analytics. Please try again."
+    }
   },
   "settings": {
     "title": "Settings",

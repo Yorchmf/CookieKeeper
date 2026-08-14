@@ -4,6 +4,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 
+import { EmptyNote, LegendSwatch } from "@/components/analytics/analytics-primitives";
 import { CategoryOptInChart } from "@/components/analytics/category-opt-in-chart";
 import { ACTION_COLORS } from "@/components/analytics/chart-theme";
 import { ChartCard } from "@/components/analytics/chart-card";
@@ -36,16 +37,6 @@ export function AnalyticsSkeleton({ className }: { className?: string }) {
         <Skeleton className="h-64 w-full rounded-2xl" />
       </div>
     </div>
-  );
-}
-
-/** Small inline legend swatch for the trend chart's three action series. */
-function LegendSwatch({ color, label }: { color: string; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <span aria-hidden="true" className="size-2.5 rounded-sm" style={{ backgroundColor: color }} />
-      {label}
-    </span>
   );
 }
 
@@ -213,14 +204,5 @@ export function Analytics({ siteId }: { siteId: string }) {
         </ChartCard>
       </section>
     </main>
-  );
-}
-
-/** Consistent dashed empty-state note used inside cards with no data yet. */
-function EmptyNote({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-      {children}
-    </div>
   );
 }

@@ -30,6 +30,8 @@ export interface EntitlementLimits {
   priorityScan: boolean;
   removeBranding: boolean;
   csvExport: boolean;
+  /** Cross-site ("All Sites") analytics roll-up — Pro and Business only. */
+  crossSiteAnalytics: boolean;
   consentRetentionMonths: number;
   consentEventCap: number | null;
 }

@@ -49,6 +49,7 @@ class EntitlementResponseTest {
         assertNull(response.consentEventsUsed, "the consent cap and its meter are trial-only")
         assertEquals(10, response.limits.maxSites)
         assertEquals(true, response.limits.csvExport, "Business unlocks CSV export")
+        assertEquals(true, response.limits.crossSiteAnalytics, "Business unlocks cross-site analytics")
         assertEquals(3, response.activeSites)
         // Paid plans keep 3 years of consent evidence — exposed as whole months.
         assertEquals(36, response.limits.consentRetentionMonths)

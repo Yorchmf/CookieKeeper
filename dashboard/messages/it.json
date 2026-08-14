@@ -325,7 +325,8 @@
     "settings": "Impostazioni",
     "account": "Account",
     "signOut": "Esci",
-    "signOutError": "Disconnessione non riuscita. Riprova."
+    "signOutError": "Disconnessione non riuscita. Riprova.",
+    "analytics": "Analisi"
   },
   "auth": {
     "fields": {
@@ -1042,7 +1043,14 @@
       "loading": "Caricamento delle statistiche degli ultimi {days} giorni…",
       "updated": "Statistiche aggiornate per gli ultimi {days} giorni."
     },
-    "warningLabel": "Attenzione"
+    "warningLabel": "Attenzione",
+    "crossSite": {
+      "title": "Tutti i siti",
+      "subtitle": "Decisioni di consenso aggregate su tutti i siti del tuo account.",
+      "siteCount": "Siti attivi",
+      "locked": "L'analisi cross-site è una funzionalità dei piani Pro e Business.",
+      "loadError": "Impossibile caricare l'analisi cross-site. Riprova."
+    }
   },
   "settings": {
     "title": "Impostazioni",

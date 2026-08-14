@@ -2,7 +2,25 @@
 
 **Branch:** `feat/track-4-analytics`  
 **Estimated:** 3-4 days (TDD approach)  
-**Status:** Ready to start
+**Status:** ✅ COMPLETE (backend + frontend green; reviews applied)
+
+---
+
+## Completion Notes (as-built)
+
+- **Endpoint:** `GET /api/v1/analytics/accounts/rollup` — JWT-scoped (userId from principal, no path param), Pro/Business gated via `EntitlementService.requireCrossSiteAnalytics(userId)` → 403 `CROSS_SITE_ANALYTICS_NOT_ENTITLED`. Consent-only in Slice A (no cookies/policy/CSV export).
+- **Entitlement flag exposed:** added `crossSiteAnalytics: Boolean` to `Entitlements`, `EntitlementLimits` DTO (backend) + `EntitlementLimits` interface (frontend `billing.ts`). Pro/Business `true`, Starter/Expired `false`, Trial (Starter-shaped) excluded. Lets the frontend gate the nav/view cleanly instead of relying only on the 403.
+- **Frontend files:** `lib/api/account-analytics.ts` (`getAccountAnalytics`), `hooks/use-account-analytics.ts` (`useAccountAnalytics`), `components/analytics/account-analytics-view.tsx` (`AccountAnalyticsView`, reuses ConsentTrendChart/CategoryOptInChart/LanguageSplit/StatTile/ChartCard/RangeSelector/AnalyticsSkeleton), route `app/[locale]/(app)/analytics/page.tsx`, nav entry in `(app)/layout.tsx`.
+- **Gate UX:** display-only, backend enforces 403. Non-entitled accounts see a `<LockedFeature>` upgrade prompt (nav link shown to all as the upsell/discovery path). Entitled-only accounts issue the roll-up read.
+- **i18n keys (actual):** `nav.analytics`, and `analytics.crossSite.{title,subtitle,siteCount,locked,loadError}` — camelCase to match the rest of the catalog (e.g. `consentTrend`), not the snake_case placeholders sketched in Phase 3.3 below. All 5 locales (EN/DE/FR/ES/IT).
+- **Tests:** `test/account-analytics-api.test.ts` (3), `test/account-analytics-view.test.tsx` (5). Backend + dashboard gates (`lint`/`test`/`build`) green.
+- **Review fixes applied (react + typescript, opus):**
+  - Threaded an `enabled` gate through `useAccountAnalytics` so a locked/loading account never fires the guaranteed-403 roll-up read (was firing unconditionally); corrected the stale comment/docstring that claimed otherwise.
+  - Distinguished an **entitlement-fetch error** from **resolved-but-not-entitled**: a transient entitlement failure now shows the load error, not an "upgrade" prompt to a paying account (new `entitlement.isError` branch + test).
+  - Added `analytics/error.tsx` segment error boundary, mirroring the per-site route.
+  - Extracted the duplicated `LegendSwatch`/`EmptyNote` into `components/analytics/analytics-primitives.tsx`, now imported by both the per-site and cross-site views (DRY).
+  - Fixed the build-breaker the field change surfaced: added `crossSiteAnalytics: false` to the `TRIAL` `EntitlementLimits` fixture in `billing-manager.test.tsx`.
+- **Pre-existing, out-of-scope:** `test/scan-schedule-cache.test.tsx:89` fails a standalone `tsc --noEmit` (a sites-feature mutation-type mismatch committed in `92d4712`). Not part of Slice A and not part of CI (CI runs `lint`/`build`/`test`; `next build` excludes test files from typecheck) — flagged for its own fix.
 
 ---
 

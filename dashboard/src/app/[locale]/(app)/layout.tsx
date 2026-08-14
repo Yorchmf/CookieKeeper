@@ -7,6 +7,9 @@ import { UserNav } from "@/components/app/user-nav";
 const NAV_ITEMS = [
   { key: "dashboard", href: "/dashboard" },
   { key: "sites", href: "/sites" },
+  // Cross-site consent roll-up. Shown to every account as the discovery/upsell path — the page itself
+  // renders a Pro/Business upgrade prompt for accounts that don't have the entitlement yet.
+  { key: "analytics", href: "/analytics" },
   { key: "billing", href: "/billing" },
   { key: "settings", href: "/settings/data" },
 ] as const;

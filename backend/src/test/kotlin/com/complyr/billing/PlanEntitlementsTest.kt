@@ -21,6 +21,7 @@ class PlanEntitlementsTest {
         assertEquals(Period.ofMonths(12), e.consentRetention)
         assertFalse(e.removeBranding)
         assertFalse(e.csvExport)
+        assertFalse(e.crossSiteAnalytics)
     }
 
     @Test
@@ -33,6 +34,7 @@ class PlanEntitlementsTest {
         assertEquals(Period.ofYears(3), e.consentRetention)
         assertTrue(e.removeBranding)
         assertFalse(e.csvExport)
+        assertTrue(e.crossSiteAnalytics)
     }
 
     @Test
@@ -45,6 +47,7 @@ class PlanEntitlementsTest {
         assertEquals(Period.ofYears(3), e.consentRetention)
         assertTrue(e.removeBranding)
         assertTrue(e.csvExport)
+        assertTrue(e.crossSiteAnalytics)
     }
 
     @Test

@@ -325,7 +325,8 @@
     "settings": "Paramètres",
     "account": "Compte",
     "signOut": "Se déconnecter",
-    "signOutError": "Échec de la déconnexion. Veuillez réessayer."
+    "signOutError": "Échec de la déconnexion. Veuillez réessayer.",
+    "analytics": "Analytique"
   },
   "auth": {
     "fields": {
@@ -1042,7 +1043,14 @@
       "loading": "Chargement des statistiques des {days} derniers jours…",
       "updated": "Statistiques mises à jour pour les {days} derniers jours."
     },
-    "warningLabel": "Avertissement"
+    "warningLabel": "Avertissement",
+    "crossSite": {
+      "title": "Tous les sites",
+      "subtitle": "Décisions de consentement agrégées sur tous les sites de votre compte.",
+      "siteCount": "Sites actifs",
+      "locked": "Les analyses multisites sont une fonctionnalité des offres Pro et Business.",
+      "loadError": "Nous n'avons pas pu charger les analyses multisites. Veuillez réessayer."
+    }
   },
   "settings": {
     "title": "Paramètres",

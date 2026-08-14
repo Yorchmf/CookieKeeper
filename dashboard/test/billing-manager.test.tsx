@@ -42,6 +42,7 @@ const TRIAL: Entitlement = {
     priorityScan: false,
     removeBranding: false,
     csvExport: false,
+    crossSiteAnalytics: false,
     consentRetentionMonths: 12,
     consentEventCap: 1000,
   },

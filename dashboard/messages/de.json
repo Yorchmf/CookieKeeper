@@ -325,7 +325,8 @@
     "settings": "Einstellungen",
     "account": "Konto",
     "signOut": "Abmelden",
-    "signOutError": "Die Abmeldung ist fehlgeschlagen. Bitte versuchen Sie es erneut."
+    "signOutError": "Die Abmeldung ist fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    "analytics": "Analysen"
   },
   "auth": {
     "fields": {
@@ -1042,7 +1043,14 @@
       "loading": "Analysen für die letzten {days} Tage werden geladen…",
       "updated": "Analysen für die letzten {days} Tage aktualisiert."
     },
-    "warningLabel": "Warnung"
+    "warningLabel": "Warnung",
+    "crossSite": {
+      "title": "Alle Websites",
+      "subtitle": "Einwilligungsentscheidungen aggregiert über alle Websites Ihres Kontos.",
+      "siteCount": "Aktive Websites",
+      "locked": "Website-übergreifende Analysen sind eine Funktion der Tarife Pro und Business.",
+      "loadError": "Website-übergreifende Analysen konnten nicht geladen werden. Bitte versuchen Sie es erneut."
+    }
   },
   "settings": {
     "title": "Einstellungen",

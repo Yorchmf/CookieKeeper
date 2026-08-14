@@ -325,7 +325,8 @@
     "settings": "Configuración",
     "account": "Cuenta",
     "signOut": "Cerrar sesión",
-    "signOutError": "No se ha podido cerrar la sesión. Inténtalo de nuevo."
+    "signOutError": "No se ha podido cerrar la sesión. Inténtalo de nuevo.",
+    "analytics": "Analíticas"
   },
   "auth": {
     "fields": {
@@ -1042,7 +1043,14 @@
       "loading": "Cargando estadísticas de los últimos {days} días…",
       "updated": "Estadísticas actualizadas para los últimos {days} días."
     },
-    "warningLabel": "Advertencia"
+    "warningLabel": "Advertencia",
+    "crossSite": {
+      "title": "Todos los sitios",
+      "subtitle": "Decisiones de consentimiento agregadas de todos los sitios de tu cuenta.",
+      "siteCount": "Sitios activos",
+      "locked": "El análisis entre sitios es una función de los planes Pro y Business.",
+      "loadError": "No pudimos cargar el análisis entre sitios. Inténtalo de nuevo."
+    }
   },
   "settings": {
     "title": "Configuración",

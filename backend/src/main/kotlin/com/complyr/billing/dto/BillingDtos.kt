@@ -78,6 +78,7 @@ data class EntitlementLimits(
     val priorityScan: Boolean,
     val removeBranding: Boolean,
     val csvExport: Boolean,
+    val crossSiteAnalytics: Boolean,
     val consentRetentionMonths: Long,
     val consentEventCap: Long?,
 ) {
@@ -90,6 +91,7 @@ data class EntitlementLimits(
                 priorityScan = entitlements.priorityScan,
                 removeBranding = entitlements.removeBranding,
                 csvExport = entitlements.csvExport,
+                crossSiteAnalytics = entitlements.crossSiteAnalytics,
                 consentRetentionMonths = entitlements.consentRetention.toTotalMonths(),
                 consentEventCap = entitlements.consentEventCap,
             )
