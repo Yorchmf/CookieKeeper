@@ -13,10 +13,12 @@ import { ConsentTrendChart } from "@/components/analytics/consent-trend-chart";
 import { LanguageSplit } from "@/components/analytics/language-split";
 import { parseRange, type RangeDays, RangeSelector } from "@/components/analytics/range-selector";
 import { StatTile } from "@/components/analytics/stat-tile";
+import { useConsentDeltas } from "@/components/analytics/use-consent-deltas";
 import { LockedFeature } from "@/components/ui/locked-feature";
 import { useAccountAnalytics } from "@/hooks/use-account-analytics";
 import { useEntitlement } from "@/hooks/use-billing";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { acceptShareDelta, acceptSharePct, eventsDelta } from "@/lib/analytics/delta";
 import type { AnalyticsFilter } from "@/lib/api/analytics";
 
 const MS_PER_DAY = 86_400_000;
@@ -54,6 +56,7 @@ export function AccountAnalyticsView() {
   // true so a locked (or still-loading) account never fires the request the backend would 403 anyway.
   const entitled = entitlement.data?.limits.crossSiteAnalytics;
   const query = useAccountAnalytics(filter, { enabled: entitled === true });
+  const deltaBadge = useConsentDeltas(range);
 
   const applyRange = useCallback(
     (days: RangeDays) => {
@@ -128,11 +131,8 @@ export function AccountAnalyticsView() {
     );
   }
 
-  const { consent, siteCount } = query.data;
-  const acceptShare =
-    consent.totalEvents === 0
-      ? 0
-      : Math.round((consent.byAction.acceptAll / consent.totalEvents) * 100);
+  const { consent, siteCount, previous } = query.data;
+  const acceptShare = acceptSharePct(consent);
 
   const trendLegend = (
     <div className="flex flex-wrap items-center gap-3">
@@ -146,8 +146,16 @@ export function AccountAnalyticsView() {
     <>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatTile label={t("crossSite.siteCount")} value={siteCount} />
-        <StatTile label={t("summary.totalEvents")} value={consent.totalEvents} />
-        <StatTile label={t("summary.acceptShare")} value={`${acceptShare}%`} />
+        <StatTile
+          label={t("summary.totalEvents")}
+          value={consent.totalEvents}
+          delta={deltaBadge(eventsDelta(consent.totalEvents, previous), "percent")}
+        />
+        <StatTile
+          label={t("summary.acceptShare")}
+          value={`${acceptShare}%`}
+          delta={deltaBadge(acceptShareDelta(consent, previous), "points")}
+        />
         <StatTile
           label={t("summary.languages")}
           value={consent.languageSplit.length || t("summary.none")}

@@ -23,6 +23,9 @@ data class AnalyticsFilter(
 data class SiteAnalyticsResponse(
     val range: AnalyticsRange,
     val consent: ConsentAnalytics,
+    // The prior window (same length, immediately before [range]) for period-over-period deltas; null when
+    // no comparable baseline exists — see [PeriodSummary].
+    val previous: PeriodSummary?,
     // Null until the site has a completed scan / published policy — the dashboard shows an empty state.
     val cookies: CookieAnalytics?,
     val policy: PolicyAnalytics?,
@@ -47,6 +50,19 @@ data class ActionBreakdown(
     val acceptAll: Long,
     val rejectAll: Long,
     val custom: Long,
+)
+
+/**
+ * A lean consent baseline for the window immediately preceding the one on display — just the totals a
+ * period-over-period delta needs ([totalEvents] and the [byAction] mix), not the full trend/category/language
+ * detail. Present on a response only when a *comparable* prior window exists: the same length as the current
+ * window and sitting entirely at or above the plan retention floor (ADR-16). When it would be truncated or
+ * clipped by retention it is omitted (null) rather than compared against, so the dashboard never shows a delta
+ * skewed by a shorter or partly-unreadable baseline.
+ */
+data class PeriodSummary(
+    val totalEvents: Long,
+    val byAction: ActionBreakdown,
 )
 
 /** One UTC day of the consent trend; [total] = [acceptAll] + [rejectAll] + [custom]. */

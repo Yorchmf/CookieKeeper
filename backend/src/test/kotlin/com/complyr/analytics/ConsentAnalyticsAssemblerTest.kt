@@ -92,4 +92,24 @@ class ConsentAnalyticsAssemblerTest {
 
         assertEquals(listOf("de" to 12L, "en" to 7L), consent.languageSplit.map { it.lang to it.count })
     }
+
+    @Test
+    fun `summarize returns the action totals and their sum, matching assemble's breakdown`() {
+        val daily =
+            listOf(
+                DailyActionCount(aug12, "accept_all", 30),
+                DailyActionCount(aug12, "reject_all", 50),
+                DailyActionCount(aug13, "accept_all", 10),
+                DailyActionCount(aug13, "custom", 20),
+            )
+
+        val summary = assembler.summarize(daily)
+
+        assertEquals(40, summary.byAction.acceptAll)
+        assertEquals(50, summary.byAction.rejectAll)
+        assertEquals(20, summary.byAction.custom)
+        assertEquals(110, summary.totalEvents)
+        // The lean baseline and the full view count an action mix the same way — one arithmetic, one source.
+        assertEquals(assembler.assemble(daily, emptyList(), emptyList()).byAction, summary.byAction)
+    }
 }

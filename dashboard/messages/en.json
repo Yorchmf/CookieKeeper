@@ -988,6 +988,17 @@
       "reject_all": "Reject all",
       "custom": "Custom"
     },
+    "delta": {
+      "points": "{value} pts",
+      "percent": "{value}%",
+      "srPoints": "{direction} {value} percentage points versus the previous {days} days",
+      "srPercent": "{direction} {value} percent versus the previous {days} days",
+      "srFlat": "unchanged versus the previous {days} days",
+      "dir": {
+        "up": "up",
+        "down": "down"
+      }
+    },
     "consentTrend": {
       "title": "Consent trend",
       "description": "Daily consent decisions over the selected window.",

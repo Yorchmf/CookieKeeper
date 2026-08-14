@@ -988,6 +988,17 @@
       "reject_all": "Rifiuta tutto",
       "custom": "Personalizzato"
     },
+    "delta": {
+      "points": "{value} pt",
+      "percent": "{value} %",
+      "srPoints": "{direction} {value} punti percentuali rispetto ai {days} giorni precedenti",
+      "srPercent": "{direction} {value} per cento rispetto ai {days} giorni precedenti",
+      "srFlat": "invariato rispetto ai {days} giorni precedenti",
+      "dir": {
+        "up": "in aumento di",
+        "down": "in calo di"
+      }
+    },
     "consentTrend": {
       "title": "Andamento del consenso",
       "description": "Decisioni di consenso giornaliere nel periodo selezionato.",

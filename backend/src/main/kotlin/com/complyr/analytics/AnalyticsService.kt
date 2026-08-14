@@ -6,6 +6,7 @@ import com.complyr.analytics.dto.CategoryCount
 import com.complyr.analytics.dto.ConsentAnalytics
 import com.complyr.analytics.dto.ConsentTrendPoint
 import com.complyr.analytics.dto.CookieAnalytics
+import com.complyr.analytics.dto.PeriodSummary
 import com.complyr.analytics.dto.PolicyAnalytics
 import com.complyr.analytics.dto.SiteAnalyticsResponse
 import com.complyr.banner.ConsentCategory
@@ -18,6 +19,7 @@ import com.complyr.site.SiteNotFoundException
 import com.complyr.site.SiteRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -46,14 +48,31 @@ class AnalyticsService(
         filter: AnalyticsFilter,
     ): SiteAnalyticsResponse {
         requireOwnedSite(userId, siteId)
-        val range = rangeResolver.resolve(userId, filter)
+        val floor = rangeResolver.retentionFloor(userId)
+        val range = rangeResolver.resolve(filter, floor)
         return SiteAnalyticsResponse(
             range = range,
             consent = consentAnalytics(siteId, range),
+            previous = previousSummary(siteId, range, floor),
             cookies = cookieAnalytics(siteId),
             policy = policyAnalytics(siteId),
         )
     }
+
+    /**
+     * The consent baseline for the window before [range] (same length), for period-over-period deltas — or
+     * null when [AnalyticsRangeResolver.priorWindow] finds no comparable window (it would read past the plan
+     * retention [floor], the same one that clamped [range]). One extra `dailyActionCounts` query, folded by the
+     * shared assembler math.
+     */
+    private fun previousSummary(
+        siteId: UUID,
+        range: AnalyticsRange,
+        floor: Instant,
+    ): PeriodSummary? =
+        rangeResolver.priorWindow(range, floor)?.let { prior ->
+            consentAnalyticsAssembler.summarize(consentAnalyticsRepository.dailyActionCounts(siteId, prior.from, prior.to))
+        }
 
     /** The consent-trend series alone (the CSV export payload); ownership already asserted by the caller. */
     @Transactional(readOnly = true)

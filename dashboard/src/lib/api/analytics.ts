@@ -49,6 +49,16 @@ export interface ConsentAnalytics {
   languageSplit: LanguageCount[];
 }
 
+/**
+ * The consent baseline for the window immediately before the displayed one (same length), for
+ * period-over-period deltas (backend `PeriodSummary`). Null when no comparable window exists — a brand-new
+ * account, or a prior window the backend omitted because it fell below the plan retention floor (ADR-16).
+ */
+export interface PeriodSummary {
+  totalEvents: number;
+  byAction: ActionBreakdown;
+}
+
 /** A cookie-taxonomy bucket count from the latest completed scan (backend `CategoryCount`). */
 export interface CategoryCount {
   category: string;
@@ -84,6 +94,8 @@ export interface AnalyticsRange {
 export interface SiteAnalytics {
   range: AnalyticsRange;
   consent: ConsentAnalytics;
+  /** Prior-window consent baseline for period-over-period deltas; null when none is comparable. */
+  previous: PeriodSummary | null;
   /** Absent (null) until the site has at least one completed scan. */
   cookies: CookieAnalytics | null;
   /** Absent (null) until the site has a published policy. */

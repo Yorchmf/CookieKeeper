@@ -5,6 +5,7 @@ import com.complyr.analytics.dto.CategoryOptIn
 import com.complyr.analytics.dto.ConsentAnalytics
 import com.complyr.analytics.dto.ConsentTrendPoint
 import com.complyr.analytics.dto.LanguageCount
+import com.complyr.analytics.dto.PeriodSummary
 import org.springframework.stereotype.Component
 
 /**
@@ -25,15 +26,10 @@ class ConsentAnalyticsAssembler {
         optIn: List<CategoryOptInCount>,
         languages: List<LanguageCountRow>,
     ): ConsentAnalytics {
-        val byAction =
-            ActionBreakdown(
-                acceptAll = daily.filter { it.action == AnalyticsService.ACTION_ACCEPT_ALL }.sumOf { it.count },
-                rejectAll = daily.filter { it.action == AnalyticsService.ACTION_REJECT_ALL }.sumOf { it.count },
-                custom = daily.filter { it.action == AnalyticsService.ACTION_CUSTOM }.sumOf { it.count },
-            )
+        val summary = summarize(daily)
         return ConsentAnalytics(
-            totalEvents = byAction.acceptAll + byAction.rejectAll + byAction.custom,
-            byAction = byAction,
+            totalEvents = summary.totalEvents,
+            byAction = summary.byAction,
             trend = trend(daily),
             categoryOptIn =
                 optIn.map {
@@ -46,6 +42,24 @@ class ConsentAnalyticsAssembler {
                     )
                 },
             languageSplit = languages.map { LanguageCount(lang = it.lang, count = it.count) },
+        )
+    }
+
+    /**
+     * The accept/reject/custom totals for a set of daily rows, and their sum — the lean baseline a
+     * period-over-period delta needs, and the same arithmetic [assemble] uses for its own breakdown, so the
+     * current window and its prior-window comparison can never disagree on how an action mix is counted.
+     */
+    fun summarize(daily: List<DailyActionCount>): PeriodSummary {
+        val byAction =
+            ActionBreakdown(
+                acceptAll = daily.filter { it.action == AnalyticsService.ACTION_ACCEPT_ALL }.sumOf { it.count },
+                rejectAll = daily.filter { it.action == AnalyticsService.ACTION_REJECT_ALL }.sumOf { it.count },
+                custom = daily.filter { it.action == AnalyticsService.ACTION_CUSTOM }.sumOf { it.count },
+            )
+        return PeriodSummary(
+            totalEvents = byAction.acceptAll + byAction.rejectAll + byAction.custom,
+            byAction = byAction,
         )
     }
 

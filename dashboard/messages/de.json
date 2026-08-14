@@ -988,6 +988,17 @@
       "reject_all": "Alle ablehnen",
       "custom": "Individuell"
     },
+    "delta": {
+      "points": "{value} Pp.",
+      "percent": "{value} %",
+      "srPoints": "{direction} {value} Prozentpunkte gegenüber den vorherigen {days} Tagen",
+      "srPercent": "{direction} {value} Prozent gegenüber den vorherigen {days} Tagen",
+      "srFlat": "unverändert gegenüber den vorherigen {days} Tagen",
+      "dir": {
+        "up": "gestiegen um",
+        "down": "gesunken um"
+      }
+    },
     "consentTrend": {
       "title": "Einwilligungsverlauf",
       "description": "Tägliche Einwilligungsentscheidungen im ausgewählten Zeitraum.",

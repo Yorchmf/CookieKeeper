@@ -12,6 +12,7 @@ import {
   type AnalyticsFilter,
   type AnalyticsRange,
   type ConsentAnalytics,
+  type PeriodSummary,
   buildAnalyticsParams,
 } from "@/lib/api/analytics";
 
@@ -19,6 +20,8 @@ import {
 export interface AccountAnalytics {
   range: AnalyticsRange;
   consent: ConsentAnalytics;
+  /** Prior-window consent baseline for period-over-period deltas; null when none is comparable. */
+  previous: PeriodSummary | null;
   /** Number of ACTIVE sites folded into the roll-up (0 for a brand-new or fully-archived account). */
   siteCount: number;
 }

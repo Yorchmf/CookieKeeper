@@ -3,11 +3,14 @@ package com.complyr.analytics
 import com.complyr.analytics.dto.AccountAnalyticsResponse
 import com.complyr.analytics.dto.ActionBreakdown
 import com.complyr.analytics.dto.AnalyticsFilter
+import com.complyr.analytics.dto.AnalyticsRange
 import com.complyr.analytics.dto.ConsentAnalytics
+import com.complyr.analytics.dto.PeriodSummary
 import com.complyr.site.SiteRepository
 import com.complyr.site.SiteStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -34,12 +37,14 @@ class AccountAnalyticsService(
         userId: UUID,
         filter: AnalyticsFilter,
     ): AccountAnalyticsResponse {
-        val range = rangeResolver.resolve(userId, filter)
+        val floor = rangeResolver.retentionFloor(userId)
+        val range = rangeResolver.resolve(filter, floor)
         val siteIds = siteRepository.findAllByUserIdAndStatus(userId, SiteStatus.ACTIVE).map { it.id }
 
         // Early return before any aggregate query: `site_id IN (...)` is invalid SQL for an empty set, and an
-        // account with no active sites is a real state (brand-new, or everything archived).
-        if (siteIds.isEmpty()) return AccountAnalyticsResponse(range, EMPTY_CONSENT, siteCount = 0)
+        // account with no active sites is a real state (brand-new, or everything archived). No prior window to
+        // compare either — a portfolio with nothing in it has no baseline.
+        if (siteIds.isEmpty()) return AccountAnalyticsResponse(range, EMPTY_CONSENT, previous = null, siteCount = 0)
 
         val consent =
             consentAnalyticsAssembler.assemble(
@@ -47,8 +52,25 @@ class AccountAnalyticsService(
                 optIn = consentAnalyticsRepository.accountCategoryOptInCounts(siteIds, range.from, range.to),
                 languages = consentAnalyticsRepository.accountLanguageCounts(siteIds, range.from, range.to),
             )
-        return AccountAnalyticsResponse(range, consent, siteCount = siteIds.size)
+        return AccountAnalyticsResponse(range, consent, previous = previousSummary(siteIds, range, floor), siteCount = siteIds.size)
     }
+
+    /**
+     * The consent baseline for the window before [range] (same length), aggregated over the same [siteIds], for
+     * period-over-period deltas — or null when [AnalyticsRangeResolver.priorWindow] finds no comparable window
+     * (it would read past the plan retention [floor], the same one that clamped [range]). The prior window is
+     * compared against the account's *current* portfolio, the same set the displayed figures cover.
+     */
+    private fun previousSummary(
+        siteIds: List<UUID>,
+        range: AnalyticsRange,
+        floor: Instant,
+    ): PeriodSummary? =
+        rangeResolver.priorWindow(range, floor)?.let { prior ->
+            consentAnalyticsAssembler.summarize(
+                consentAnalyticsRepository.accountDailyActionCounts(siteIds, prior.from, prior.to),
+            )
+        }
 
     private companion object {
         val EMPTY_CONSENT =

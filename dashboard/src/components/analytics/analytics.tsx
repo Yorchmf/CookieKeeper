@@ -14,9 +14,11 @@ import { ExportAnalyticsButton } from "@/components/analytics/export-analytics-b
 import { LanguageSplit } from "@/components/analytics/language-split";
 import { parseRange, type RangeDays, RangeSelector } from "@/components/analytics/range-selector";
 import { StatTile } from "@/components/analytics/stat-tile";
+import { useConsentDeltas } from "@/components/analytics/use-consent-deltas";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSiteAnalytics } from "@/hooks/use-analytics";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { acceptShareDelta, acceptSharePct, eventsDelta } from "@/lib/analytics/delta";
 import type { AnalyticsFilter } from "@/lib/api/analytics";
 import { cn } from "@/lib/utils";
 
@@ -65,6 +67,7 @@ export function Analytics({ siteId }: { siteId: string }) {
   );
 
   const query = useSiteAnalytics(siteId, filter);
+  const deltaBadge = useConsentDeltas(range);
 
   // Announced via a persistent aria-live region in the header (present across the loading/error/success
   // branches below) so switching the range preset is confirmed to screen-reader users without them having
@@ -126,11 +129,8 @@ export function Analytics({ siteId }: { siteId: string }) {
     );
   }
 
-  const { consent, cookies, policy } = query.data;
-  const acceptShare =
-    consent.totalEvents === 0
-      ? 0
-      : Math.round((consent.byAction.acceptAll / consent.totalEvents) * 100);
+  const { consent, cookies, policy, previous } = query.data;
+  const acceptShare = acceptSharePct(consent);
 
   const trendLegend = (
     <div className="flex flex-wrap items-center gap-3">
@@ -146,8 +146,16 @@ export function Analytics({ siteId }: { siteId: string }) {
         {header}
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatTile label={t("summary.totalEvents")} value={consent.totalEvents} />
-          <StatTile label={t("summary.acceptShare")} value={`${acceptShare}%`} />
+          <StatTile
+            label={t("summary.totalEvents")}
+            value={consent.totalEvents}
+            delta={deltaBadge(eventsDelta(consent.totalEvents, previous), "percent")}
+          />
+          <StatTile
+            label={t("summary.acceptShare")}
+            value={`${acceptShare}%`}
+            delta={deltaBadge(acceptShareDelta(consent, previous), "points")}
+          />
           <StatTile
             label={t("summary.policyVersion")}
             value={policy ? `v${policy.version}` : t("summary.noPolicy")}

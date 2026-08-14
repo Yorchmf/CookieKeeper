@@ -25,6 +25,7 @@ const rollup = {
     categoryOptIn: [],
     languageSplit: [],
   },
+  previous: null,
   siteCount: 3,
 };
 

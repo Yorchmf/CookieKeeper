@@ -6,6 +6,7 @@ import com.complyr.billing.EntitlementService
 import org.springframework.stereotype.Component
 import java.time.Clock
 import java.time.Duration
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -31,11 +32,41 @@ class AnalyticsRangeResolver(
     fun resolve(
         userId: UUID,
         filter: AnalyticsFilter,
+    ): AnalyticsRange = resolve(filter, retentionFloor(userId))
+
+    /**
+     * [resolve] against an already-resolved retention [floor]. A read that also needs [priorWindow] resolves the
+     * floor once (via [retentionFloor]) and threads the same instant into both, so the current window and its
+     * baseline are clamped against one floor — two independent resolutions can't disagree if the plan changes
+     * mid-request, and the read costs a single subscription lookup rather than two.
+     */
+    fun resolve(
+        filter: AnalyticsFilter,
+        floor: Instant,
     ): AnalyticsRange {
         val to = filter.to ?: clock.instant()
         val requestedFrom = filter.from ?: to.minus(DEFAULT_WINDOW)
-        val floor = entitlementService.consentRetentionFloor(userId)
         return AnalyticsRange(from = maxOf(requestedFrom, floor), to = to)
+    }
+
+    /** The plan retention floor for [userId] (ADR-16): the oldest instant a consent-evidence read may reach. */
+    fun retentionFloor(userId: UUID): Instant = entitlementService.consentRetentionFloor(userId)
+
+    /**
+     * The window immediately preceding [current], shifted back by [current]'s own length — the baseline for a
+     * period-over-period delta. Returns null when the whole prior window would reach below the plan retention
+     * [floor] (ADR-16): a baseline that is retention-clipped (and so shorter than the current window) would make
+     * the delta misleading, so we omit the comparison rather than draw it against a partial window. The caller
+     * passes the same [floor] used to clamp [current], so a delta can never quietly read past what the customer's
+     * plan sells them either.
+     */
+    fun priorWindow(
+        current: AnalyticsRange,
+        floor: Instant,
+    ): AnalyticsRange? {
+        val priorFrom = current.from.minus(Duration.between(current.from, current.to))
+        if (priorFrom.isBefore(floor)) return null
+        return AnalyticsRange(from = priorFrom, to = current.from)
     }
 
     companion object {

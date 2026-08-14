@@ -13,6 +13,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -28,9 +29,15 @@ class AccountAnalyticsServiceTest {
 
     private val siteRepository = mockk<SiteRepository>()
     private val consentRepository = mockk<ConsentAnalyticsRepository>()
+    private val floor = now.minusSeconds(365 * 86_400)
+    private val prior = AnalyticsRange(from = range.from.minusSeconds(30 * 86_400), to = range.from)
     private val rangeResolver =
         mockk<AnalyticsRangeResolver> {
-            every { resolve(userId, any()) } returns range
+            // The floor is resolved once and threaded into both resolve and priorWindow (one plan lookup per read).
+            every { retentionFloor(userId) } returns floor
+            every { resolve(any(), floor) } returns range
+            // No comparable prior window by default; the delta test overrides this.
+            every { priorWindow(range, floor) } returns null
         }
     private val service =
         AccountAnalyticsService(siteRepository, consentRepository, ConsentAnalyticsAssembler(), rangeResolver)
@@ -46,6 +53,7 @@ class AccountAnalyticsServiceTest {
         assertEquals(range, result.range)
         assertEquals(0, result.siteCount)
         assertEquals(0, result.consent.totalEvents)
+        assertNull(result.previous)
         assertTrue(result.consent.trend.isEmpty())
         // `site_id IN (...)` is invalid SQL for an empty set: the service must return before reaching it.
         verify(exactly = 0) { consentRepository.accountDailyActionCounts(any(), any(), any()) }
@@ -90,6 +98,34 @@ class AccountAnalyticsServiceTest {
                 .total,
         )
         assertEquals(listOf("en", "de"), result.consent.languageSplit.map { it.lang })
+        // No comparable prior window (default stub) → no baseline on the response.
+        assertNull(result.previous)
+    }
+
+    @Test
+    fun `attaches a prior-window consent baseline aggregated over the same sites when one is comparable`() {
+        val siteA = site()
+        every { siteRepository.findAllByUserIdAndStatus(userId, SiteStatus.ACTIVE) } returns listOf(siteA)
+        val siteIds = listOf(siteA.id)
+        val day = LocalDate.parse("2026-08-13")
+        every { consentRepository.accountDailyActionCounts(siteIds, range.from, range.to) } returns
+            listOf(DailyActionCount(day, "accept_all", 8), DailyActionCount(day, "reject_all", 2))
+        every { consentRepository.accountCategoryOptInCounts(siteIds, range.from, range.to) } returns emptyList()
+        every { consentRepository.accountLanguageCounts(siteIds, range.from, range.to) } returns emptyList()
+        // A comparable prior window exists; its consent is aggregated over the *same* current portfolio.
+        every { rangeResolver.priorWindow(range, floor) } returns prior
+        val priorDay = LocalDate.parse("2026-07-14")
+        every { consentRepository.accountDailyActionCounts(siteIds, prior.from, prior.to) } returns
+            listOf(DailyActionCount(priorDay, "accept_all", 3), DailyActionCount(priorDay, "custom", 1))
+
+        val result = service.rollup(userId, AnalyticsFilter())
+
+        val previous = requireNotNull(result.previous)
+        assertEquals(4, previous.totalEvents)
+        assertEquals(3, previous.byAction.acceptAll)
+        assertEquals(1, previous.byAction.custom)
+        // The baseline reads the shifted prior window, not the current one.
+        verify { consentRepository.accountDailyActionCounts(siteIds, prior.from, prior.to) }
     }
 
     @Test

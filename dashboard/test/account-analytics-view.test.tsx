@@ -64,6 +64,7 @@ function rollup(partial: Partial<AccountAnalytics> = {}): AccountAnalytics {
       categoryOptIn: [],
       languageSplit: [{ lang: "en", count: 200 }],
     },
+    previous: null,
     siteCount: 4,
     ...partial,
   };
@@ -114,6 +115,59 @@ describe("AccountAnalyticsView", () => {
     // 130 / 200 = 65% accept-all.
     expect(screen.getByText("65%")).toBeDefined();
     expect(screen.getByRole("radiogroup")).toBeDefined();
+    // No comparable prior window (previous: null) → no delta badges at all.
+    expect(screen.queryByText(/pts$/)).toBeNull();
+  });
+
+  test("shows period-over-period deltas when a comparable prior window is present", () => {
+    useEntitlement.mockReturnValue(entitlement(true));
+    useAccountAnalytics.mockReturnValue({
+      isPending: false,
+      isError: false,
+      isSuccess: true,
+      isFetching: false,
+      // Current: 200 events, 65% accept-all. Prior: 100 events, 50% accept-all.
+      data: rollup({
+        previous: { totalEvents: 100, byAction: { acceptAll: 50, rejectAll: 30, custom: 20 } },
+      }),
+    });
+
+    renderView();
+
+    // Accept-all rate 65% vs prior 50% → +15 percentage points.
+    expect(screen.getByText("+15 pts")).toBeDefined();
+    // Event volume 200 vs prior 100 → +100% relative change.
+    expect(screen.getByText("+100%")).toBeDefined();
+  });
+
+  test("renders the flat and downward delta branches, not just the upward one", () => {
+    useEntitlement.mockReturnValue(entitlement(true));
+    useAccountAnalytics.mockReturnValue({
+      isPending: false,
+      isError: false,
+      isSuccess: true,
+      isFetching: false,
+      // Current: 100 events, 50% accept-all. Prior: 200 events, also 50% accept-all.
+      data: rollup({
+        consent: {
+          totalEvents: 100,
+          byAction: { acceptAll: 50, rejectAll: 30, custom: 20 },
+          trend: [],
+          categoryOptIn: [],
+          languageSplit: [{ lang: "en", count: 100 }],
+        },
+        previous: { totalEvents: 200, byAction: { acceptAll: 100, rejectAll: 60, custom: 40 } },
+      }),
+    });
+
+    renderView();
+
+    // Accept-all rate unchanged (50% vs 50%) → flat "0 pts" badge with the "unchanged" screen-reader sentence.
+    expect(screen.getByText("0 pts")).toBeDefined();
+    expect(screen.getByText("unchanged versus the previous 30 days")).toBeDefined();
+    // Event volume 100 vs prior 200 → −50%, exercising the down glyph (U+2212) and the "down …" sentence.
+    expect(screen.getByText("−50%")).toBeDefined();
+    expect(screen.getByText("down 50 percent versus the previous 30 days")).toBeDefined();
   });
 
   test("an entitled account with a failed load is told so, not shown an empty roll-up", () => {

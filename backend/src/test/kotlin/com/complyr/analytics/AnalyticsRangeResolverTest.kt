@@ -1,6 +1,7 @@
 package com.complyr.analytics
 
 import com.complyr.analytics.dto.AnalyticsFilter
+import com.complyr.analytics.dto.AnalyticsRange
 import com.complyr.billing.EntitlementService
 import io.mockk.every
 import io.mockk.mockk
@@ -10,6 +11,7 @@ import java.time.Instant
 import java.time.ZoneOffset
 import java.util.UUID
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 /**
  * Unit tests for [AnalyticsRangeResolver] — the one place a consent-evidence read window is decided, and
@@ -68,5 +70,32 @@ class AnalyticsRangeResolverTest {
 
         assertEquals(to, range.to)
         assertEquals(to.minus(AnalyticsRangeResolver.DEFAULT_WINDOW), range.from)
+    }
+
+    @Test
+    fun `prior window is the current window shifted back by its own length`() {
+        val current = AnalyticsRange(from = now.minusSeconds(30 * 86_400), to = now)
+
+        val prior = requireNotNull(resolver.priorWindow(current, now.minusSeconds(365 * 86_400)))
+
+        // Contiguous and equal-length: [now-60d, now-30d) immediately before [now-30d, now).
+        assertEquals(current.from, prior.to)
+        assertEquals(now.minusSeconds(60 * 86_400), prior.from)
+    }
+
+    @Test
+    fun `prior window is omitted when it would read below the plan retention floor`() {
+        // Floor sits inside the prior window, so a full-length baseline is unreadable — omit rather than skew.
+        val current = AnalyticsRange(from = now.minusSeconds(30 * 86_400), to = now)
+
+        assertNull(resolver.priorWindow(current, now.minusSeconds(45 * 86_400)))
+    }
+
+    @Test
+    fun `prior window is kept when it sits exactly at the retention floor`() {
+        val current = AnalyticsRange(from = now.minusSeconds(30 * 86_400), to = now)
+
+        val prior = requireNotNull(resolver.priorWindow(current, now.minusSeconds(60 * 86_400)))
+        assertEquals(now.minusSeconds(60 * 86_400), prior.from)
     }
 }

@@ -11,5 +11,8 @@ package com.complyr.analytics.dto
 data class AccountAnalyticsResponse(
     val range: AnalyticsRange,
     val consent: ConsentAnalytics,
+    // The prior window (same length, immediately before [range]) for period-over-period deltas; null when no
+    // comparable baseline exists — see [PeriodSummary]. Always null for an account with no active sites.
+    val previous: PeriodSummary?,
     val siteCount: Int,
 )
