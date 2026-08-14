@@ -2,6 +2,7 @@ package com.complyr.scan.dto
 
 import com.complyr.scan.ComplianceAnalyzer
 import com.complyr.scan.ScanCookieEntity
+import com.complyr.scan.ScanDiff
 import com.complyr.scan.ScanEntity
 import com.complyr.scan.ScanStatus
 import java.time.Instant
@@ -39,7 +40,15 @@ data class ScanRequestedResponse(
     val status: String = ScanStatus.QUEUED.dbValue,
 )
 
-/** A scan as it appears in a site's scan history list — status/counts only, no cookie payload. */
+/**
+ * A scan as it appears in a site's scan history list — status/counts only, no cookie payload.
+ *
+ * [newCookieCount] is how many cookie names this scan found that the previous completed scan on the same
+ * page did not — the "+N new" badge the history list shows. It is null when there is nothing to compare
+ * against on the page (a non-`done` scan, or the oldest `done` scan whose predecessor is off the page):
+ * [ScanQueryService.list] computes it from a single batch read rather than an N+1, so the badge is a cheap
+ * in-page hint and the scan detail view is the authoritative diff.
+ */
 data class ScanSummaryResponse(
     val id: UUID,
     val status: String,
@@ -49,9 +58,13 @@ data class ScanSummaryResponse(
     val finishedAt: Instant?,
     val error: String?,
     val createdAt: Instant,
+    val newCookieCount: Int? = null,
 ) {
     companion object {
-        fun from(scan: ScanEntity): ScanSummaryResponse =
+        fun from(
+            scan: ScanEntity,
+            newCookieCount: Int? = null,
+        ): ScanSummaryResponse =
             ScanSummaryResponse(
                 id = scan.id,
                 status = scan.status.dbValue,
@@ -61,6 +74,38 @@ data class ScanSummaryResponse(
                 finishedAt = scan.finishedAt,
                 error = scan.error,
                 createdAt = scan.createdAt,
+                newCookieCount = newCookieCount,
+            )
+    }
+}
+
+/**
+ * How a completed scan's findings differ from the previous completed scan of the same site (see [ScanDiff]).
+ * [hasPrevious] is false for the site's first completed scan, in which case the lists are empty and the UI
+ * shows no comparison. Cookie names are compared, never row identity; trackers are a count-only delta
+ * because raw hosts are never stored.
+ */
+data class ScanDiffResponse(
+    val hasPrevious: Boolean,
+    val previousScanId: UUID?,
+    val previousScanAt: Instant?,
+    val newCookieCount: Int,
+    val removedCookieCount: Int,
+    val addedCookieNames: List<String>,
+    val removedCookieNames: List<String>,
+    val trackerCountDelta: Int?,
+) {
+    companion object {
+        fun from(diff: ScanDiff): ScanDiffResponse =
+            ScanDiffResponse(
+                hasPrevious = diff.hasPrevious,
+                previousScanId = diff.previousScanId,
+                previousScanAt = diff.previousScanAt,
+                newCookieCount = diff.newCookieCount,
+                removedCookieCount = diff.removedCookieCount,
+                addedCookieNames = diff.addedCookieNames,
+                removedCookieNames = diff.removedCookieNames,
+                trackerCountDelta = diff.trackerCountDelta,
             )
     }
 }
@@ -73,6 +118,10 @@ data class ScanSummaryResponse(
  *
  * [compliance] is the derived score + issue list ([ComplianceAnalyzer]); it is populated only for a
  * `done` scan (a queued/running/failed scan has no meaningful findings yet) and is `null` otherwise.
+ *
+ * [diff] is how this scan's findings changed since the previous completed scan of the same site; like
+ * [compliance] it is only present for a `done` scan, and is `null` otherwise (an in-flight/failed scan has
+ * nothing to compare).
  */
 data class ScanDetailResponse(
     val id: UUID,
@@ -86,12 +135,14 @@ data class ScanDetailResponse(
     val cookiesByCategory: Map<String, List<ScanCookieResponse>>,
     val needsReview: List<ScanCookieResponse>,
     val compliance: ComplianceReport?,
+    val diff: ScanDiffResponse?,
 ) {
     companion object {
         fun from(
             scan: ScanEntity,
             cookies: List<ScanCookieEntity>,
             now: Instant,
+            diff: ScanDiff? = null,
         ): ScanDetailResponse {
             // A classified cookie always carries a category (classifier invariant: isKnown ⇒ category
             // set); anything else — unknown, or the defensive known-but-uncategorized case — is a
@@ -120,6 +171,9 @@ data class ScanDetailResponse(
                     } else {
                         null
                     },
+                // The caller computes the diff only for a `done` scan (nothing to compare otherwise) and
+                // passes null for the rest; mirror the compliance gate so a stray diff can't leak through.
+                diff = if (scan.status == ScanStatus.DONE) diff?.let(ScanDiffResponse::from) else null,
             )
         }
     }

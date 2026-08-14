@@ -17,6 +17,13 @@ export interface ScanSummary {
   finishedAt: string | null;
   error: string | null;
   createdAt: string;
+  /**
+   * How many cookie names this scan found that the previous completed scan on the same page did not —
+   * the "+N new" history badge. Null when there is nothing to compare against on the page (a non-`done`
+   * scan, or the oldest `done` scan whose predecessor is off the page); the scan detail view carries the
+   * authoritative diff.
+   */
+  newCookieCount: number | null;
 }
 
 /** One observed cookie (ScanCookieResponse). `category`/`provider` are null until classified. */
@@ -53,15 +60,37 @@ export interface ComplianceReport {
 }
 
 /**
+ * How this scan's findings changed since the previous completed scan of the same site (ScanDiffResponse).
+ * `hasPrevious` is false for the site's first completed scan (the lists are empty and the UI shows no
+ * comparison). Cookies are compared by name; `trackerCountDelta` is a signed count delta (null with no
+ * baseline) because raw tracker hosts are never stored.
+ *
+ * `addedCookieNames` and `removedCookieNames` are the backend's set differences (current − previous and
+ * vice-versa), so each list holds unique names — the UI can safely key list items by name.
+ */
+export interface ScanDiff {
+  hasPrevious: boolean;
+  previousScanId: string | null;
+  previousScanAt: string | null;
+  newCookieCount: number;
+  removedCookieCount: number;
+  addedCookieNames: string[];
+  removedCookieNames: string[];
+  trackerCountDelta: number | null;
+}
+
+/**
  * A scan plus its cookies (ScanDetailResponse). `cookiesByCategory` is keyed by the backend's
  * canonical consent-category token (necessary/preferences/statistics/marketing) — the UI localizes
  * the key. `needsReview` holds cookies the signature DB did not recognize. `compliance` is the
- * indicative score/issue report, populated only once the scan is `done`.
+ * indicative score/issue report, populated only once the scan is `done`. `diff` is how the findings
+ * changed since the previous completed scan, also only once `done`.
  */
 export interface ScanDetail extends ScanSummary {
   cookiesByCategory: Record<string, ScanCookie[]>;
   needsReview: ScanCookie[];
   compliance: ComplianceReport | null;
+  diff: ScanDiff | null;
 }
 
 export interface ScansList {

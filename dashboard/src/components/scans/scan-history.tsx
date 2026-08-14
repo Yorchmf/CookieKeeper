@@ -3,6 +3,7 @@
 import { useFormatter, useTranslations } from "next-intl";
 import { RescanButton } from "@/components/scans/rescan-button";
 import { ScanStatusBadge } from "@/components/scans/scan-status-badge";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardAction,
@@ -52,6 +53,11 @@ function ScanRow({ siteId, scan }: { siteId: string; scan: ScanSummary }) {
           <span className="text-sm text-muted-foreground">
             {t("history.pagesCrawled", { count: scan.pagesCrawled })}
           </span>
+        )}
+        {scan.newCookieCount != null && scan.newCookieCount > 0 && (
+          <Badge variant="secondary">
+            {t("diff.badge", { count: scan.newCookieCount })}
+          </Badge>
         )}
         <ScanStatusBadge status={scan.status} />
         {errorMessage && (

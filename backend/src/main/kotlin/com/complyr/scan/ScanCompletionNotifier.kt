@@ -50,6 +50,7 @@ class ScanCompletionNotifier(
     private val delivery: BestEffortEmailDelivery,
     private val scanRepository: ScanRepository,
     private val scanCookieRepository: ScanCookieRepository,
+    private val scanDiffCalculator: ScanDiffCalculator,
     private val siteRepository: SiteRepository,
     private val userRepository: UserRepository,
     private val notificationPreferences: NotificationPreferenceService,
@@ -74,7 +75,12 @@ class ScanCompletionNotifier(
 
         val cookies = scanCookieRepository.findByScanId(scanId)
         val trackerCount = target.scan.marketingTrackerCount ?: 0
-        if (trigger == ScanTrigger.SCHEDULED && !hasNewFindings(target.scan, cookies, trackerCount)) {
+        // The send gate for monitoring scans: only mail when the findings actually moved since the previous
+        // completed scan. The same [ScanDiffCalculator] the dashboard reads decides "changed" here, so the
+        // email and the on-screen diff can never disagree about what counts as new.
+        if (trigger == ScanTrigger.SCHEDULED &&
+            !scanDiffCalculator.forScan(target.scan, cookies.map { it.name }, trackerCount).hasNewFindings
+        ) {
             log.debug("Scheduled scan {} found nothing new; no email", scanId)
             return
         }
@@ -142,36 +148,5 @@ class ScanCompletionNotifier(
     ): Nothing? {
         log.warn("Skipping scan-complete email: {} {}", reason, id)
         return null
-    }
-
-    /**
-     * Whether [scan] found something the previous completed scan of the same site did not: a cookie name
-     * that wasn't there before, or a different marketing-tracker count. Compared by NAME rather than row
-     * identity because every scan writes its own `scan_cookies` rows — row-level comparison would report
-     * a change every single run.
-     *
-     * A site with no earlier completed scan counts as changed (there is no baseline to be quiet about);
-     * in practice the site-added scan is always that baseline. The lookup is bounded by this scan's own
-     * `created_at` because the caller runs after the completion commit, so [scan] is itself `done` and a
-     * plain "latest done scan" query would return the scan we are comparing against itself.
-     *
-     * Deliberately one-directional-ish: a *disappearing* cookie also changes the name set and so also
-     * mails. That is intended — a tracker vanishing is a policy-affecting change the customer's cookie
-     * policy needs to reflect.
-     */
-    private fun hasNewFindings(
-        scan: ScanEntity,
-        cookies: List<ScanCookieEntity>,
-        trackerCount: Int,
-    ): Boolean {
-        val previous =
-            scanRepository.findFirstBySiteIdAndStatusAndCreatedAtLessThanOrderByCreatedAtDesc(
-                scan.siteId,
-                ScanStatus.DONE,
-                scan.createdAt,
-            ) ?: return true
-        if ((previous.marketingTrackerCount ?: 0) != trackerCount) return true
-        val previousNames = scanCookieRepository.findByScanId(previous.id).mapTo(mutableSetOf()) { it.name }
-        return cookies.mapTo(mutableSetOf()) { it.name } != previousNames
     }
 }

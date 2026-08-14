@@ -669,6 +669,16 @@
         "third_party_trackers": "{count, plural, one {# third-party marketing tracker loads before consent} other {# third-party marketing trackers load before consent}}",
         "unclassified_cookies": "{count, plural, one {# cookie could not be classified and needs review} other {# cookies could not be classified and need review}}"
       }
+    },
+    "diff": {
+      "title": "Since your last scan",
+      "summaryNew": "{count, plural, one {# new cookie} other {# new cookies}} since your last scan on {date}",
+      "summaryNone": "No new cookies since your last scan on {date}",
+      "trackersUp": "{count, plural, one {# more marketing tracker} other {# more marketing trackers}}",
+      "trackersDown": "{count, plural, one {# fewer marketing tracker} other {# fewer marketing trackers}}",
+      "addedLabel": "New cookies",
+      "removedLabel": "Removed cookies",
+      "badge": "+{count} new"
     }
   },
   "policy": {

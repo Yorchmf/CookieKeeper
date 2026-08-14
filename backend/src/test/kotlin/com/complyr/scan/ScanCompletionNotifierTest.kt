@@ -39,12 +39,15 @@ class ScanCompletionNotifierTest {
     private val userRepository = mockk<UserRepository>()
     private val notificationPreferences = mockk<NotificationPreferenceService>()
 
+    // A real calculator over the same mocked repositories: the send gate and the dashboard share this
+    // exact type, so the notifier's "changed since last scan" behaviour is exercised end-to-end here.
     private val notifier =
         ScanCompletionNotifier(
             composer,
             BestEffortEmailDelivery(sender),
             scanRepository,
             scanCookieRepository,
+            ScanDiffCalculator(scanRepository, scanCookieRepository),
             siteRepository,
             userRepository,
             notificationPreferences,

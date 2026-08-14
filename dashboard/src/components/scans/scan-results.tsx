@@ -6,6 +6,7 @@ import {
   CookieTable,
   orderedCategories,
 } from "@/components/scans/cookie-table";
+import { ScanDiffSummary } from "@/components/scans/scan-diff-summary";
 import { ScanStatusBadge } from "@/components/scans/scan-status-badge";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -103,6 +104,8 @@ export function ScanResults({
             </span>
           )}
         </header>
+
+        {data.diff && <ScanDiffSummary diff={data.diff} />}
 
         {data.compliance && <ComplianceReport report={data.compliance} />}
 

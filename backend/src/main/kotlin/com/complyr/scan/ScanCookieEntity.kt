@@ -48,6 +48,12 @@ data class ScanCookieEntity(
 interface ScanCookieRepository : JpaRepository<ScanCookieEntity, UUID> {
     fun findByScanId(scanId: UUID): List<ScanCookieEntity>
 
+    /**
+     * Every cookie row for a set of scans in one query — the scan-history list batches its per-row
+     * new-cookie diff through this to stay at a single read instead of an N+1 over the page.
+     */
+    fun findByScanIdIn(scanIds: Collection<UUID>): List<ScanCookieEntity>
+
     /** Drop a prior attempt's findings so a re-run replaces (not duplicates) this scan's cookies. */
     @Transactional
     fun deleteByScanId(scanId: UUID): Long

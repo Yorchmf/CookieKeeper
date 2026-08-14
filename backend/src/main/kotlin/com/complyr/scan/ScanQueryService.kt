@@ -20,6 +20,7 @@ class ScanQueryService(
     private val siteRepository: SiteRepository,
     private val scanRepository: ScanRepository,
     private val scanCookieRepository: ScanCookieRepository,
+    private val scanDiffCalculator: ScanDiffCalculator,
     private val clock: Clock,
 ) {
     /** Newest-first scan history for a site the caller owns, bounded to a sane page size. */
@@ -30,9 +31,9 @@ class ScanQueryService(
     ): List<ScanSummaryResponse> {
         requireOwnedSite(userId, siteId)
         val bounded = limit.coerceIn(1, MAX_LIMIT)
-        return scanRepository
-            .findBySiteIdOrderByCreatedAtDesc(siteId, PageRequest.of(0, bounded))
-            .map(ScanSummaryResponse::from)
+        val scans = scanRepository.findBySiteIdOrderByCreatedAtDesc(siteId, PageRequest.of(0, bounded))
+        val newCookieCounts = newCookieCountsWithinPage(scans)
+        return scans.map { ScanSummaryResponse.from(it, newCookieCounts[it.id]) }
     }
 
     /** A single scan (owned, and belonging to [siteId]) with its cookies grouped for the results UI. */
@@ -44,7 +45,39 @@ class ScanQueryService(
         requireOwnedSite(userId, siteId)
         val scan = scanRepository.findByIdAndSiteId(scanId, siteId) ?: throw ScanNotFoundException()
         val cookies = scanCookieRepository.findByScanId(scanId)
-        return ScanDetailResponse.from(scan, cookies, clock.instant())
+        // Only a completed scan has a meaningful diff; for the rest the previous-scan lookup would be
+        // wasted work. The calculator does the precise cross-page previous-scan comparison.
+        val diff =
+            if (scan.status == ScanStatus.DONE) {
+                scanDiffCalculator.forScan(scan, cookies.map { it.name }, scan.marketingTrackerCount ?: 0)
+            } else {
+                null
+            }
+        return ScanDetailResponse.from(scan, cookies, clock.instant(), diff)
+    }
+
+    /**
+     * New-cookie counts per `done` scan, comparing each to the next-older `done` scan WITHIN this page. One
+     * extra query — all cookies for the page's completed scans via [ScanCookieRepository.findByScanIdIn] —
+     * deliberately not the precise cross-page lookup the detail view does, so the history list stays at two
+     * reads instead of an N+1 over the page. The oldest `done` scan on the page has no in-page baseline and
+     * is therefore left out (rendered without a badge) rather than reported as "all new"; opening it shows
+     * the true diff against its real predecessor.
+     */
+    private fun newCookieCountsWithinPage(scans: List<ScanEntity>): Map<UUID, Int> {
+        val doneScans = scans.filter { it.status == ScanStatus.DONE }
+        if (doneScans.size < 2) return emptyMap()
+        val namesByScan =
+            scanCookieRepository
+                .findByScanIdIn(doneScans.map { it.id })
+                .groupBy({ it.scanId }, { it.name })
+        // `scans` is newest-first; walk oldest-first so each `done` scan is diffed against the prior `done`
+        // baseline. `zipWithNext` naturally leaves the oldest scan out (it has no in-page predecessor).
+        return doneScans
+            .asReversed()
+            .map { it.id to namesByScan[it.id].orEmpty().toSet() }
+            .zipWithNext { (_, previousNames), (id, names) -> id to (names - previousNames).size }
+            .toMap()
     }
 
     private fun requireOwnedSite(
