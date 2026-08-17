@@ -11,6 +11,17 @@ export const SITE_URL = (
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://complyr.eu"
 ).replace(/\/$/, "");
 
+/**
+ * Where "a real human will reply" actually lands. Env-overridable so a staging build can point at a test
+ * inbox; `support@complyr.eu` is the production default. Single source of truth for every contact link
+ * (FAQ, marketing footer, in-app sidebar) so the address is changed in exactly one place.
+ */
+export const SUPPORT_EMAIL =
+  process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? "support@complyr.eu";
+
+/** `mailto:` href for the support address. */
+export const SUPPORT_MAILTO = `mailto:${SUPPORT_EMAIL}`;
+
 /** Absolute URL for a locale-scoped path (leading slash optional). */
 export function localeUrl(locale: string, path = ""): string {
   const suffix = path && !path.startsWith("/") ? `/${path}` : path;

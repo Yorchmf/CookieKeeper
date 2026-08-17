@@ -39,7 +39,9 @@
       "signIn": "Anmelden",
       "cta": "Kostenlos starten",
       "rights": "© {year} Complyr. Alle Rechte vorbehalten.",
-      "madeIn": "In der EU entwickelt und gehostet"
+      "madeIn": "In der EU entwickelt und gehostet",
+      "contact": "Support kontaktieren",
+      "contactAria": "Support kontaktieren unter {email}"
     },
     "scan": {
       "eyebrow": "Kostenloser Cookie-Check",
@@ -306,7 +308,8 @@
           "q": "Bietet ihr einen kostenlosen Tarif an?",
           "a": "Wir bieten eine 14-tägige kostenlose Testphase — keine Kreditkarte, bis zu 1.000 Einwilligungsereignisse. Nach der Testphase wählst du einen Tarif ab €9/Monat, damit dein Banner aktiv bleibt; bis dahin pausieren neue Scans und das Hinzufügen von Websites, dein Einwilligungsprotokoll wird jedoch nie gelöscht. Wir halten die Preise niedrig, um in das Produkt zu investieren, statt einen dauerhaften Gratis-Tarif zu subventionieren."
         }
-      }
+      },
+      "contactCta": "Schreiben Sie uns an {email}"
     },
     "finalCta": {
       "title": "Bereit, dir keine Sorgen mehr um die Cookie-Einwilligung zu machen?",
@@ -326,7 +329,8 @@
     "account": "Konto",
     "signOut": "Abmelden",
     "signOutError": "Die Abmeldung ist fehlgeschlagen. Bitte versuchen Sie es erneut.",
-    "analytics": "Analysen"
+    "analytics": "Analysen",
+    "support": "Support kontaktieren"
   },
   "auth": {
     "fields": {

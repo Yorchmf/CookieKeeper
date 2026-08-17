@@ -2,6 +2,7 @@ import { useTranslations } from "next-intl";
 import { LanguageSwitcher } from "@/components/marketing/language-switcher";
 import { ThemeToggle } from "@/components/marketing/theme-toggle";
 import { Link } from "@/i18n/navigation";
+import { SUPPORT_EMAIL, SUPPORT_MAILTO } from "@/lib/site";
 
 // Baked at build time in static generation — good enough for a copyright line.
 const CURRENT_YEAR = new Date().getFullYear();
@@ -45,6 +46,13 @@ export function SiteFooter() {
           <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
             <span aria-hidden>🇪🇺</span> {t("madeIn")}
           </p>
+          <a
+            href={SUPPORT_MAILTO}
+            aria-label={t("contactAria", { email: SUPPORT_EMAIL })}
+            className="mt-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            {t("contact")}
+          </a>
         </div>
 
         {columns.map((column) => (

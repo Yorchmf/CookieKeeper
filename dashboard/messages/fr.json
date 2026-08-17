@@ -39,7 +39,9 @@
       "signIn": "Se connecter",
       "cta": "Commencer gratuitement",
       "rights": "© {year} Complyr. Tous droits réservés.",
-      "madeIn": "Conçu et hébergé dans l'UE"
+      "madeIn": "Conçu et hébergé dans l'UE",
+      "contact": "Contacter le support",
+      "contactAria": "Contacter le support à {email}"
     },
     "scan": {
       "eyebrow": "Audit de cookies gratuit",
@@ -306,7 +308,8 @@
           "q": "Proposez-vous une offre gratuite ?",
           "a": "Nous proposons un essai gratuit de 14 jours — sans carte bancaire, jusqu'à 1 000 événements de consentement. À la fin de l'essai, choisissez une offre à partir de €9/mois pour garder votre bandeau actif ; d'ici là, les nouveaux scans et l'ajout de sites sont suspendus, mais votre journal de consentement n'est jamais supprimé. Nous maintenons des prix bas pour investir dans le produit plutôt que de subventionner une offre gratuite permanente."
         }
-      }
+      },
+      "contactCta": "Écrivez-nous à {email}"
     },
     "finalCta": {
       "title": "Prêt à ne plus vous soucier du consentement aux cookies ?",
@@ -326,7 +329,8 @@
     "account": "Compte",
     "signOut": "Se déconnecter",
     "signOutError": "Échec de la déconnexion. Veuillez réessayer.",
-    "analytics": "Analytique"
+    "analytics": "Analytique",
+    "support": "Contacter le support"
   },
   "auth": {
     "fields": {

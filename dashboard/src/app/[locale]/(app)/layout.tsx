@@ -1,6 +1,8 @@
 import { useTranslations } from "next-intl";
+import { LifeBuoy } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { UserNav } from "@/components/app/user-nav";
+import { SUPPORT_MAILTO } from "@/lib/site";
 
 // Only routes that exist today; scans/consent-log/policies
 // return here as their pages are built in later weeks.
@@ -43,6 +45,17 @@ export default function AppShellLayout({
             ))}
           </ul>
         </nav>
+        {/* Persistent contact line — the FAQ promises a human reply, so give logged-in customers the
+            same one click away. A mailto keeps it honest with no unbuilt form behind it. */}
+        <div className="border-t border-border p-3">
+          <a
+            href={SUPPORT_MAILTO}
+            className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          >
+            <LifeBuoy aria-hidden="true" className="size-4 shrink-0" />
+            {t("nav.support")}
+          </a>
+        </div>
       </aside>
       <div className="flex flex-1 flex-col">
         <header className="flex h-14 items-center justify-between border-b border-border px-6">

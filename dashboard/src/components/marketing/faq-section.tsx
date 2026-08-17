@@ -1,6 +1,7 @@
 import { ChevronDown } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Reveal } from "@/components/marketing/reveal";
+import { SUPPORT_EMAIL, SUPPORT_MAILTO } from "@/lib/site";
 
 const ITEMS = [
   "compliant",
@@ -35,6 +36,15 @@ export function FaqSection() {
           </h2>
           <p className="mt-4 text-pretty text-muted-foreground">
             {t("subtitle")}
+          </p>
+          <p className="mt-4 text-sm">
+            {/* Makes the subtitle's "a real human will reply" promise real: a direct line to support. */}
+            <a
+              href={SUPPORT_MAILTO}
+              className="font-medium text-brand underline decoration-brand/40 underline-offset-4 transition-colors hover:decoration-brand"
+            >
+              {t("contactCta", { email: SUPPORT_EMAIL })}
+            </a>
           </p>
         </Reveal>
 

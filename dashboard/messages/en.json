@@ -39,7 +39,9 @@
       "signIn": "Sign in",
       "cta": "Start free",
       "rights": "© {year} Complyr. All rights reserved.",
-      "madeIn": "Made and hosted in the EU"
+      "madeIn": "Made and hosted in the EU",
+      "contact": "Contact support",
+      "contactAria": "Contact support at {email}"
     },
     "scan": {
       "eyebrow": "Free cookie audit",
@@ -306,7 +308,8 @@
           "q": "Do you offer a free plan?",
           "a": "We offer a 14-day free trial — no credit card, up to 1,000 consent events. After the trial, pick a plan from €9/month to keep your banner live; until you do, new scans and adding sites are paused, though your consent log is never deleted. We keep prices low so we can invest in the product instead of subsidising a permanent free tier."
         }
-      }
+      },
+      "contactCta": "Email us at {email}"
     },
     "finalCta": {
       "title": "Ready to stop worrying about cookie consent?",
@@ -326,7 +329,8 @@
     "account": "Account",
     "signOut": "Sign out",
     "signOutError": "Sign-out failed. Please try again.",
-    "analytics": "Analytics"
+    "analytics": "Analytics",
+    "support": "Contact support"
   },
   "auth": {
     "fields": {

@@ -39,7 +39,9 @@
       "signIn": "Iniciar sesión",
       "cta": "Empieza gratis",
       "rights": "© {year} Complyr. Todos los derechos reservados.",
-      "madeIn": "Creado y alojado en la UE"
+      "madeIn": "Creado y alojado en la UE",
+      "contact": "Contactar con soporte",
+      "contactAria": "Contactar con soporte en {email}"
     },
     "scan": {
       "eyebrow": "Auditoría de cookies gratis",
@@ -306,7 +308,8 @@
           "q": "¿Ofrecéis un plan gratuito?",
           "a": "Ofrecemos una prueba gratuita de 14 días — sin tarjeta de crédito, hasta 1000 eventos de consentimiento. Al terminar, elige un plan desde €9/mes para mantener tu banner activo; hasta entonces, los nuevos escaneos y añadir sitios quedan en pausa, aunque tu registro de consentimiento nunca se elimina. Mantenemos los precios bajos para invertir en el producto en lugar de subvencionar un plan gratuito permanente."
         }
-      }
+      },
+      "contactCta": "Escríbenos a {email}"
     },
     "finalCta": {
       "title": "¿Listo para dejar de preocuparte por el consentimiento de cookies?",
@@ -326,7 +329,8 @@
     "account": "Cuenta",
     "signOut": "Cerrar sesión",
     "signOutError": "No se ha podido cerrar la sesión. Inténtalo de nuevo.",
-    "analytics": "Analíticas"
+    "analytics": "Analíticas",
+    "support": "Contactar con soporte"
   },
   "auth": {
     "fields": {

@@ -226,11 +226,20 @@ Builds on what already ships.
   guides a new user through it. **Shipped (18fdc65)** — first-run getting-started card on the dashboard
   home, backed by real signals from `GET /api/v1/overview` (`OnboardingProgress`), auto-hides once every
   step is done.
-- **Empty states** with real next actions.
+- **Empty states** with real next actions. **Shipped (4f217eb).** The one genuine gap was the consent
+  log, which showed the same "no events yet" copy whether the log was truly empty or the active *filters*
+  matched nothing; it now splits, offering an inline **Clear filters** action in the filtered case. The
+  sites list (per-status copy + persistent Add-site dialog) and scan history (Rescan action in the card
+  header) already carried real next-actions.
 - **Trial status** — days remaining and consent-event usage against the 1,000 cap; graceful expired-state
   UX instead of a silent `maxSites = 0` freeze.
-- **Support channel** — the FAQ promises "a real human will reply" (`en.json:275`) and no contact link
-  exists anywhere on the site or in the app.
+- **Support channel** — **Shipped (mailto).** The FAQ promise ("a real human will reply") is now backed
+  by a real contact link in three places: under the FAQ subtitle, in the marketing footer, and in the
+  in-app sidebar. All point at `SUPPORT_EMAIL` (`src/lib/site.ts`, env-overridable via
+  `NEXT_PUBLIC_SUPPORT_EMAIL`, default `support@complyr.eu`) — one source of truth. A `mailto:` keeps the
+  promise honest with no unbuilt form behind it.
+  - **Backlog (v1.1):** in-app contact form posting to a backend endpoint (needs an endpoint,
+    rate-limit, validation, i18n, and an inbox) — heavier than the MVP warrants; the mailto covers launch.
 - **Widget size guard** — **Confirmed wired.** `size-limit` (`dist/v1.js`, `limit: 20 KB`, `gzip: true`)
   runs as a hard non-zero-exit `pnpm size` step in `.github/workflows/ci.yml` and both deploy workflows.
   The "19K" figure was uncompressed; the gate measures *gzipped*, where the widget is ~6.9 KB — ample
