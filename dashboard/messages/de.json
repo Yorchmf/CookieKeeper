@@ -954,7 +954,11 @@
     "loadError": "Das Einwilligungsprotokoll konnte nicht geladen werden. Bitte versuchen Sie es erneut.",
     "empty": {
       "title": "Noch keine Einwilligungen",
-      "description": "Sobald Besucher mit Ihrem Banner interagieren, erscheinen ihre Einwilligungen hier."
+      "description": "Sobald Besucher mit Ihrem Banner interagieren, erscheinen ihre Einwilligungen hier.",
+      "filtered": {
+        "title": "Keine Ereignisse entsprechen diesen Filtern",
+        "description": "Keine Einwilligungsereignisse liegen innerhalb der angewendeten Filter. Erweitern Sie den Zeitraum oder setzen Sie die Filter zurück, um das vollständige Protokoll zu sehen."
+      }
     },
     "filters": {
       "legend": "Ereignisse filtern",

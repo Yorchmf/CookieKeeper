@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { ConsentEventsTable } from "@/components/consent-log/consent-events-table";
 import { ConsentLogFilters as FiltersBar } from "@/components/consent-log/consent-log-filters";
 import { ExportCsvButton } from "@/components/consent-log/export-csv-button";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useConsentLog } from "@/hooks/use-consent-log";
 import { usePathname, useRouter } from "@/i18n/navigation";
@@ -15,6 +16,7 @@ import {
   buildConsentParams,
   type ConsentEvent,
   type ConsentLogFilters,
+  hasActiveConsentFilters,
   parseConsentAction,
 } from "@/lib/api/consent";
 
@@ -44,13 +46,18 @@ export function ConsentLogSkeleton({ className }: { className?: string }) {
 
 type ConsentLogQuery = ReturnType<typeof useConsentLog>;
 
-function ConsentLogBody({
+/** Exported for unit tests: the render-state machine (loading / error / two empty states / list). */
+export function ConsentLogBody({
   query,
   events,
+  isFiltered,
+  onClearFilters,
   sentinelRef,
 }: {
   query: ConsentLogQuery;
   events: ConsentEvent[];
+  isFiltered: boolean;
+  onClearFilters: () => void;
   sentinelRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const t = useTranslations("consentLog");
@@ -64,6 +71,22 @@ function ConsentLogBody({
     );
   }
   if (events.length === 0) {
+    // Two very different empty states: an active filter set that matched nothing (the fix is to clear
+    // the filters, offered inline) versus a site that has genuinely recorded no consent yet (the fix is
+    // out in the world — get the banner in front of visitors — so the copy just explains that).
+    if (isFiltered) {
+      return (
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border p-10 text-center">
+          <p className="font-medium">{t("empty.filtered.title")}</p>
+          <p className="max-w-md text-sm text-muted-foreground">
+            {t("empty.filtered.description")}
+          </p>
+          <Button type="button" variant="secondary" onClick={onClearFilters}>
+            {t("filters.clear")}
+          </Button>
+        </div>
+      );
+    }
     return (
       <div className="rounded-xl border border-dashed border-border p-10 text-center">
         <p className="font-medium">{t("empty.title")}</p>
@@ -149,7 +172,13 @@ export function ConsentLog({ siteId }: { siteId: string }) {
 
         <FiltersBar values={filters} onChange={applyFilters} />
 
-        <ConsentLogBody query={query} events={events} sentinelRef={sentinelRef} />
+        <ConsentLogBody
+          query={query}
+          events={events}
+          isFiltered={hasActiveConsentFilters(filters)}
+          onClearFilters={() => applyFilters({})}
+          sentinelRef={sentinelRef}
+        />
       </section>
     </main>
   );

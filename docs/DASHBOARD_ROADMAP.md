@@ -231,9 +231,10 @@ Builds on what already ships.
   UX instead of a silent `maxSites = 0` freeze.
 - **Support channel** — the FAQ promises "a real human will reply" (`en.json:275`) and no contact link
   exists anywhere on the site or in the app.
-- **Widget size guard** — `widget/dist/v1.js` is 19K uncompressed against an "under 20KB" claim, with no
-  size check found in `widget/vite.config.ts`. CLAUDE.md states CI enforces this; confirm the gate is
-  actually wired.
+- **Widget size guard** — **Confirmed wired.** `size-limit` (`dist/v1.js`, `limit: 20 KB`, `gzip: true`)
+  runs as a hard non-zero-exit `pnpm size` step in `.github/workflows/ci.yml` and both deploy workflows.
+  The "19K" figure was uncompressed; the gate measures *gzipped*, where the widget is ~6.9 KB — ample
+  headroom. No code change needed.
 
 ---
 

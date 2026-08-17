@@ -954,7 +954,11 @@
     "loadError": "No se pudo cargar el registro de consentimientos. Inténtalo de nuevo.",
     "empty": {
       "title": "Aún no hay consentimientos",
-      "description": "Cuando los visitantes interactúen con tu banner, sus decisiones aparecerán aquí."
+      "description": "Cuando los visitantes interactúen con tu banner, sus decisiones aparecerán aquí.",
+      "filtered": {
+        "title": "Ningún evento coincide con estos filtros",
+        "description": "Ningún evento de consentimiento se encuentra dentro de los filtros aplicados. Amplíe el intervalo de fechas o borre los filtros para ver el registro completo."
+      }
     },
     "filters": {
       "legend": "Filtrar eventos",

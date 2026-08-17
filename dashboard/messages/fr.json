@@ -954,7 +954,11 @@
     "loadError": "Le journal des consentements n’a pas pu être chargé. Veuillez réessayer.",
     "empty": {
       "title": "Aucun consentement pour l’instant",
-      "description": "Dès que les visiteurs interagissent avec votre bandeau, leurs choix apparaissent ici."
+      "description": "Dès que les visiteurs interagissent avec votre bandeau, leurs choix apparaissent ici.",
+      "filtered": {
+        "title": "Aucun événement ne correspond à ces filtres",
+        "description": "Aucun événement de consentement ne correspond aux filtres appliqués. Élargissez la plage de dates ou effacez les filtres pour voir le journal complet."
+      }
     },
     "filters": {
       "legend": "Filtrer les évènements",

@@ -50,6 +50,17 @@ export interface ConsentLogFilters {
   visitorId?: string;
 }
 
+/**
+ * Whether any filter field is set. An empty log with active filters is a "nothing matched — clear the
+ * filters" state, not a genuine "no consent events yet" state; the two need different empty-state copy
+ * and actions. Kept next to `buildConsentParams` so both derive "active" from the exact same field set.
+ */
+export function hasActiveConsentFilters(filters: ConsentLogFilters): boolean {
+  return Boolean(
+    filters.from || filters.to || filters.action || filters.lang || filters.visitorId,
+  );
+}
+
 /** A keyset page of events plus the cursor for the next (older) page — `null` on the last page. */
 export interface ConsentEventsPage {
   events: ConsentEvent[];

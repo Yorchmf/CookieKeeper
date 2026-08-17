@@ -954,7 +954,11 @@
     "loadError": "Impossibile caricare il registro dei consensi. Riprova.",
     "empty": {
       "title": "Ancora nessun consenso",
-      "description": "Quando i visitatori interagiscono con il tuo banner, le loro scelte appaiono qui."
+      "description": "Quando i visitatori interagiscono con il tuo banner, le loro scelte appaiono qui.",
+      "filtered": {
+        "title": "Nessun evento corrisponde a questi filtri",
+        "description": "Nessun evento di consenso rientra nei filtri applicati. Amplia l’intervallo di date o cancella i filtri per vedere il registro completo."
+      }
     },
     "filters": {
       "legend": "Filtra eventi",

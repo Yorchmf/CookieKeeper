@@ -954,7 +954,11 @@
     "loadError": "The consent log could not be loaded. Please try again.",
     "empty": {
       "title": "No consent events yet",
-      "description": "Once visitors interact with your banner, their consent choices appear here."
+      "description": "Once visitors interact with your banner, their consent choices appear here.",
+      "filtered": {
+        "title": "No events match these filters",
+        "description": "No consent events fall within the filters you’ve applied. Widen the date range or clear the filters to see the full log."
+      }
     },
     "filters": {
       "legend": "Filter events",
