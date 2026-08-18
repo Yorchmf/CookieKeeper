@@ -365,7 +365,8 @@
       "NEW_PASSWORD_SAME_AS_CURRENT": "Elige una contraseña distinta de la actual",
       "GENERIC": "Algo ha salido mal. Inténtalo de nuevo.",
       "NEW_EMAIL_SAME_AS_CURRENT": "Esa ya es tu dirección de correo",
-      "SITE_LIMIT_REACHED": "Has usado todos los sitios que incluye tu plan. Mejora tu plan para añadir otro."
+      "SITE_LIMIT_REACHED": "Has usado todos los sitios que incluye tu plan. Mejora tu plan para añadir otro.",
+      "CONTACT_DELIVERY_FAILED": "No hemos podido enviar tu mensaje en este momento. Inténtalo de nuevo en unos instantes."
     },
     "login": {
       "title": "Iniciar sesión",
@@ -1242,6 +1243,24 @@
           "home": "Volver al inicio"
         }
       }
+    }
+  },
+  "support": {
+    "contact": {
+      "title": "Contactar con soporte",
+      "description": "Envíanos un mensaje y una persona real responderá al correo electrónico de tu cuenta.",
+      "replyNotice": "Responderemos a {email}.",
+      "subjectLabel": "Asunto",
+      "subjectPlaceholder": "¿Cómo podemos ayudarte?",
+      "messageLabel": "Mensaje",
+      "messagePlaceholder": "Describe tu pregunta o problema…",
+      "subjectRequired": "Introduce un asunto",
+      "subjectTooLong": "Mantén el asunto por debajo de {max} caracteres",
+      "messageRequired": "Introduce un mensaje",
+      "messageTooLong": "Mantén tu mensaje por debajo de {max} caracteres",
+      "cancel": "Cancelar",
+      "submit": "Enviar mensaje",
+      "sent": "Mensaje enviado: responderemos al correo electrónico de tu cuenta."
     }
   }
 }

@@ -20,7 +20,16 @@ data class ComplyrProperties(
     val appBaseUrl: String,
     val cdnBaseUrl: String,
     val mailFrom: String,
+    // Destination for in-app support contact-form messages (com.complyr.support). Unlike [mailFrom] this
+    // carries a safe default so the 21 unit tests that build ComplyrProperties by hand need not each name
+    // it; application.yml overrides it from ${SUPPORT_INBOX}. It is our own inbox (not customer PII); the
+    // submitting customer's address rides the email's Reply-To, never this field.
+    val supportInbox: String = DEFAULT_SUPPORT_INBOX,
 ) {
+    companion object {
+        const val DEFAULT_SUPPORT_INBOX = "support@complyr.eu"
+    }
+
     data class Auth(
         val jwtSecret: String,
         val accessTokenTtl: Duration,
@@ -124,6 +133,13 @@ data class ComplyrProperties(
         // pins a Tomcat thread and streams even longer than a verify probe, and the cheap CSV tolerates
         // the same tight cap without complaint. Rate only — thread-pool sizing bounds concurrency.
         val authExportPerMinute: Long = DEFAULT_AUTH_EXPORT_PER_MINUTE,
+        // Requests per minute per authenticated user on `POST /api/v1/support/contact` — the in-app
+        // contact form. Tight because every accepted call composes and sends an email to our support
+        // inbox: an authenticated loop would flood the inbox (and burn the shared mail-provider budget)
+        // even though the form is a handful-of-times-ever action for a real customer. Reply-To is the
+        // caller's own verified account address, so this is spam-to-ourselves protection, not an open
+        // relay — but the cap keeps a compromised or abusive session from turning the form into one.
+        val authContactPerMinute: Long = DEFAULT_AUTH_CONTACT_PER_MINUTE,
         // Requests per minute per authenticated user on all other authed `/api/v1/**` endpoints. A
         // generous backstop a real dashboard session never reaches, bounding amplification abuse
         // (e.g. `POST /api/v1/sites` enqueues a Chromium crawl; consent-log reads fan across monthly
@@ -133,10 +149,10 @@ data class ComplyrProperties(
         // Hard cap on distinct keys each in-memory bucket registry tracks before it evicts (idle-first)
         // to bound memory — see [com.complyr.common.RateLimitBuckets]. Sized with headroom for the
         // authenticated registry's fan-out: it keys by `tier|userId`, so an active tenant can hold up
-        // to 5 keys (billing + account + verify + export + general). The default covers well past MVP scale; raise it
-        // before the distinct tracked-key count (up to ~5 per fully-active tenant) approaches half this
-        // value, or steady-state traffic keeps the map at cap and turns eviction from a rare safety
-        // valve into a per-new-key cost.
+        // to 6 keys (billing + account + verify + export + contact + general). The default covers well
+        // past MVP scale; raise it before the distinct tracked-key count (up to ~6 per fully-active
+        // tenant) approaches half this value, or steady-state traffic keeps the map at cap and turns
+        // eviction from a rare safety valve into a per-new-key cost.
         val maxTrackedKeys: Int = DEFAULT_MAX_TRACKED_KEYS,
     ) {
         init {
@@ -144,6 +160,7 @@ data class ComplyrProperties(
             require(authAccountPerMinute > 0) { "complyr.rate-limit.auth-account-per-minute must be > 0" }
             require(authVerifyPerMinute > 0) { "complyr.rate-limit.auth-verify-per-minute must be > 0" }
             require(authExportPerMinute > 0) { "complyr.rate-limit.auth-export-per-minute must be > 0" }
+            require(authContactPerMinute > 0) { "complyr.rate-limit.auth-contact-per-minute must be > 0" }
             require(authGeneralPerMinute > 0) { "complyr.rate-limit.auth-general-per-minute must be > 0" }
             require(maxTrackedKeys > 0) { "complyr.rate-limit.max-tracked-keys must be > 0" }
         }
@@ -157,6 +174,7 @@ data class ComplyrProperties(
             const val DEFAULT_AUTH_ACCOUNT_PER_MINUTE = 10L
             const val DEFAULT_AUTH_VERIFY_PER_MINUTE = 5L
             const val DEFAULT_AUTH_EXPORT_PER_MINUTE = 5L
+            const val DEFAULT_AUTH_CONTACT_PER_MINUTE = 5L
             const val DEFAULT_AUTH_GENERAL_PER_MINUTE = 300L
             const val DEFAULT_MAX_TRACKED_KEYS = 50_000
         }

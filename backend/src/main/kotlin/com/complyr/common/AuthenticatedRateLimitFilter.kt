@@ -41,6 +41,10 @@ import tools.jackson.databind.ObjectMapper
  *    it; this bounds *how hard* they can. Note this tier bounds request *arrival rate*, not concurrent
  *    stream occupancy — several overlapping pack streams still each pin a request thread, so the
  *    (tuned) Tomcat thread pool, not this filter, is the concurrency ceiling.
+ *  - **CONTACT tier (tight):** `POST /api/v1/support/contact` — the in-app contact form. Every accepted
+ *    call composes and sends an email to our support inbox, so an authenticated loop would flood the
+ *    inbox and burn the shared mail-provider budget. A real customer submits it a handful of times ever.
+ *    Matched by exact path (like VERIFY's suffix match) and ordered before the GENERAL fallthrough.
  *  - **ACCOUNT tier (tight):** every call under `/api/v1/account` — the customer's own GDPR and
  *    credential surface (ADR-20). `POST /account/delete` and `POST /account/password` both re-verify the
  *    account password, so leaving them on the generous GENERAL tier made them a 300-guesses-per-minute
@@ -101,6 +105,9 @@ class AuthenticatedRateLimitFilter(
             uri == BILLING_WEBHOOK_PATH -> null
             uri == BILLING_PATH || uri.startsWith("$BILLING_PATH/") -> Tier.BILLING
             uri == ACCOUNT_PATH || uri.startsWith("$ACCOUNT_PATH/") -> Tier.ACCOUNT
+            // Exact match: the contact form is the only endpoint under `/api/v1/support`, and each accepted
+            // call sends an email. Ordered before the GENERAL fallthrough, which would otherwise swallow it.
+            uri == CONTACT_PATH -> Tier.CONTACT
             // Ordered before the GENERAL fallthrough, which would otherwise swallow it. Matching is
             // method-blind here as everywhere in this filter, which is why the suffix must be exact:
             // `GET /api/v1/sites/{id}/scans` is polled every 3s by the dashboard and must stay GENERAL.
@@ -118,6 +125,7 @@ class AuthenticatedRateLimitFilter(
             Tier.ACCOUNT -> properties.rateLimit.authAccountPerMinute
             Tier.VERIFY -> properties.rateLimit.authVerifyPerMinute
             Tier.EXPORT -> properties.rateLimit.authExportPerMinute
+            Tier.CONTACT -> properties.rateLimit.authContactPerMinute
             Tier.GENERAL -> properties.rateLimit.authGeneralPerMinute
         }
 
@@ -133,12 +141,13 @@ class AuthenticatedRateLimitFilter(
         )
     }
 
-    private enum class Tier { BILLING, ACCOUNT, VERIFY, EXPORT, GENERAL }
+    private enum class Tier { BILLING, ACCOUNT, VERIFY, EXPORT, CONTACT, GENERAL }
 
     companion object {
         const val API_PREFIX = "/api/v1/"
         const val BILLING_PATH = "/api/v1/billing"
         const val ACCOUNT_PATH = "/api/v1/account"
+        const val CONTACT_PATH = "/api/v1/support/contact"
         const val BILLING_WEBHOOK_PATH = "/api/v1/billing/webhook"
         const val SITES_PATH_PREFIX = "/api/v1/sites/"
         const val VERIFY_SUFFIX = "/verify"

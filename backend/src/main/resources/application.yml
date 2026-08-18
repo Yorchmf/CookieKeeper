@@ -170,6 +170,9 @@ complyr:
   app-base-url: ${APP_BASE_URL:http://localhost:3000}
   cdn-base-url: ${CDN_BASE_URL:http://localhost:8081}
   mail-from: ${MAIL_FROM:no-reply@complyr.eu}
+  # Destination for in-app support contact-form messages. Our own inbox; the submitting customer's
+  # address rides the email's Reply-To, not this field.
+  support-inbox: ${SUPPORT_INBOX:support@complyr.eu}
 
 management:
   endpoints:

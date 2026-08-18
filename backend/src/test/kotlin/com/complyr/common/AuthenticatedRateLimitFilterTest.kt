@@ -33,6 +33,7 @@ class AuthenticatedRateLimitFilterTest {
                     authBillingPerMinute = 2,
                     authVerifyPerMinute = 1,
                     authExportPerMinute = 2,
+                    authContactPerMinute = 2,
                     authGeneralPerMinute = 3,
                 ),
             appBaseUrl = "http://localhost:3000",
@@ -278,6 +279,44 @@ class AuthenticatedRateLimitFilterTest {
         repeat(3) {
             val response = MockHttpServletResponse()
             filter.doFilter(request("/api/v1/sites/$siteId/scans", method = "GET"), response, chain)
+            assertEquals(200, response.status)
+        }
+    }
+
+    @Test
+    fun `the support contact form is throttled on its own tight contact tier`() {
+        val chain = mockk<FilterChain>(relaxed = true)
+        authenticate("21212121-2121-2121-2121-212121212121")
+
+        // Each accepted call sends an email to our support inbox, so it must not fall through to the
+        // generous GENERAL tier (3/min here) — it is capped at 2/min.
+        repeat(2) {
+            val response = MockHttpServletResponse()
+            filter.doFilter(request("/api/v1/support/contact"), response, chain)
+            assertEquals(200, response.status)
+        }
+
+        val limited = MockHttpServletResponse()
+        filter.doFilter(request("/api/v1/support/contact"), limited, chain)
+        assertEquals(429, limited.status)
+        assertTrue(limited.contentAsString.contains("\"RATE_LIMITED\""), limited.contentAsString)
+    }
+
+    @Test
+    fun `the contact tier and the general tier are independent`() {
+        val chain = mockk<FilterChain>(relaxed = true)
+        authenticate("23232323-2323-2323-2323-232323232323")
+
+        // Drain the contact tier (2/min); the 3rd contact call is refused.
+        repeat(2) { filter.doFilter(request("/api/v1/support/contact"), MockHttpServletResponse(), chain) }
+        val contactLimited = MockHttpServletResponse()
+        filter.doFilter(request("/api/v1/support/contact"), contactLimited, chain)
+        assertEquals(429, contactLimited.status)
+
+        // The general tier (3/min) still has its full allowance — it did not borrow from contact.
+        repeat(3) {
+            val response = MockHttpServletResponse()
+            filter.doFilter(request("/api/v1/sites"), response, chain)
             assertEquals(200, response.status)
         }
     }

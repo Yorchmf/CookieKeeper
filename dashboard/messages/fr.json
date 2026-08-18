@@ -365,7 +365,8 @@
       "NEW_PASSWORD_SAME_AS_CURRENT": "Choisissez un mot de passe différent de l’actuel",
       "GENERIC": "Une erreur est survenue. Veuillez réessayer.",
       "NEW_EMAIL_SAME_AS_CURRENT": "C'est déjà votre adresse e-mail",
-      "SITE_LIMIT_REACHED": "Vous avez utilisé tous les sites inclus dans votre formule. Passez à une formule supérieure pour en ajouter un autre."
+      "SITE_LIMIT_REACHED": "Vous avez utilisé tous les sites inclus dans votre formule. Passez à une formule supérieure pour en ajouter un autre.",
+      "CONTACT_DELIVERY_FAILED": "Nous n'avons pas pu envoyer votre message pour le moment. Veuillez réessayer dans un instant."
     },
     "login": {
       "title": "Se connecter",
@@ -1242,6 +1243,24 @@
           "home": "Retour à l'accueil"
         }
       }
+    }
+  },
+  "support": {
+    "contact": {
+      "title": "Contacter le support",
+      "description": "Envoyez-nous un message ; une vraie personne vous répondra à l'adresse e-mail de votre compte.",
+      "replyNotice": "Nous répondrons à {email}.",
+      "subjectLabel": "Objet",
+      "subjectPlaceholder": "Comment pouvons-nous vous aider ?",
+      "messageLabel": "Message",
+      "messagePlaceholder": "Décrivez votre question ou votre problème…",
+      "subjectRequired": "Saisissez un objet",
+      "subjectTooLong": "Limitez l'objet à moins de {max} caractères",
+      "messageRequired": "Saisissez un message",
+      "messageTooLong": "Limitez votre message à moins de {max} caractères",
+      "cancel": "Annuler",
+      "submit": "Envoyer le message",
+      "sent": "Message envoyé — nous répondrons à l'adresse e-mail de votre compte."
     }
   }
 }

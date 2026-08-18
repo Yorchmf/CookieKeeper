@@ -1,6 +1,7 @@
 package com.complyr.notify
 
 import com.complyr.common.ComplyrProperties
+import com.fasterxml.jackson.annotation.JsonInclude
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
@@ -46,8 +47,18 @@ class BrevoEmailSender(
         to: String,
         subject: String,
         htmlBody: String,
+        replyTo: String?,
     ) {
-        val request = BrevoSendRequest(sender, listOf(BrevoRecipient(to)), subject, htmlBody)
+        val request =
+            BrevoSendRequest(
+                sender = sender,
+                to = listOf(BrevoRecipient(to)),
+                subject = subject,
+                htmlContent = htmlBody,
+                // Omitted from the JSON when null (Jackson default) so transactional mail is byte-for-byte
+                // unchanged; only the contact form populates it.
+                replyTo = replyTo?.let { BrevoReplyTo(it) },
+            )
         try {
             restClient
                 .post()
@@ -75,12 +86,18 @@ class BrevoEmailSender(
     }
 }
 
-/** Brevo `POST /v3/smtp/email` request body (field names match the API verbatim). */
+/**
+ * Brevo `POST /v3/smtp/email` request body (field names match the API verbatim).
+ * `NON_NULL` so a transactional (null-[replyTo]) send emits exactly the previous payload — the field
+ * is dropped rather than sent as `"replyTo":null`.
+ */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 private data class BrevoSendRequest(
     val sender: BrevoSender,
     val to: List<BrevoRecipient>,
     val subject: String,
     val htmlContent: String,
+    val replyTo: BrevoReplyTo? = null,
 )
 
 private data class BrevoSender(
@@ -89,5 +106,9 @@ private data class BrevoSender(
 )
 
 private data class BrevoRecipient(
+    val email: String,
+)
+
+private data class BrevoReplyTo(
     val email: String,
 )

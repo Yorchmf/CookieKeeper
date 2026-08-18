@@ -30,6 +30,7 @@ data class RecordedEmail(
     val to: String,
     val subject: String,
     val htmlBody: String,
+    val replyTo: String? = null,
 )
 
 /** Thread-safe recording fake: emails arrive asynchronously after the publishing transaction commits. */
@@ -40,8 +41,9 @@ class RecordingEmailSender : EmailSender {
         to: String,
         subject: String,
         htmlBody: String,
+        replyTo: String?,
     ) {
-        sent.add(RecordedEmail(to, subject, htmlBody))
+        sent.add(RecordedEmail(to, subject, htmlBody, replyTo))
     }
 
     fun clear() {

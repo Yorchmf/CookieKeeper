@@ -67,6 +67,38 @@ class BrevoEmailSenderTest {
     }
 
     @Test
+    fun `includes reply-to only when supplied`() {
+        val builder = RestClient.builder()
+        val server = MockRestServiceServer.bindTo(builder).build()
+        val sender = BrevoEmailSender(builder, props())
+
+        server
+            .expect(requestTo("https://api.brevo.test/v3/smtp/email"))
+            .andExpect(jsonPath("$.replyTo.email").value("customer@example.com"))
+            .andRespond(withStatus(HttpStatus.CREATED))
+
+        sender.send("support@complyr.eu", "Subject line", "<p>Hello</p>", replyTo = "customer@example.com")
+
+        server.verify()
+    }
+
+    @Test
+    fun `omits reply-to from the payload for a transactional send`() {
+        val builder = RestClient.builder()
+        val server = MockRestServiceServer.bindTo(builder).build()
+        val sender = BrevoEmailSender(builder, props())
+
+        server
+            .expect(requestTo("https://api.brevo.test/v3/smtp/email"))
+            .andExpect(jsonPath("$.replyTo").doesNotExist())
+            .andRespond(withStatus(HttpStatus.CREATED))
+
+        sender.send("alice@example.com", "Subject line", "<p>Hello</p>")
+
+        server.verify()
+    }
+
+    @Test
     fun `maps a non-2xx response to EmailDeliveryException`() {
         val builder = RestClient.builder()
         val server = MockRestServiceServer.bindTo(builder).build()

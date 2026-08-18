@@ -365,7 +365,8 @@
       "NEW_PASSWORD_SAME_AS_CURRENT": "Choose a password different from your current one",
       "GENERIC": "Something went wrong. Please try again.",
       "NEW_EMAIL_SAME_AS_CURRENT": "This is already your email address",
-      "SITE_LIMIT_REACHED": "You have used every site your plan includes. Upgrade your plan to add another."
+      "SITE_LIMIT_REACHED": "You have used every site your plan includes. Upgrade your plan to add another.",
+      "CONTACT_DELIVERY_FAILED": "We couldn't send your message right now. Please try again shortly."
     },
     "login": {
       "title": "Sign in",
@@ -1242,6 +1243,24 @@
           "home": "Back to the homepage"
         }
       }
+    }
+  },
+  "support": {
+    "contact": {
+      "title": "Contact support",
+      "description": "Send us a message and a real person will reply to your account email.",
+      "replyNotice": "We'll reply to {email}.",
+      "subjectLabel": "Subject",
+      "subjectPlaceholder": "How can we help?",
+      "messageLabel": "Message",
+      "messagePlaceholder": "Describe your question or issue…",
+      "subjectRequired": "Enter a subject",
+      "subjectTooLong": "Keep the subject under {max} characters",
+      "messageRequired": "Enter a message",
+      "messageTooLong": "Keep your message under {max} characters",
+      "cancel": "Cancel",
+      "submit": "Send message",
+      "sent": "Message sent — we'll reply to your account email."
     }
   }
 }

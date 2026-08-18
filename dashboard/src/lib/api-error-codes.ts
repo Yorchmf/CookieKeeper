@@ -20,6 +20,7 @@ export const KNOWN_ERROR_CODES = [
   "CURRENT_PASSWORD_INCORRECT",
   "NEW_PASSWORD_SAME_AS_CURRENT",
   "NEW_EMAIL_SAME_AS_CURRENT",
+  "CONTACT_DELIVERY_FAILED",
 ] as const;
 
 export type KnownErrorCode = (typeof KNOWN_ERROR_CODES)[number];
