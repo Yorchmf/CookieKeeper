@@ -23,8 +23,8 @@ Status legend: ☐ open · ◐ in progress · ☑ done
 
 | # | Item | Why it matters |
 |---|------|----------------|
-| 4 | ◐ **Escape stored lead email in CSV exports & emails** | CSV formula injection (`=` `+` `-` `@` prefixes) + HTML escaping in outbound mail. Direct injection risk on attacker-controlled input. |
-| 5 | ◐ **Read-token-in-URL leaks to infra logs** | Public-scan read token rides in the URL → lands in Caddy/access logs. Add `Referrer-Policy` + Caddy log scrubbing. |
+| 4 | ☑ **Escape stored lead email in CSV exports & emails** | CSV sinks already route through shared `CsvCell` (formula-injection + RFC 4180). Residual gap closed: extracted shared `HtmlText` escaper (`8f37fb6`) so email bodies never depend on a composer-private escaper; `ScanEmailComposer` delegates to it. |
+| 5 | ☑ **Read-token-in-URL leaks to infra logs** | `Referrer-Policy` set at the Caddy edge; no access logs capture the path. Residual sink closed: `scrubSentryPii` now drops breadcrumbs (`e299a9a`) so navigation/fetch URLs carrying `/api/v1/public-scan/{token}` + `?email=` never reach Sentry. |
 | 6 | ☐ **Focus-ring token contrast (a11y HIGH, WCAG 2.2 SC 2.4.11)** | `--ring` is ~2.3:1, below the 3:1 non-text floor, on every focusable element. Consent products draw regulator + accessibility scrutiny. System-wide token change. |
 | 7 | ☐ **ADR: `stripe_events` erasure linkage** | Failing webhook payloads have no `user_id` linkage, so an erasure request can't reach them. Document the decision. |
 | 8 | ☐ **ADR: least-privilege / schema-qualified DDL** for the partition reaper | The retention `DROP PARTITION` job runs DDL; document the privilege boundary. |
