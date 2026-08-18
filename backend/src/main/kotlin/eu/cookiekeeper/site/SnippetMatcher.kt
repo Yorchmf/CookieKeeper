@@ -61,7 +61,7 @@ import java.net.URISyntaxException
  * resolves every doubt that way.
  */
 object SnippetMatcher {
-    private const val SITE_KEY_ATTRIBUTE = "data-complyr"
+    private const val SITE_KEY_ATTRIBUTE = "data-cookiekeeper"
     private const val SRC_ATTRIBUTE = "src"
 
     /**
