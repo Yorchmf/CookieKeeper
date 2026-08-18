@@ -75,10 +75,16 @@ describe("sentryClientEnvironment", () => {
 });
 
 describe("scrubSentryPii", () => {
-  test("drops request and user context without mutating the input", () => {
+  test("drops request, user, and breadcrumb context without mutating the input", () => {
     const event = {
       request: { url: "https://app.complyr.eu/billing?email=owner@example.com" },
       user: { email: "owner@example.com", ip_address: "203.0.113.7" },
+      // Automatic fetch breadcrumbs record the public-scan capability token and query-string PII; these
+      // must not ride along into Sentry just because request.url was scrubbed.
+      breadcrumbs: [
+        { category: "fetch", data: { url: "/api/v1/public-scan/tok_secret123/report" } },
+        { category: "navigation", data: { to: "/scan?email=lead@example.com" } },
+      ],
       message: "checkout failed",
     } as unknown as ErrorEvent;
 
@@ -86,9 +92,11 @@ describe("scrubSentryPii", () => {
 
     expect(scrubbed.request).toBeUndefined();
     expect(scrubbed.user).toBeUndefined();
+    expect(scrubbed.breadcrumbs).toBeUndefined();
     expect(scrubbed.message).toBe("checkout failed");
     // Immutability: the original event is untouched.
     expect(event.request).toBeDefined();
     expect(event.user).toBeDefined();
+    expect(event.breadcrumbs).toBeDefined();
   });
 });

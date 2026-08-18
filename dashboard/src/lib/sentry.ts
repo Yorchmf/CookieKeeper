@@ -78,10 +78,17 @@ export function sentryServerEnvironment(): string {
 }
 
 /**
- * Drop request and user context before an event is sent so no PII leaves the process (CLAUDE.md #4).
- * Returns a new event rather than mutating the argument (immutability). `sendDefaultPii: false` already
- * suppresses IP/cookies/headers; this is defense-in-depth for anything a layer attached explicitly.
+ * Drop request, user, and breadcrumb context before an event is sent so no PII leaves the process
+ * (CLAUDE.md #4). Returns a new event rather than mutating the argument (immutability).
+ * `sendDefaultPii: false` already suppresses IP/cookies/headers; this is defense-in-depth for anything a
+ * layer attached explicitly.
+ *
+ * Breadcrumbs are dropped for the same reason `request` is: automatic navigation/fetch breadcrumbs record
+ * full URLs, and ours carry capability tokens (`/api/v1/public-scan/{token}`) and query-string PII
+ * (`?email=`). Scrubbing `request.url` while leaving those URLs in `breadcrumbs` would reintroduce exactly
+ * what we scrub, into a third-party store — unacceptable for a GDPR product. Exception stacktraces + tags
+ * remain, which is what these events are for.
  */
 export function scrubSentryPii(event: ErrorEvent): ErrorEvent {
-  return { ...event, request: undefined, user: undefined };
+  return { ...event, request: undefined, user: undefined, breadcrumbs: undefined };
 }
