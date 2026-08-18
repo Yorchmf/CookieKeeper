@@ -151,7 +151,7 @@ class DnsTxtLookup(
 
     companion object {
         /** The record name the dashboard tells customers to create: `_cookiekeeper.{their domain}`. */
-        const val RECORD_PREFIX = "_complyr"
+        const val RECORD_PREFIX = "_cookiekeeper"
 
         // There is deliberately no cap on the number of records examined. An earlier `take(20)` bounded
         // nothing — the resolver has already materialized the whole list by then — while making
