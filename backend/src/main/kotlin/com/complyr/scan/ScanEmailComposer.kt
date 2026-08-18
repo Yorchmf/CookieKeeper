@@ -1,6 +1,7 @@
 package com.complyr.scan
 
 import com.complyr.common.ComplyrProperties
+import com.complyr.common.HtmlText
 import com.complyr.notify.ComposedEmail
 import org.springframework.context.MessageSource
 import org.springframework.stereotype.Service
@@ -44,7 +45,10 @@ class ScanEmailComposer(
                 messageSource.getMessage(
                     "scanCompleted.body",
                     arrayOf(
-                        escapeHtml(summary.domain),
+                        // Defence in depth: domains are normalized and validated before a site is stored, but an
+                        // email body is HTML rendered into someone's mail client, so a validator regression must
+                        // not turn into markup there. Counts are ints; the link is our own base URL plus UUIDs.
+                        HtmlText.escape(summary.domain),
                         summary.cookieCount.toString(),
                         summary.marketingTrackerCount.toString(),
                         link,
@@ -53,20 +57,4 @@ class ScanEmailComposer(
                 ),
         )
     }
-
-    /**
-     * Escape the one interpolated value that originates from customer input. Domains are normalized and
-     * validated before a site is ever stored, so this is defence in depth rather than a live fix — but an
-     * email body is HTML we render into someone's mail client, and a validator regression must not turn
-     * into markup there. Counts are ints and the link is built from our own base URL plus UUIDs.
-     *
-     * Deliberately not `HtmlUtils.htmlEscape`: that also escapes non-ASCII to numeric entities, which
-     * would mangle the IDN domains this product exists to serve.
-     */
-    private fun escapeHtml(value: String): String =
-        value
-            .replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-            .replace("\"", "&quot;")
 }
