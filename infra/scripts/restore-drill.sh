@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# restore-drill.sh — prove a Complyr backup is actually restorable.
+# restore-drill.sh — prove a CookieKeeper backup is actually restorable.
 #
 # A backup you have never restored is a hope, not a backup. This script closes
 # the launch-checklist "restore drill" item (ARCHITECTURE.md §8): it takes an

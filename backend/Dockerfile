@@ -1,4 +1,4 @@
-# Complyr backend API image.
+# CookieKeeper backend API image.
 # Build context: backend/ — e.g. `docker build -t complyr-api -f backend/Dockerfile backend/`
 # Tests run in CI (Testcontainers); the image build only compiles and packages.
 

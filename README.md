@@ -1,4 +1,4 @@
-# Complyr
+# CookieKeeper
 
 GDPR/cookie consent management micro-SaaS for small European businesses: an
 embeddable consent banner, automated cookie scanning, generated cookie
@@ -49,8 +49,8 @@ cd backend && ./gradlew bootRun              # needs local JDK 21
 | Env | Where | Deploy trigger |
 |-----|-------|----------------|
 | local | Docker Compose on your machine | manual |
-| dev | Hetzner VPS, compose project `complyr-dev` | auto on merge to `main` |
-| prd | Same VPS, compose project `complyr-prd` | manual approval on tag `v*` |
+| dev | Hetzner VPS, compose project `cookiekeeper-dev` | auto on merge to `main` |
+| prd | Same VPS, compose project `cookiekeeper-prd` | manual approval on tag `v*` |
 
 See [infra/scripts/server-setup.md](infra/scripts/server-setup.md) for the
 one-time server runbook.

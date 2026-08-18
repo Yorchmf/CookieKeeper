@@ -3,7 +3,7 @@
 # opt-in via `--profile scanner` (heavy Playwright image).
 # Reads ../.env (copy from ../.env.example).
 
-name: complyr-local
+name: cookiekeeper-local
 
 services:
   postgres:
@@ -13,15 +13,15 @@ services:
     # env_file) caused postgres/api credential drift. Real secrets exist only
     # in the dev/prd server .env files.
     environment:
-      POSTGRES_DB: complyr
-      POSTGRES_USER: complyr
-      POSTGRES_PASSWORD: complyr
+      POSTGRES_DB: cookiekeeper
+      POSTGRES_USER: cookiekeeper
+      POSTGRES_PASSWORD: cookiekeeper
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
       - "5432:5432" # local convenience only — never published on the server
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U complyr -d complyr"]
+      test: ["CMD-SHELL", "pg_isready -U cookiekeeper -d complyr"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -41,9 +41,9 @@ services:
         required: false # copy .env.example → .env for real values
     environment:
       SPRING_PROFILES_ACTIVE: api,local
-      DB_URL: jdbc:postgresql://postgres:5432/complyr
-      DB_USER: complyr # matches the fixed local postgres credentials above
-      DB_PASSWORD: complyr
+      DB_URL: jdbc:postgresql://postgres:5432/cookiekeeper
+      DB_USER: cookiekeeper # matches the fixed local postgres credentials above
+      DB_PASSWORD: cookiekeeper
       SMTP_HOST: mailpit
       SMTP_PORT: "1025"
       # Throwaway local-only secret (matches the application-local.yml fallback);
@@ -67,9 +67,9 @@ services:
         required: false # copy .env.example → .env for real values
     environment:
       SPRING_PROFILES_ACTIVE: scanner,local
-      DB_URL: jdbc:postgresql://postgres:5432/complyr
-      DB_USER: complyr
-      DB_PASSWORD: complyr
+      DB_URL: jdbc:postgresql://postgres:5432/cookiekeeper
+      DB_USER: cookiekeeper
+      DB_PASSWORD: cookiekeeper
     depends_on:
       postgres:
         condition: service_healthy

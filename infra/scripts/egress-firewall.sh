@@ -45,7 +45,7 @@
 #   EGRESS_CONTROL_TARGET    <ip> <port> that must stay reachable (verify only)
 #
 # Must run as root. Install it root-owned OUTSIDE the CI-rsynced tree
-# (/usr/local/sbin/complyr-egress-firewall) so a compromised deploy key cannot
+# (/usr/local/sbin/cookiekeeper-egress-firewall) so a compromised deploy key cannot
 # rewrite the thing that constrains it. See server-setup.md §2.1.
 # =============================================================================
 set -euo pipefail
@@ -70,7 +70,7 @@ readonly BRIDGES=(br-+ docker0)
 # one incident at a time.
 readonly BOGONS=(
   0.0.0.0/8          # "this network"
-  10.0.0.0/8         # RFC1918 — also every pinned complyr subnet
+  10.0.0.0/8         # RFC1918 — also every pinned cookiekeeper subnet
   100.64.0.0/10      # CGNAT
   127.0.0.0/8        # loopback
   169.254.0.0/16     # link-local — cloud metadata lives at 169.254.169.254
@@ -144,7 +144,7 @@ build_forward() {
   for iface in "${BRIDGES[@]}"; do
     for bogon in "${BOGONS[@]}"; do
       "$ipt" -A "$chain" -i "$iface" -d "$bogon" "${LOG_LIMIT[@]}" \
-        -j LOG --log-prefix "complyr-egress-drop: " --log-level warning
+        -j LOG --log-prefix "cookiekeeper-egress-drop: " --log-level warning
       "$ipt" -A "$chain" -i "$iface" -d "$bogon" -j DROP
     done
   done
@@ -157,7 +157,7 @@ build_host() {
   prologue "$ipt" "$chain" icmp
   for iface in "${BRIDGES[@]}"; do
     "$ipt" -A "$chain" -i "$iface" "${LOG_LIMIT[@]}" \
-      -j LOG --log-prefix "complyr-host-drop: " --log-level warning
+      -j LOG --log-prefix "cookiekeeper-host-drop: " --log-level warning
     "$ipt" -A "$chain" -i "$iface" -j DROP
   done
 }
@@ -226,7 +226,7 @@ drop_chain() {
 # Serialise runs. systemd already orders the timer against the docker.service
 # trigger, but an operator running `apply` by hand during a timer tick would have
 # two rebuilds computing the same spare slot.
-LOCKFILE=/run/complyr-egress-firewall.lock
+LOCKFILE=/run/cookiekeeper-egress-firewall.lock
 take_lock() {
   command -v flock >/dev/null 2>&1 || return 0
   exec 9>"$LOCKFILE" || die "cannot open ${LOCKFILE}"

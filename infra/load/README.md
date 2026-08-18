@@ -1,7 +1,7 @@
 # Load smoke test + rate-limit tuning (CX22)
 
 A pre-launch check that the single Hetzner **CX22 (2 vCPU / 4GB)** — which runs
-`complyr-dev` **and** `complyr-prd` side by side (two API JVMs, two Postgres,
+`cookiekeeper-dev` **and** `cookiekeeper-prd` side by side (two API JVMs, two Postgres,
 two dashboards, the scanner) — holds a realistic sustained load without 5xx or
 runaway latency, and that the rate limits are sized correctly for that box.
 
@@ -13,7 +13,7 @@ ground the tuning numbers below.
 
 ```bash
 # Install k6: https://k6.io/docs/get-started/installation/  (apt: `k6`)
-k6 run -e BASE_URL=https://api.dev.complyr.eu \
+k6 run -e BASE_URL=https://api.dev.cookiekeeper.eu \
        -e SITE_KEY=<a-real-dev-site-key> \
        -e PUBLIC_ID=<a-real-dev-policy-public-id> \
        -e RPS=40 \
@@ -28,7 +28,7 @@ k6 run -e BASE_URL=https://api.dev.complyr.eu \
 Watch the **server** while it runs (the box, not k6):
 
 ```bash
-ssh root@vps 'docker stats --no-stream; docker exec complyr-dev-postgres-1 \
+ssh root@vps 'docker stats --no-stream; docker exec cookiekeeper-dev-postgres-1 \
   psql -U complyr -d complyr -c "SELECT count(*) FROM pg_stat_activity WHERE state=$$active$$;"'
 ```
 
@@ -62,7 +62,7 @@ per-IP rate limits. Defaults are sized for the CX22 and set in
 | DB min idle | `DB_POOL_MIN_IDLE` | 2 | |
 | DB connect timeout | `DB_POOL_CONNECTION_TIMEOUT_MS` | 10000 | Fail a request fast when the pool is exhausted rather than hang. |
 
-Per-IP / per-user rate-limit tiers (`complyr.rate-limit.*`,
+Per-IP / per-user rate-limit tiers (`cookiekeeper.rate-limit.*`,
 `RateLimit` in `ComplyrProperties.kt`) are a **correctness/abuse** control, not a
 capacity control — Cloudflare at the edge is the volumetric backstop. Only revisit
 a tier if the smoke test shows legitimate traffic tripping it (e.g. a large NAT'd

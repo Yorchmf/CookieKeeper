@@ -8,7 +8,7 @@
 # This backstops the external synthetic checks and catches app-degraded states a
 # bare HTTP 200 would hide (e.g. API up but DB down → health reports DOWN).
 #
-# Runs every minute from cron, sourcing /opt/complyr/monitoring.env for config.
+# Runs every minute from cron, sourcing /opt/cookiekeeper/monitoring.env for config.
 # =============================================================================
 set -uo pipefail   # NOT -e: a failed check must be handled, not abort the script
 

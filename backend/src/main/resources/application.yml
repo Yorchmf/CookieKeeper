@@ -63,7 +63,7 @@ server:
   # trusted, so request.remoteAddr stays authentic.
   forward-headers-strategy: native
 
-complyr:
+cookiekeeper:
   # No default for JWT_SECRET here on purpose: dev/prd fail fast at startup if unset.
   # A dev-only fallback exists in application-local.yml; tests set it in test resources.
   auth:

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# backup.sh — encrypted, verified, off-site Postgres backups for Complyr.
+# backup.sh — encrypted, verified, off-site Postgres backups for CookieKeeper.
 #
 # For each environment: pg_dump -> gzip -> age-encrypt in ONE pipeline (plaintext
 # never touches disk), write a SHA-256 sidecar, ship to Hetzner Object Storage
@@ -18,20 +18,20 @@
 #   same EU provider as the VPS, so it introduces no new data processor.
 #
 # Config is via env (see .env.example "Backups"); the cron line sources
-# /opt/complyr/backup.env so secrets/keys stay out of the crontab and out of git.
+# /opt/cookiekeeper/backup.env so secrets/keys stay out of the crontab and out of git.
 # =============================================================================
 set -euo pipefail
 umask 077   # dumps are PII — never group/world-readable
 
 # --- config (env-overridable) ------------------------------------------------
-BACKUP_DIR="${BACKUP_DIR:-/opt/complyr/backups}"
+BACKUP_DIR="${BACKUP_DIR:-/opt/cookiekeeper/backups}"
 BACKUP_ENVS="${BACKUP_ENVS:-dev prd}"
 LOCAL_RETENTION_DAYS="${BACKUP_LOCAL_RETENTION_DAYS:-14}"   # fast local restores
 OFFSITE_RETENTION_DAYS="${BACKUP_OFFSITE_RETENTION_DAYS:-90}"  # disaster window
-PG_USER="${BACKUP_PG_USER:-complyr}"
-PG_DB="${BACKUP_PG_DB:-complyr}"
+PG_USER="${BACKUP_PG_USER:-cookiekeeper}}"
+PG_DB="${BACKUP_PG_DB:-cookiekeeper}}"
 AGE_RECIPIENT="${BACKUP_AGE_RECIPIENT:-}"    # age1... public key(s), space-separated
-RCLONE_REMOTE="${BACKUP_RCLONE_REMOTE:-}"    # e.g. hetzner-s3:complyr-backups (off-site; optional)
+RCLONE_REMOTE="${BACKUP_RCLONE_REMOTE:-}"    # e.g. hetzner-s3:cookiekeeper-backups (off-site; optional)
 
 TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"       # UTC, sortable, filename-safe
 
@@ -104,8 +104,8 @@ upload_offsite() {
 
 backup_env() {
   local env_name="$1"
-  local container="complyr-${env_name}-postgres-1"
-  local base="${BACKUP_DIR}/complyr-${env_name}-${TIMESTAMP}.sql.gz.age"
+  local container="cookiekeeper-${env_name}-postgres-1"
+  local base="${BACKUP_DIR}/cookiekeeper-${env_name}-${TIMESTAMP}.sql.gz.age"
   local tmp="${base}.partial"
 
   if ! docker ps --format '{{.Names}}' | grep -qx "$container"; then
@@ -150,8 +150,8 @@ done
 
 # --- rotation ----------------------------------------------------------------
 # Local: keep a short window for fast restores.
-find "$BACKUP_DIR" -maxdepth 1 -name 'complyr-*.sql.gz.age'        -mtime "+${LOCAL_RETENTION_DAYS}" -delete
-find "$BACKUP_DIR" -maxdepth 1 -name 'complyr-*.sql.gz.age.sha256' -mtime "+${LOCAL_RETENTION_DAYS}" -delete
+find "$BACKUP_DIR" -maxdepth 1 -name 'cookiekeeper-*.sql.gz.age'        -mtime "+${LOCAL_RETENTION_DAYS}" -delete
+find "$BACKUP_DIR" -maxdepth 1 -name 'cookiekeeper-*.sql.gz.age.sha256' -mtime "+${LOCAL_RETENTION_DAYS}" -delete
 
 # Off-site: keep a longer disaster-recovery window. (Belt-and-suspenders — set a
 # bucket lifecycle rule too, in case this host is the thing that failed.)

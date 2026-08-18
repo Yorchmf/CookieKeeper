@@ -1,6 +1,6 @@
 # Anonymous Scan Funnel — Design & Slice Plan
 
-**Status:** IMPLEMENTED (through Slice G) — decisions locked §9; landed in `com.complyr.scan`
+**Status:** IMPLEMENTED (through Slice G) — decisions locked §9; landed in `eu.cookiekeeper.scan`
 **Recorded in:** ARCHITECTURE.md §4.4 (SSRF invariant), §5 (`public_scans`/`public_scan_cookies`), §8 (Security Posture), §12 (**ADR-12** recorded)
 **Reviewers required before merge:** `security-reviewer` (SSRF/abuse/PII — mandatory), `database-reviewer` (migration), `a11y-architect` (public scan widget)
 

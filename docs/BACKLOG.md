@@ -1,4 +1,4 @@
-# Complyr Backlog
+# CookieKeeper Backlog
 
 Single source of truth for what's left. Replaces the old roadmap/status/track checklists
 (consolidated 2026-08-18). Architecture and rationale live in [ARCHITECTURE.md](ARCHITECTURE.md);

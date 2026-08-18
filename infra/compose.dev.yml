@@ -1,7 +1,7 @@
 # Dev environment on the VPS.
-# Run as compose project `complyr-dev` from /opt/complyr/dev:
-#   docker compose -f compose.dev.yml --project-name complyr-dev up -d
-# Container names get the `complyr-dev-` prefix from the project name —
+# Run as compose project `cookiekeeper-dev` from /opt/cookiekeeper/dev:
+#   docker compose -f compose.dev.yml --project-name cookiekeeper-dev up -d
+# Container names get the `cookiekeeper-dev-` prefix from the project name —
 # Caddy reaches them via the shared external `caddy-net` network.
 #
 # Images are pulled from GHCR (built by CI). IMAGE_TAG and GHCR_OWNER come
@@ -14,7 +14,7 @@ services:
     restart: unless-stopped
     env_file: ./.env
     environment:
-      POSTGRES_DB: complyr
+      POSTGRES_DB: cookiekeeper
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -24,7 +24,7 @@ services:
       retries: 10
 
   api:
-    image: ghcr.io/${GHCR_OWNER}/complyr-api:${IMAGE_TAG}
+    image: ghcr.io/${GHCR_OWNER}/cookiekeeper-api:${IMAGE_TAG}
     restart: unless-stopped
     env_file: ./.env
     environment:
@@ -49,7 +49,7 @@ services:
         condition: service_healthy
 
   scanner:
-    image: ghcr.io/${GHCR_OWNER}/complyr-scanner:${IMAGE_TAG}
+    image: ghcr.io/${GHCR_OWNER}/cookiekeeper-scanner:${IMAGE_TAG}
     restart: unless-stopped
     env_file: ./.env
     environment:
@@ -62,7 +62,7 @@ services:
         condition: service_healthy
 
   dashboard:
-    image: ghcr.io/${GHCR_OWNER}/complyr-dashboard:${IMAGE_TAG}
+    image: ghcr.io/${GHCR_OWNER}/cookiekeeper-dashboard:${IMAGE_TAG}
     restart: unless-stopped
     env_file: ./.env
     # No NEXT_PUBLIC_API_URL: the client uses same-origin /api/v1/* (Caddy

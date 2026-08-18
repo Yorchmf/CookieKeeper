@@ -1,13 +1,13 @@
-# Complyr
+# CookieKeeper
 
-GDPR/cookie consent management micro-SaaS for small European businesses. Dead-simple, affordable (€9–29/mo), EU-focused (GDPR, ePrivacy, DSA). This is a **commercial product**, not a hobby project — code quality, security, and operational robustness matter.
+Cookie consent and GDPR compliance management micro-SaaS for small European businesses. Dead-simple, affordable (€9–29/mo), EU-focused (GDPR, ePrivacy, DSA). This is a **commercial product**, not a hobby project — code quality, security, and operational robustness matter.
 
 Full architecture and rationale: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Read it before making structural changes.
 
 ## Monorepo Layout
 
 ```
-complyr/
+cookiekeeper/
 ├── backend/          # Spring Boot 4 (Kotlin, Gradle Kotlin DSL) — REST API, auth, billing,
 │                     #   consent ingestion, policy generation, scanner worker (Playwright for Java,
 │                     #   activated via Spring profile `scanner`)
@@ -48,8 +48,8 @@ Package manager for JS workspaces: **pnpm**. Backend: Gradle wrapper, JDK 21.
 | Env | Where | Trigger |
 |-----|-------|---------|
 | local | `docker compose` on dev machine (includes Postgres + Mailpit) | manual |
-| dev | Hetzner VPS, compose project `complyr-dev`, `dev.` subdomains | auto-deploy on merge to `main` |
-| prd | Same VPS (v1), compose project `complyr-prd`, production domains | manual approval on git tag `v*` |
+| dev | Hetzner VPS, compose project `cookiekeeper-dev`, `dev.` subdomains | auto-deploy on merge to `main` |
+| prd | Same VPS (v1), compose project `cookiekeeper-prd`, production domains | manual approval on git tag `v*` |
 
 Deploys are GitHub Actions → build images → push to GHCR → SSH to VPS → `docker compose pull && up -d`. Never deploy by hand-editing files on the server.
 

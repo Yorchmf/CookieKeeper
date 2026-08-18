@@ -1,4 +1,4 @@
-# 🚀 Complyr MVP v1.0.0 — Shipment Ready
+# 🚀 CookieKeeper MVP v1.0.0 — Shipment Ready
 
 **Date:** 2026-08-10  
 **Status:** Production-ready  
@@ -21,7 +21,7 @@ The container egress firewall (`infra/scripts/egress-firewall.sh`) is complete, 
 
 - **Deployment:** See `docs/LAUNCH_CHECKLIST.md` §2.3 (Hetzner VPS Preparation → Deploy Egress Firewall).
 
-- **Verification:** Run `sudo /usr/local/sbin/complyr-egress-firewall verify` on the VPS post-install. All checks must pass before proceeding.
+- **Verification:** Run `sudo /usr/local/sbin/cookiekeeper-egress-firewall verify` on the VPS post-install. All checks must pass before proceeding.
 
 ---
 
@@ -69,7 +69,7 @@ git tag v1.0.0  # Created with comprehensive release notes
 **To deploy from this tag:**
 ```bash
 git checkout v1.0.0
-docker build --file backend/Dockerfile --tag complyr-api:v1.0.0 backend/
+docker build --file backend/Dockerfile --tag cookiekeeper-api:v1.0.0 backend/
 # ... push to registry, deploy via GitHub Actions or manual SSH
 ```
 
@@ -154,9 +154,9 @@ sudo bash infra/scripts/restore-drill.sh /path/to/encrypted-backup.sql.gz.age
 **Features:**
 - Consent Mode v2 defaults (`denied`) set before any vendor script
 - Banner render (Shadow DOM isolated)
-- Script blocking (data-complyr-category pattern)
+- Script blocking (data-cookiekeeper-category pattern)
 - Consent cookie (12-month expiry)
-- Withdrawal API (`window.Complyr.show()`, `.consent()`)
+- Withdrawal API (`window.CookieKeeper.show()`, `.consent()`)
 - i18n (5 languages)
 - async, never blocks page render
 

@@ -1,4 +1,4 @@
-# Running Complyr
+# Running CookieKeeper
 
 How to run each part of the stack locally (from IntelliJ and from the command line, both with and without Docker) and how the CI/CD pipelines work.
 
@@ -21,20 +21,20 @@ The backend always needs a Postgres instance to talk to — pick one:
 docker compose -f infra/compose.local.yml up postgres mailpit -d
 ```
 
-This starts just Postgres (`localhost:5432`, db/user/pass all `complyr`) and Mailpit (SMTP `localhost:1025`, web UI `http://localhost:8025`) without building/running the api or dashboard containers — the fastest way to get a dependency-only sandbox for IDE-driven development.
+This starts just Postgres (`localhost:5432`, db/user/pass all `cookiekeeper`) and Mailpit (SMTP `localhost:1025`, web UI `http://localhost:8025`) without building/running the api or dashboard containers — the fastest way to get a dependency-only sandbox for IDE-driven development.
 
 ### 1a. From IntelliJ IDEA
 
 1. **Open** the `backend/` folder as a Gradle project (IntelliJ auto-imports via `settings.gradle.kts`). Wait for Gradle sync to finish.
 2. Start Postgres + Mailpit as above if you haven't already.
-3. Open `ComplyrBackendApplication.kt` and create a run configuration from the gutter icon, or go to **Run → Edit Configurations → + → Spring Boot** and point it at `ComplyrBackendApplication`.
+3. Open `CookieKeeperBackendApplication.kt` and create a run configuration from the gutter icon, or go to **Run → Edit Configurations → + → Spring Boot** and point it at `CookieKeeperBackendApplication`.
 4. In that run configuration:
    - **Active profiles:** `local`
    - **Environment variables:**
      ```
-     DB_URL=jdbc:postgresql://localhost:5432/complyr
+     DB_URL=jdbc:postgresql://localhost:5432/cookiekeeper
      DB_USER=complyr
-     DB_PASSWORD=complyr
+     DB_PASSWORD=cookiekeeper
      SMTP_HOST=localhost
      SMTP_PORT=1025
      ```
@@ -50,9 +50,9 @@ To run the **scanner** worker instead, duplicate the run configuration, set **Ac
 
 ```bash
 cd backend
-DB_URL=jdbc:postgresql://localhost:5432/complyr \
+DB_URL=jdbc:postgresql://localhost:5432/cookiekeeper \
 DB_USER=complyr \
-DB_PASSWORD=complyr \
+DB_PASSWORD=cookiekeeper \
 SMTP_HOST=localhost SMTP_PORT=1025 \
 ./gradlew bootRun --args='--spring.profiles.active=local'
 ```
@@ -68,12 +68,12 @@ cd backend
 **With Docker** (build the actual production image and run it):
 
 ```bash
-docker build -t complyr-backend -f backend/Dockerfile backend/
+docker build -t cookiekeeper-api -f backend/Dockerfile backend/
 docker run --rm -p 8080:8080 \
   -e SPRING_PROFILES_ACTIVE=api,local \
-  -e DB_URL=jdbc:postgresql://host.docker.internal:5432/complyr \
-  -e DB_USER=complyr -e DB_PASSWORD=complyr \
-  complyr-backend
+  -e DB_URL=jdbc:postgresql://host.docker.internal:5432/cookiekeeper \
+  -e DB_USER=complyr -e DB_PASSWORD=cookiekeeper \
+  cookiekeeper-api
 ```
 
 (`host.docker.internal` reaches a Postgres running on your host machine, e.g. from the compose command above, from inside the container. On Linux add `--add-host=host.docker.internal:host-gateway` if it doesn't resolve.)
@@ -81,11 +81,11 @@ docker run --rm -p 8080:8080 \
 Scanner image, same idea:
 
 ```bash
-docker build -t complyr-scanner -f backend/Dockerfile.scanner backend/
+docker build -t cookiekeeper-scanner -f backend/Dockerfile.scanner backend/
 docker run --rm \
-  -e DB_URL=jdbc:postgresql://host.docker.internal:5432/complyr \
-  -e DB_USER=complyr -e DB_PASSWORD=complyr \
-  complyr-scanner
+  -e DB_URL=jdbc:postgresql://host.docker.internal:5432/cookiekeeper \
+  -e DB_USER=complyr -e DB_PASSWORD=cookiekeeper \
+  cookiekeeper-scanner
 ```
 
 ---
@@ -123,10 +123,10 @@ pnpm build && pnpm start   # production build + serve
 **With Docker:**
 
 ```bash
-docker build -t complyr-dashboard \
+docker build -t cookiekeeper-dashboard \
   --build-arg API_PROXY_TARGET=http://host.docker.internal:8080 \
   dashboard/
-docker run --rm -p 3000:3000 complyr-dashboard
+docker run --rm -p 3000:3000 cookiekeeper-dashboard
 ```
 
 `API_PROXY_TARGET` is server-side only — it never reaches the client bundle, which always calls same-origin `/api/v1/*`. The Next server proxies those calls to the target via a rewrite that is resolved at **build** time (baked into the route manifest), so pass it as a `--build-arg`, not a runtime `-e`. In deployed dev/prd it is unset on purpose — Caddy proxies `/api/v1/*` on the app domain to the backend instead (see `docs/ARCHITECTURE.md` §6), and the same unset-built image serves both.

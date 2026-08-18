@@ -9,7 +9,7 @@ plugins {
     jacoco
 }
 
-group = "com.complyr"
+group = "eu.cookiekeeper"
 version = "0.0.1-SNAPSHOT"
 
 java {

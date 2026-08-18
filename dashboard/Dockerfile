@@ -1,4 +1,4 @@
-# Complyr dashboard — Next.js standalone output.
+# CookieKeeper dashboard — Next.js standalone output.
 # Build context = dashboard/ (self-contained, no monorepo files required):
 #   docker build -t complyr-dashboard dashboard/
 

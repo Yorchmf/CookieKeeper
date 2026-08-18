@@ -1,6 +1,6 @@
-# Complyr — Brand & Messaging Guide
+# CookieKeeper — Brand & Messaging Guide
 
-The single source of truth for how Complyr looks, sounds, and describes itself.
+The single source of truth for how CookieKeeper looks, sounds, and describes itself.
 Everything on the public site — every headline, feature card, FAQ answer, and
 compliance claim — must trace back to this file. If a claim isn't here (or in
 `docs/ARCHITECTURE.md`), don't put it on the page.
@@ -18,10 +18,10 @@ compliance claim — must trace back to this file. If a claim isn't here (or in
 
 ### Positioning
 
-Complyr is the **simplest, most affordable** GDPR cookie consent tool for EU
+CookieKeeper is the **simplest, most affordable** GDPR cookie consent tool for EU
 small businesses, freelancers, and agencies. Enterprise CMPs (Cookiebot, Osano,
 OneTrust) are powerful but overbuilt, expensive (€50–500+/mo), and take training
-to use. Complyr does the 95% that a small European business actually needs — scan,
+to use. CookieKeeper does the 95% that a small European business actually needs — scan,
 banner, policy, consent logs, Consent Mode v2 — for €9–29/mo, with an interface
 you understand in 30 seconds.
 
@@ -63,7 +63,7 @@ If it sounds like a helpful, slightly clever friend who happens to know GDPR, sh
 
 ---
 
-## 4. Messaging Pillars (the "why Complyr")
+## 4. Messaging Pillars (the "why CookieKeeper")
 
 Adapted for the Problem & Solution section — 8 cards, each true to what ships today:
 
@@ -90,17 +90,17 @@ Reuse these near-verbatim on the site. Route every string through i18n.
 
 2. **How is Complyr different from Cookiebot or Osano?**
    "Two words: simplicity and price. Enterprise tools charge €50–500+/month and
-   take training to use. Complyr does 95% of what they do, for a fraction of the
+   take training to use. CookieKeeper does 95% of what they do, for a fraction of the
    price, with an interface you'll understand in 30 seconds."
 
 3. **Do I need this if I only use Google Analytics?**
    "Yes. If your site uses Google Analytics, Facebook Pixel, YouTube embeds, or any
-   tracking cookie, EU law requires prior consent. Complyr handles this properly,
+   tracking cookie, EU law requires prior consent. CookieKeeper handles this properly,
    with Google Consent Mode v2 built in."
 
 4. **What is Google Consent Mode v2?**
    "It's Google's system for respecting user consent while still enabling analytics.
-   Since March 2024 it's mandatory for Google Ads users in the EU. Complyr sets it up
+   Since March 2024 it's mandatory for Google Ads users in the EU. CookieKeeper sets it up
    automatically — defaulting every signal to 'denied' until your visitor chooses."
 
 5. **Where is my data stored?**
@@ -112,7 +112,7 @@ Reuse these near-verbatim on the site. Route every string through i18n.
    keep access until the end of your billing period."
 
 7. **Does it work with WordPress, Shopify, Wix, etc.?**
-   "Yes. Complyr works on any website — just paste one line of code before `</head>`.
+   "Yes. CookieKeeper works on any website — just paste one line of code before `</head>`.
    A dedicated WordPress plugin is on the way."
 
 8. **Do you offer a free plan?**
@@ -173,7 +173,7 @@ hex; add a token. See the web design-quality rules for the anti-template checkli
 
 ## 8. Naming & Copy Conventions
 
-- Product name is always **Complyr** (capital C, no accent, no "the").
+- Product name is always **CookieKeeper** (capital C, no accent, no "the").
 - Prices: **€9/mo**, **€19/mo**, **€29/mo** (Euro symbol, lowercase "mo").
 - "GDPR", "ePrivacy", "Consent Mode v2", "Core Web Vitals" — exact casing.
 - Say "cookie banner" / "consent banner", not "cookie popup" or "cookie wall".

@@ -1,5 +1,5 @@
 # Local development (docker compose stack with Postgres + Mailpit).
-complyr:
+cookiekeeper:
   auth:
     # Dev-only fallback (>= 32 chars) so `bootRun`/compose work out of the box.
     # dev/prd have NO fallback and fail fast when JWT_SECRET is unset.

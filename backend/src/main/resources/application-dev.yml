@@ -1,5 +1,5 @@
 # Dev environment (Hetzner VPS, compose project complyr-dev, dev.* subdomains).
-complyr:
+cookiekeeper:
   mail:
     # Deliver via Brevo's EU HTTP API (BREVO_API_KEY must be set; the bean fails fast if not).
     provider: brevo

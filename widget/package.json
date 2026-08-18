@@ -1,8 +1,8 @@
 {
-  "name": "@complyr/widget",
+  "name": "@cookiekeeper/widget",
   "version": "0.1.0",
   "private": true,
-  "description": "Complyr embeddable consent banner — vanilla TypeScript, zero runtime dependencies, <=20KB gzipped",
+  "description": "CookieKeeper embeddable consent banner — vanilla TypeScript, zero runtime dependencies, <=20KB gzipped",
   "type": "module",
   "scripts": {
     "dev": "vite",
