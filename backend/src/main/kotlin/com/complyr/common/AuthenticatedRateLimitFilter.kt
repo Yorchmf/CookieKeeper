@@ -32,6 +32,15 @@ import tools.jackson.databind.ObjectMapper
  *    (ADR-17). Two distinct budgets need bounding: the request threads it occupies for up to the
  *    verification budget each, and the outbound requests it lets an authenticated account aim at third
  *    parties. A handful per minute is far above the handful per *lifetime* a real activation takes.
+ *  - **EXPORT tier (tight):** the Business-plan bulk-export downloads
+ *    (`GET /api/v1/sites/{id}/analytics/export.csv` and `.../evidence-pack.zip`). The evidence pack
+ *    streams the trailing 30 days of consent audit evidence *and* every published policy-language
+ *    HTML *and* the latest scan summary in a single request — by far the heaviest assembly the `api`
+ *    container performs. Neither endpoint is polled, so on the generous GENERAL tier one account
+ *    could loop the pack and saturate the box. The server-side entitlement gate narrows *who* reaches
+ *    it; this bounds *how hard* they can. Note this tier bounds request *arrival rate*, not concurrent
+ *    stream occupancy — several overlapping pack streams still each pin a request thread, so the
+ *    (tuned) Tomcat thread pool, not this filter, is the concurrency ceiling.
  *  - **ACCOUNT tier (tight):** every call under `/api/v1/account` — the customer's own GDPR and
  *    credential surface (ADR-20). `POST /account/delete` and `POST /account/password` both re-verify the
  *    account password, so leaving them on the generous GENERAL tier made them a 300-guesses-per-minute
@@ -96,6 +105,9 @@ class AuthenticatedRateLimitFilter(
             // method-blind here as everywhere in this filter, which is why the suffix must be exact:
             // `GET /api/v1/sites/{id}/scans` is polled every 3s by the dashboard and must stay GENERAL.
             uri.startsWith(SITES_PATH_PREFIX) && uri.endsWith(VERIFY_SUFFIX) -> Tier.VERIFY
+            // The Business bulk-export downloads. Matched by exact suffix (like VERIFY) and ordered
+            // before the GENERAL fallthrough, which would otherwise swallow them onto the 300/min tier.
+            uri.startsWith(SITES_PATH_PREFIX) && (uri.endsWith(EXPORT_CSV_SUFFIX) || uri.endsWith(EVIDENCE_PACK_SUFFIX)) -> Tier.EXPORT
             uri.startsWith(API_PREFIX) -> Tier.GENERAL
             else -> null
         }
@@ -105,6 +117,7 @@ class AuthenticatedRateLimitFilter(
             Tier.BILLING -> properties.rateLimit.authBillingPerMinute
             Tier.ACCOUNT -> properties.rateLimit.authAccountPerMinute
             Tier.VERIFY -> properties.rateLimit.authVerifyPerMinute
+            Tier.EXPORT -> properties.rateLimit.authExportPerMinute
             Tier.GENERAL -> properties.rateLimit.authGeneralPerMinute
         }
 
@@ -120,7 +133,7 @@ class AuthenticatedRateLimitFilter(
         )
     }
 
-    private enum class Tier { BILLING, ACCOUNT, VERIFY, GENERAL }
+    private enum class Tier { BILLING, ACCOUNT, VERIFY, EXPORT, GENERAL }
 
     companion object {
         const val API_PREFIX = "/api/v1/"
@@ -129,6 +142,8 @@ class AuthenticatedRateLimitFilter(
         const val BILLING_WEBHOOK_PATH = "/api/v1/billing/webhook"
         const val SITES_PATH_PREFIX = "/api/v1/sites/"
         const val VERIFY_SUFFIX = "/verify"
+        const val EXPORT_CSV_SUFFIX = "/analytics/export.csv"
+        const val EVIDENCE_PACK_SUFFIX = "/analytics/evidence-pack.zip"
 
         // Buckets refill over a 1-minute window, so a drained caller can retry after at most 60s.
         private const val RETRY_AFTER_SECONDS = "60"

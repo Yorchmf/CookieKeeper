@@ -32,6 +32,7 @@ class AuthenticatedRateLimitFilterTest {
                 ComplyrProperties.RateLimit(
                     authBillingPerMinute = 2,
                     authVerifyPerMinute = 1,
+                    authExportPerMinute = 2,
                     authGeneralPerMinute = 3,
                 ),
             appBaseUrl = "http://localhost:3000",
@@ -156,6 +157,112 @@ class AuthenticatedRateLimitFilterTest {
         filter.doFilter(request("/api/v1/sites/$siteId/verify"), limited, chain)
         assertEquals(429, limited.status)
         assertTrue(limited.contentAsString.contains("\"RATE_LIMITED\""), limited.contentAsString)
+    }
+
+    @Test
+    fun `the evidence-pack export is throttled on its own tight export tier`() {
+        val chain = mockk<FilterChain>(relaxed = true)
+        authenticate("15151515-1515-1515-1515-151515151515")
+        val siteId = "44444444-4444-4444-4444-444444444444"
+
+        // The pack streams the full 30-day consent log + every policy language per request, so it must
+        // not fall through to the generous GENERAL tier (3/min here) — it is capped at 2/min.
+        repeat(2) {
+            val response = MockHttpServletResponse()
+            filter.doFilter(request("/api/v1/sites/$siteId/analytics/evidence-pack.zip", method = "GET"), response, chain)
+            assertEquals(200, response.status)
+        }
+
+        val limited = MockHttpServletResponse()
+        filter.doFilter(request("/api/v1/sites/$siteId/analytics/evidence-pack.zip", method = "GET"), limited, chain)
+        assertEquals(429, limited.status)
+        assertTrue(limited.contentAsString.contains("\"RATE_LIMITED\""), limited.contentAsString)
+    }
+
+    @Test
+    fun `the csv export shares the export tier with the evidence pack`() {
+        val chain = mockk<FilterChain>(relaxed = true)
+        authenticate("16161616-1616-1616-1616-161616161616")
+        val siteId = "55555555-5555-5555-5555-555555555555"
+
+        // Both bulk-export downloads key onto the same EXPORT tier (2/min here): one CSV call plus one
+        // pack call exhausts the budget, so the third export of either kind is refused.
+        val csv = MockHttpServletResponse()
+        filter.doFilter(request("/api/v1/sites/$siteId/analytics/export.csv", method = "GET"), csv, chain)
+        assertEquals(200, csv.status)
+
+        val pack = MockHttpServletResponse()
+        filter.doFilter(request("/api/v1/sites/$siteId/analytics/evidence-pack.zip", method = "GET"), pack, chain)
+        assertEquals(200, pack.status)
+
+        val limited = MockHttpServletResponse()
+        filter.doFilter(request("/api/v1/sites/$siteId/analytics/export.csv", method = "GET"), limited, chain)
+        assertEquals(429, limited.status)
+        assertTrue(limited.contentAsString.contains("\"RATE_LIMITED\""), limited.contentAsString)
+    }
+
+    @Test
+    fun `the export tier and the general tier are independent`() {
+        val chain = mockk<FilterChain>(relaxed = true)
+        authenticate("17171717-1717-1717-1717-171717171717")
+        val siteId = "66666666-6666-6666-6666-666666666666"
+
+        // Drain the export tier (2/min); the 3rd export is refused.
+        repeat(2) {
+            filter.doFilter(
+                request("/api/v1/sites/$siteId/analytics/evidence-pack.zip", method = "GET"),
+                MockHttpServletResponse(),
+                chain,
+            )
+        }
+        val exportLimited = MockHttpServletResponse()
+        filter.doFilter(request("/api/v1/sites/$siteId/analytics/evidence-pack.zip", method = "GET"), exportLimited, chain)
+        assertEquals(429, exportLimited.status)
+
+        // The general tier (3/min) still has its full allowance — it did not borrow from export.
+        repeat(3) {
+            val response = MockHttpServletResponse()
+            filter.doFilter(request("/api/v1/sites/$siteId/analytics", method = "GET"), response, chain)
+            assertEquals(200, response.status)
+        }
+    }
+
+    @Test
+    fun `a matrix-parameter suffix cannot slip an export endpoint onto the general tier`() {
+        val chain = mockk<FilterChain>(relaxed = true)
+        authenticate("19191919-1919-1919-1919-191919191919")
+        val siteId = "88888888-8888-8888-8888-888888888888"
+
+        // The whole threat model is a routable path desyncing from the matcher. Matrix params are
+        // stripped (removeSemicolonContent) before suffix matching, so `.../evidence-pack.zip;x=1`
+        // must still classify EXPORT (2/min here) rather than sliding onto the generous GENERAL tier.
+        repeat(2) {
+            val response = MockHttpServletResponse()
+            filter.doFilter(request("/api/v1/sites/$siteId/analytics/evidence-pack.zip;jsessionid=abc", method = "GET"), response, chain)
+            assertEquals(200, response.status)
+        }
+
+        val limited = MockHttpServletResponse()
+        filter.doFilter(request("/api/v1/sites/$siteId/analytics/evidence-pack.zip;jsessionid=abc", method = "GET"), limited, chain)
+        assertEquals(429, limited.status)
+    }
+
+    @Test
+    fun `the analytics summary read stays on the general tier`() {
+        val chain = mockk<FilterChain>(relaxed = true)
+        authenticate("18181818-1818-1818-1818-181818181818")
+        val siteId = "77777777-7777-7777-7777-777777777777"
+
+        // A sibling under the same `/analytics` path that is NOT an export suffix must stay on the
+        // generous GENERAL tier (3/min) — the dashboard reads it on every range change.
+        repeat(3) {
+            val response = MockHttpServletResponse()
+            filter.doFilter(request("/api/v1/sites/$siteId/analytics", method = "GET"), response, chain)
+            assertEquals(200, response.status)
+        }
+        val limited = MockHttpServletResponse()
+        filter.doFilter(request("/api/v1/sites/$siteId/analytics", method = "GET"), limited, chain)
+        assertEquals(429, limited.status)
     }
 
     @Test

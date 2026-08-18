@@ -112,6 +112,18 @@ data class ComplyrProperties(
         // outbound requests an account can aim at third parties. A real activation takes a handful of
         // attempts in total, not per minute, and a verified site short-circuits before any I/O.
         val authVerifyPerMinute: Long = DEFAULT_AUTH_VERIFY_PER_MINUTE,
+        // Requests per minute per authenticated user on the Business-plan bulk-export downloads —
+        // `GET /api/v1/sites/{id}/analytics/export.csv` and `.../evidence-pack.zip`. Tight because
+        // each is far heavier than a typical authed GET: the evidence pack streams the trailing 30
+        // days of consent audit evidence *and* every published policy-language HTML *and* the latest
+        // scan summary per request. Neither endpoint is polled — a real customer downloads a pack a
+        // handful of times ever — so leaving them on the generous GENERAL tier let one account hammer
+        // the heaviest assembly on the box. The server-side entitlement gate (Business only) narrows
+        // who can reach it at all; this bounds how hard they can. Both endpoints share this one bucket,
+        // so it is set at VERIFY parity (5/min): the pack is the DoS concern the tier exists for, it
+        // pins a Tomcat thread and streams even longer than a verify probe, and the cheap CSV tolerates
+        // the same tight cap without complaint. Rate only — thread-pool sizing bounds concurrency.
+        val authExportPerMinute: Long = DEFAULT_AUTH_EXPORT_PER_MINUTE,
         // Requests per minute per authenticated user on all other authed `/api/v1/**` endpoints. A
         // generous backstop a real dashboard session never reaches, bounding amplification abuse
         // (e.g. `POST /api/v1/sites` enqueues a Chromium crawl; consent-log reads fan across monthly
@@ -121,15 +133,17 @@ data class ComplyrProperties(
         // Hard cap on distinct keys each in-memory bucket registry tracks before it evicts (idle-first)
         // to bound memory — see [com.complyr.common.RateLimitBuckets]. Sized with headroom for the
         // authenticated registry's fan-out: it keys by `tier|userId`, so an active tenant can hold up
-        // to 4 keys (billing + account + verify + general). The default covers well past MVP scale; raise it
-        // before the active-user count approaches half this value, or steady-state traffic keeps the
-        // map at cap and turns eviction from a rare safety valve into a per-new-key cost.
+        // to 5 keys (billing + account + verify + export + general). The default covers well past MVP scale; raise it
+        // before the distinct tracked-key count (up to ~5 per fully-active tenant) approaches half this
+        // value, or steady-state traffic keeps the map at cap and turns eviction from a rare safety
+        // valve into a per-new-key cost.
         val maxTrackedKeys: Int = DEFAULT_MAX_TRACKED_KEYS,
     ) {
         init {
             require(authBillingPerMinute > 0) { "complyr.rate-limit.auth-billing-per-minute must be > 0" }
             require(authAccountPerMinute > 0) { "complyr.rate-limit.auth-account-per-minute must be > 0" }
             require(authVerifyPerMinute > 0) { "complyr.rate-limit.auth-verify-per-minute must be > 0" }
+            require(authExportPerMinute > 0) { "complyr.rate-limit.auth-export-per-minute must be > 0" }
             require(authGeneralPerMinute > 0) { "complyr.rate-limit.auth-general-per-minute must be > 0" }
             require(maxTrackedKeys > 0) { "complyr.rate-limit.max-tracked-keys must be > 0" }
         }
@@ -142,6 +156,7 @@ data class ComplyrProperties(
             const val DEFAULT_AUTH_BILLING_PER_MINUTE = 20L
             const val DEFAULT_AUTH_ACCOUNT_PER_MINUTE = 10L
             const val DEFAULT_AUTH_VERIFY_PER_MINUTE = 5L
+            const val DEFAULT_AUTH_EXPORT_PER_MINUTE = 5L
             const val DEFAULT_AUTH_GENERAL_PER_MINUTE = 300L
             const val DEFAULT_MAX_TRACKED_KEYS = 50_000
         }
