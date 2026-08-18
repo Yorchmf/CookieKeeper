@@ -25,12 +25,14 @@ class SmtpEmailSender(
         to: String,
         subject: String,
         htmlBody: String,
+        replyTo: String?,
     ) {
         try {
             val message = mailSender.createMimeMessage()
             val helper = MimeMessageHelper(message, false, Charsets.UTF_8.name())
             helper.setFrom(properties.mailFrom)
             helper.setTo(to)
+            replyTo?.let { helper.setReplyTo(it) }
             helper.setSubject(subject)
             helper.setText(htmlBody, true)
             mailSender.send(message)

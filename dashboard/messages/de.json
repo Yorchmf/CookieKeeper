@@ -365,7 +365,8 @@
       "NEW_PASSWORD_SAME_AS_CURRENT": "Wählen Sie ein anderes Passwort als Ihr aktuelles",
       "GENERIC": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
       "NEW_EMAIL_SAME_AS_CURRENT": "Das ist bereits Ihre E-Mail-Adresse",
-      "SITE_LIMIT_REACHED": "Sie nutzen bereits alle Websites Ihres Tarifs. Führen Sie ein Upgrade durch, um eine weitere hinzuzufügen."
+      "SITE_LIMIT_REACHED": "Sie nutzen bereits alle Websites Ihres Tarifs. Führen Sie ein Upgrade durch, um eine weitere hinzuzufügen.",
+      "CONTACT_DELIVERY_FAILED": "Ihre Nachricht konnte gerade nicht gesendet werden. Bitte versuchen Sie es in Kürze erneut."
     },
     "login": {
       "title": "Anmelden",
@@ -1242,6 +1243,24 @@
           "home": "Zurück zur Startseite"
         }
       }
+    }
+  },
+  "support": {
+    "contact": {
+      "title": "Support kontaktieren",
+      "description": "Senden Sie uns eine Nachricht – ein echter Mensch antwortet an Ihre Konto-E-Mail-Adresse.",
+      "replyNotice": "Wir antworten an {email}.",
+      "subjectLabel": "Betreff",
+      "subjectPlaceholder": "Wie können wir helfen?",
+      "messageLabel": "Nachricht",
+      "messagePlaceholder": "Beschreiben Sie Ihre Frage oder Ihr Anliegen…",
+      "subjectRequired": "Geben Sie einen Betreff ein",
+      "subjectTooLong": "Halten Sie den Betreff unter {max} Zeichen",
+      "messageRequired": "Geben Sie eine Nachricht ein",
+      "messageTooLong": "Halten Sie Ihre Nachricht unter {max} Zeichen",
+      "cancel": "Abbrechen",
+      "submit": "Nachricht senden",
+      "sent": "Nachricht gesendet – wir antworten an Ihre Konto-E-Mail-Adresse."
     }
   }
 }
