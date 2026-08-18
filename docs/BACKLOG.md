@@ -35,7 +35,7 @@ Status legend: ☐ open · ◐ in progress · ☑ done
 | # | Item | Usefulness |
 |---|------|-----------|
 | 10 | ☑ **Entitlement-error conflation fix** | Extracted a shared `useEntitlementGate` helper returning a 4-way status (`pending`/`error`/`locked`/`entitled`), so a *failed* entitlement query is no longer rendered as "not entitled → upgrade to Business". Both CSV-export buttons + the cross-site view route through it; `error` shows a neutral retry (`EntitlementGateError`), distinct from the `locked` upsell. i18n `common.entitlementError` added in all 5 locales; hook + both-button gate tests added (12 new). |
-| 11 | ☐ **Expensive-export rate-limit tier** | Evidence-pack ZIP has no dedicated throttle; a Business user could hammer it. Add a heavier tier. |
+| 11 | ☑ **Expensive-export rate-limit tier** | Added a dedicated `EXPORT` tier to `AuthenticatedRateLimitFilter` (suffix-matched on the decoded path, ordered before the GENERAL fallthrough, mirroring VERIFY). The evidence-pack ZIP + CSV export shared the generous GENERAL tier (300/min) despite the pack streaming the full 30-day consent log + all policy languages + latest scan per request; both now share a tight `authExportPerMinute` bucket (default 5/min, VERIFY parity). Security + kotlin reviews (opus): no CRITICAL/HIGH; MEDIUM (10→5) + LOWs applied. |
 | 12 | ☐ **In-app contact form** | Replace the `mailto:` with a real posting form (endpoint + rate-limit + validation + i18n + inbox). The `mailto:` is honest in the meantime. |
 | 13 | ☐ **Analytics depth (Track 4 Slice D)** | Deferred deeper analytics. Revenue-adjacent for the Business tier. |
 
