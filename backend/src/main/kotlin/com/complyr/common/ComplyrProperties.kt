@@ -149,6 +149,17 @@ data class ComplyrProperties(
         // caller's own verified account address, so this is spam-to-ourselves protection, not an open
         // relay — but the cap keeps a compromised or abusive session from turning the form into one.
         val authContactPerMinute: Long = DEFAULT_AUTH_CONTACT_PER_MINUTE,
+        // Requests per minute per authenticated user on `POST /api/v1/sites/{id}/policy` — cookie-policy
+        // (re)generation. Tight because each accepted call renders every configured language and writes a
+        // new versioned policy document: it is the heaviest authed write, and the only one behind a
+        // per-site advisory lock. The byte-identical debounce means honest re-clicks with unchanged input
+        // return the current version without minting a new one, so a real publisher never approaches this
+        // cap; the cap exists to bound the one abuse the debounce cannot stop — a determined caller varying
+        // a byte per request to mint a fresh version each time (the accepted gap this tier closes). Scoped
+        // to POST only (unlike every other tier, which is method-blind) because the *same* path also serves
+        // the cheap `GET` current-policy read the dashboard hits on every policy-page view — that read must
+        // stay on the generous GENERAL tier. Real publishing is a handful of generations ever, not per minute.
+        val authPolicyPerMinute: Long = DEFAULT_AUTH_POLICY_PER_MINUTE,
         // Requests per minute per authenticated user on all other authed `/api/v1/**` endpoints. A
         // generous backstop a real dashboard session never reaches, bounding amplification abuse
         // (e.g. `POST /api/v1/sites` enqueues a Chromium crawl; consent-log reads fan across monthly
@@ -158,8 +169,8 @@ data class ComplyrProperties(
         // Hard cap on distinct keys each in-memory bucket registry tracks before it evicts (idle-first)
         // to bound memory — see [com.complyr.common.RateLimitBuckets]. Sized with headroom for the
         // authenticated registry's fan-out: it keys by `tier|userId`, so an active tenant can hold up
-        // to 6 keys (billing + account + verify + export + contact + general). The default covers well
-        // past MVP scale; raise it before the distinct tracked-key count (up to ~6 per fully-active
+        // to 7 keys (billing + account + verify + export + contact + policy + general). The default covers
+        // well past MVP scale; raise it before the distinct tracked-key count (up to ~7 per fully-active
         // tenant) approaches half this value, or steady-state traffic keeps the map at cap and turns
         // eviction from a rare safety valve into a per-new-key cost.
         val maxTrackedKeys: Int = DEFAULT_MAX_TRACKED_KEYS,
@@ -170,6 +181,7 @@ data class ComplyrProperties(
             require(authVerifyPerMinute > 0) { "complyr.rate-limit.auth-verify-per-minute must be > 0" }
             require(authExportPerMinute > 0) { "complyr.rate-limit.auth-export-per-minute must be > 0" }
             require(authContactPerMinute > 0) { "complyr.rate-limit.auth-contact-per-minute must be > 0" }
+            require(authPolicyPerMinute > 0) { "complyr.rate-limit.auth-policy-per-minute must be > 0" }
             require(authGeneralPerMinute > 0) { "complyr.rate-limit.auth-general-per-minute must be > 0" }
             require(maxTrackedKeys > 0) { "complyr.rate-limit.max-tracked-keys must be > 0" }
         }
@@ -185,6 +197,7 @@ data class ComplyrProperties(
             const val DEFAULT_AUTH_VERIFY_PER_MINUTE = 5L
             const val DEFAULT_AUTH_EXPORT_PER_MINUTE = 5L
             const val DEFAULT_AUTH_CONTACT_PER_MINUTE = 5L
+            const val DEFAULT_AUTH_POLICY_PER_MINUTE = 5L
             const val DEFAULT_AUTH_GENERAL_PER_MINUTE = 300L
             const val DEFAULT_MAX_TRACKED_KEYS = 50_000
         }

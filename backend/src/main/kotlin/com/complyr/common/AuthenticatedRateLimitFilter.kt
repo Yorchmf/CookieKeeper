@@ -45,6 +45,12 @@ import tools.jackson.databind.ObjectMapper
  *    call composes and sends an email to our support inbox, so an authenticated loop would flood the
  *    inbox and burn the shared mail-provider budget. A real customer submits it a handful of times ever.
  *    Matched by exact path (like VERIFY's suffix match) and ordered before the GENERAL fallthrough.
+ *  - **POLICY tier (tight):** `POST /api/v1/sites/{id}/policy` — cookie-policy (re)generation, the
+ *    heaviest authed write (renders every configured language, behind a per-site advisory lock). The
+ *    byte-identical debounce already collapses honest re-clicks, so this bounds the one abuse it can't:
+ *    varying a byte per request to mint a fresh version each call. Uniquely method-scoped — the *same*
+ *    path also serves the cheap `GET` current-policy read the dashboard hits on every policy-page view,
+ *    which must stay on GENERAL — so only `POST` is matched, then ordered before the GENERAL fallthrough.
  *  - **ACCOUNT tier (tight):** every call under `/api/v1/account` — the customer's own GDPR and
  *    credential surface (ADR-20). `POST /account/delete` and `POST /account/password` both re-verify the
  *    account password, so leaving them on the generous GENERAL tier made them a 300-guesses-per-minute
@@ -72,14 +78,14 @@ class AuthenticatedRateLimitFilter(
     private val buckets = RateLimitBuckets(properties.rateLimit.maxTrackedKeys)
 
     override fun shouldNotFilter(request: HttpServletRequest): Boolean =
-        HttpMethod.OPTIONS.matches(request.method) || tierFor(RequestPaths.tierPath(request)) == null
+        HttpMethod.OPTIONS.matches(request.method) || tierFor(request.method, RequestPaths.tierPath(request)) == null
 
     override fun doFilterInternal(
         request: HttpServletRequest,
         response: HttpServletResponse,
         filterChain: FilterChain,
     ) {
-        val tier = tierFor(RequestPaths.tierPath(request)) ?: return filterChain.doFilter(request, response)
+        val tier = tierFor(request.method, RequestPaths.tierPath(request)) ?: return filterChain.doFilter(request, response)
         // No authenticated principal (public endpoint, or an absent/expired token): not ours to
         // throttle — let it flow on so the security layer decides the outcome.
         val userId = authenticatedUserId() ?: return filterChain.doFilter(request, response)
@@ -99,7 +105,10 @@ class AuthenticatedRateLimitFilter(
         return (authentication.principal as? Jwt)?.subject?.takeIf { it.isNotBlank() }
     }
 
-    private fun tierFor(uri: String): Tier? =
+    private fun tierFor(
+        method: String,
+        uri: String,
+    ): Tier? =
         when {
             // Unauthenticated by construction (Stripe cannot send a JWT) — no principal to key on.
             uri == BILLING_WEBHOOK_PATH -> null
@@ -108,15 +117,35 @@ class AuthenticatedRateLimitFilter(
             // Exact match: the contact form is the only endpoint under `/api/v1/support`, and each accepted
             // call sends an email. Ordered before the GENERAL fallthrough, which would otherwise swallow it.
             uri == CONTACT_PATH -> Tier.CONTACT
-            // Ordered before the GENERAL fallthrough, which would otherwise swallow it. Matching is
-            // method-blind here as everywhere in this filter, which is why the suffix must be exact:
-            // `GET /api/v1/sites/{id}/scans` is polled every 3s by the dashboard and must stay GENERAL.
-            uri.startsWith(SITES_PATH_PREFIX) && uri.endsWith(VERIFY_SUFFIX) -> Tier.VERIFY
-            // The Business bulk-export downloads. Matched by exact suffix (like VERIFY) and ordered
-            // before the GENERAL fallthrough, which would otherwise swallow them onto the 300/min tier.
-            uri.startsWith(SITES_PATH_PREFIX) && (uri.endsWith(EXPORT_CSV_SUFFIX) || uri.endsWith(EVIDENCE_PACK_SUFFIX)) -> Tier.EXPORT
+            // The per-site sub-resources carry their own tighter tiers (verify/export/policy); anything
+            // else under the prefix is a normal GENERAL call. Split out to keep this matcher simple.
+            uri.startsWith(SITES_PATH_PREFIX) -> sitesTier(method, uri)
             uri.startsWith(API_PREFIX) -> Tier.GENERAL
             else -> null
+        }
+
+    /**
+     * Resolves the tier for a path under `/api/v1/sites/`, falling back to [Tier.GENERAL] for any sub-resource
+     * without a dedicated bucket. Every suffix here must be exact so a sibling sub-resource is never dragged
+     * onto a tighter tier: `GET /api/v1/sites/{id}/scans` is polled every 3s by the dashboard and must stay
+     * GENERAL. Matching is method-blind (as everywhere in this filter) *except* for policy generation, which
+     * gates on `POST` so the cheap `GET` current-policy read on the same path stays GENERAL.
+     */
+    private fun sitesTier(
+        method: String,
+        uri: String,
+    ): Tier =
+        when {
+            uri.endsWith(VERIFY_SUFFIX) -> Tier.VERIFY
+            // The Business bulk-export downloads, matched by exact suffix (like VERIFY).
+            uri.endsWith(EXPORT_CSV_SUFFIX) || uri.endsWith(EVIDENCE_PACK_SUFFIX) -> Tier.EXPORT
+            // Cookie-policy (re)generation — the heaviest authed write (renders every language, behind a
+            // per-site advisory lock). The ONLY method-scoped tier: the *same* path serves both this heavy
+            // `POST` and the cheap `GET` current-policy read the policy page hits on every view, so a
+            // method-blind suffix match would drag that read onto this tight write bucket. Gating on POST
+            // keeps the read on GENERAL below.
+            HttpMethod.POST.matches(method) && uri.endsWith(POLICY_SUFFIX) -> Tier.POLICY
+            else -> Tier.GENERAL
         }
 
     private fun capacityFor(tier: Tier): Long =
@@ -126,6 +155,7 @@ class AuthenticatedRateLimitFilter(
             Tier.VERIFY -> properties.rateLimit.authVerifyPerMinute
             Tier.EXPORT -> properties.rateLimit.authExportPerMinute
             Tier.CONTACT -> properties.rateLimit.authContactPerMinute
+            Tier.POLICY -> properties.rateLimit.authPolicyPerMinute
             Tier.GENERAL -> properties.rateLimit.authGeneralPerMinute
         }
 
@@ -141,7 +171,7 @@ class AuthenticatedRateLimitFilter(
         )
     }
 
-    private enum class Tier { BILLING, ACCOUNT, VERIFY, EXPORT, CONTACT, GENERAL }
+    private enum class Tier { BILLING, ACCOUNT, VERIFY, EXPORT, CONTACT, POLICY, GENERAL }
 
     companion object {
         const val API_PREFIX = "/api/v1/"
@@ -153,6 +183,7 @@ class AuthenticatedRateLimitFilter(
         const val VERIFY_SUFFIX = "/verify"
         const val EXPORT_CSV_SUFFIX = "/analytics/export.csv"
         const val EVIDENCE_PACK_SUFFIX = "/analytics/evidence-pack.zip"
+        const val POLICY_SUFFIX = "/policy"
 
         // Buckets refill over a 1-minute window, so a drained caller can retry after at most 60s.
         private const val RETRY_AFTER_SECONDS = "60"
