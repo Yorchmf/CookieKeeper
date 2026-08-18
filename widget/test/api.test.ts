@@ -3,6 +3,7 @@ import {
   flushPendingEvents,
   PENDING_TTL_MS,
   sendConsentEvent,
+  sendImpression,
   type ConsentEventPayload,
   type PendingEntry,
 } from '../src/api';
@@ -243,5 +244,49 @@ describe('consent event durability', () => {
 
     const body = JSON.parse(String(fetchMock.mock.calls[0]![1]!.body));
     expect(body).not.toHaveProperty('originToken');
+  });
+});
+
+describe('banner impression beacon', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  test('POSTs a keepalive beacon carrying only the site key', async () => {
+    const fetchMock = vi.fn((_url: string, _init?: RequestInit) =>
+      Promise.resolve(new Response('', { status: 200 })),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    sendImpression('pk_test');
+    await flushMicrotasks();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(String(url)).toMatch(/\/api\/v1\/impression$/);
+    expect(init!.method).toBe('POST');
+    expect(init!.keepalive).toBe(true);
+    // The beacon is a disposable count: only the public site key, nothing that
+    // could identify a visitor (no vid, timestamp, eventKey, or origin token).
+    const body = JSON.parse(String(init!.body));
+    expect(body).toEqual({ siteKey: 'pk_test' });
+  });
+
+  test('never queues or throws when the beacon POST fails', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.reject(new Error('offline'))),
+    );
+
+    expect(() => sendImpression('pk_test')).not.toThrow();
+    await flushMicrotasks();
+
+    // Unlike consent, a dropped impression is not retried — it leaves no queue.
+    expect(localStorage.getItem(PENDING_KEY)).toBeNull();
   });
 });

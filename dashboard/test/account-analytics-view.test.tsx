@@ -60,6 +60,9 @@ function rollup(partial: Partial<AccountAnalytics> = {}): AccountAnalytics {
     consent: {
       totalEvents: 200,
       byAction: { acceptAll: 130, rejectAll: 40, custom: 30 },
+      // 200 decisions over 500 impressions → 40% interaction rate.
+      impressions: 500,
+      interactionRate: 0.4,
       trend: [],
       categoryOptIn: [],
       languageSplit: [{ lang: "en", count: 200 }],
@@ -114,6 +117,9 @@ describe("AccountAnalyticsView", () => {
     expect(screen.getByText("4")).toBeDefined();
     // 130 / 200 = 65% accept-all.
     expect(screen.getByText("65%")).toBeDefined();
+    // 500 banner impressions and 200 / 500 = 40% interaction rate.
+    expect(screen.getByText("500")).toBeDefined();
+    expect(screen.getByText("40%")).toBeDefined();
     expect(screen.getByRole("radiogroup")).toBeDefined();
     // No comparable prior window (previous: null) → no delta badges at all.
     expect(screen.queryByText(/pts$/)).toBeNull();
@@ -126,9 +132,14 @@ describe("AccountAnalyticsView", () => {
       isError: false,
       isSuccess: true,
       isFetching: false,
-      // Current: 200 events, 65% accept-all. Prior: 100 events, 50% accept-all.
+      // Current: 200 events, 65% accept-all, 500 impressions (40% rate). Prior: 100 events, 50%
+      // accept-all, 200 impressions (50% rate).
       data: rollup({
-        previous: { totalEvents: 100, byAction: { acceptAll: 50, rejectAll: 30, custom: 20 } },
+        previous: {
+          totalEvents: 100,
+          byAction: { acceptAll: 50, rejectAll: 30, custom: 20 },
+          impressions: 200,
+        },
       }),
     });
 
@@ -138,6 +149,10 @@ describe("AccountAnalyticsView", () => {
     expect(screen.getByText("+15 pts")).toBeDefined();
     // Event volume 200 vs prior 100 → +100% relative change.
     expect(screen.getByText("+100%")).toBeDefined();
+    // Impression volume 500 vs prior 200 → +150% relative change.
+    expect(screen.getByText("+150%")).toBeDefined();
+    // Interaction rate 40% vs prior 50% → −10 percentage points.
+    expect(screen.getByText("−10 pts")).toBeDefined();
   });
 
   test("renders the flat and downward delta branches, not just the upward one", () => {
@@ -147,16 +162,23 @@ describe("AccountAnalyticsView", () => {
       isError: false,
       isSuccess: true,
       isFetching: false,
-      // Current: 100 events, 50% accept-all. Prior: 200 events, also 50% accept-all.
+      // Current: 100 events, 50% accept-all, 500 impressions (20% rate). Prior: 200 events, also
+      // 50% accept-all, 400 impressions (50% rate).
       data: rollup({
         consent: {
           totalEvents: 100,
           byAction: { acceptAll: 50, rejectAll: 30, custom: 20 },
+          impressions: 500,
+          interactionRate: 0.2,
           trend: [],
           categoryOptIn: [],
           languageSplit: [{ lang: "en", count: 100 }],
         },
-        previous: { totalEvents: 200, byAction: { acceptAll: 100, rejectAll: 60, custom: 40 } },
+        previous: {
+          totalEvents: 200,
+          byAction: { acceptAll: 100, rejectAll: 60, custom: 40 },
+          impressions: 400,
+        },
       }),
     });
 
@@ -168,6 +190,9 @@ describe("AccountAnalyticsView", () => {
     // Event volume 100 vs prior 200 → −50%, exercising the down glyph (U+2212) and the "down …" sentence.
     expect(screen.getByText("−50%")).toBeDefined();
     expect(screen.getByText("down 50 percent versus the previous 30 days")).toBeDefined();
+    // Interaction rate 20% vs prior 50% → −30 pts; impression volume 500 vs prior 400 → +25%.
+    expect(screen.getByText("−30 pts")).toBeDefined();
+    expect(screen.getByText("+25%")).toBeDefined();
   });
 
   test("an entitled account with a failed load is told so, not shown an empty roll-up", () => {

@@ -1031,6 +1031,10 @@
     "retry": "Reintentar",
     "summary": {
       "totalEvents": "Eventos de consentimiento",
+      "impressions": "Impresiones del banner",
+      "impressionsHint": "Veces que se mostró el banner",
+      "interactionRate": "Tasa de interacción",
+      "interactionRateHint": "Decisiones por impresión",
       "acceptShare": "Tasa de «aceptar todo»",
       "policyVersion": "Versión de la política",
       "noPolicy": "Ninguna",

@@ -56,6 +56,10 @@ class RateLimitFilter(
             // Consent ingestion and its origin-token mint share the CONSENT tier: minting is the
             // per-page-load precursor to a consent post, so one generous per-IP budget covers both.
             uri == CONSENT_PATH || uri.startsWith("$CONSENT_TOKEN_PATH/") -> Tier.CONSENT
+            // The banner-impression beacon (Track 4 Slice D): one fire-and-forget POST per page-load,
+            // its own generous per-IP tier separate from consent so a page that shows the banner but
+            // records no decision still can't be throttled out of counting the impression.
+            uri == IMPRESSION_PATH -> Tier.IMPRESSION
             // The scan-spawning POST and the email-writing report POST share the tier; the polled
             // teaser GET (`/api/v1/public-scan/{token}`) is deliberately NOT throttled here — it is
             // read-only, gated by an unguessable token, and hit repeatedly while the caller polls, so
@@ -75,6 +79,7 @@ class RateLimitFilter(
         when (tier) {
             Tier.AUTH -> properties.rateLimit.authPerMinute
             Tier.CONSENT -> properties.rateLimit.consentPerMinute
+            Tier.IMPRESSION -> properties.rateLimit.impressionPerMinute
             Tier.PUBLIC_SCAN -> properties.rateLimit.publicScanPerMinute
             Tier.PUBLIC_POLICY -> properties.rateLimit.publicPolicyPerMinute
         }
@@ -91,7 +96,7 @@ class RateLimitFilter(
         )
     }
 
-    private enum class Tier { AUTH, CONSENT, PUBLIC_SCAN, PUBLIC_POLICY }
+    private enum class Tier { AUTH, CONSENT, IMPRESSION, PUBLIC_SCAN, PUBLIC_POLICY }
 
     companion object {
         val AUTH_PATHS =
@@ -108,6 +113,7 @@ class RateLimitFilter(
                 "/api/v1/auth/confirm-email-change",
             )
         const val CONSENT_PATH = "/api/v1/consent"
+        const val IMPRESSION_PATH = "/api/v1/impression"
         const val CONSENT_TOKEN_PATH = "/api/v1/consent-token"
         const val PUBLIC_SCAN_PATH = "/api/v1/public-scan"
         const val PUBLIC_POLICY_PATH = "/api/v1/public/policy"

@@ -1031,6 +1031,10 @@
     },
     "summary": {
       "totalEvents": "Consent events",
+      "impressions": "Banner impressions",
+      "impressionsHint": "Times the banner was shown",
+      "interactionRate": "Interaction rate",
+      "interactionRateHint": "Decisions per impression",
       "acceptShare": "Accept-all rate",
       "policyVersion": "Policy version",
       "noPolicy": "None",

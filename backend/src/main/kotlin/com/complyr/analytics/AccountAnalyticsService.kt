@@ -29,6 +29,7 @@ import java.util.UUID
 class AccountAnalyticsService(
     private val siteRepository: SiteRepository,
     private val consentAnalyticsRepository: ConsentAnalyticsRepository,
+    private val bannerImpressionRepository: BannerImpressionRepository,
     private val consentAnalyticsAssembler: ConsentAnalyticsAssembler,
     private val rangeResolver: AnalyticsRangeResolver,
 ) {
@@ -51,6 +52,7 @@ class AccountAnalyticsService(
                 daily = consentAnalyticsRepository.accountDailyActionCounts(siteIds, range.from, range.to),
                 optIn = consentAnalyticsRepository.accountCategoryOptInCounts(siteIds, range.from, range.to),
                 languages = consentAnalyticsRepository.accountLanguageCounts(siteIds, range.from, range.to),
+                impressions = bannerImpressionRepository.accountImpressionCounts(siteIds, range.from, range.to),
             )
         return AccountAnalyticsResponse(range, consent, previous = previousSummary(siteIds, range, floor), siteCount = siteIds.size)
     }
@@ -69,6 +71,7 @@ class AccountAnalyticsService(
         rangeResolver.priorWindow(range, floor)?.let { prior ->
             consentAnalyticsAssembler.summarize(
                 consentAnalyticsRepository.accountDailyActionCounts(siteIds, prior.from, prior.to),
+                bannerImpressionRepository.accountImpressionCounts(siteIds, prior.from, prior.to),
             )
         }
 
@@ -77,6 +80,8 @@ class AccountAnalyticsService(
             ConsentAnalytics(
                 totalEvents = 0,
                 byAction = ActionBreakdown(acceptAll = 0, rejectAll = 0, custom = 0),
+                impressions = 0,
+                interactionRate = 0.0,
                 trend = emptyList(),
                 categoryOptIn = emptyList(),
                 languageSplit = emptyList(),

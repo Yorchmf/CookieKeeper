@@ -44,6 +44,20 @@ export interface LanguageCount {
 export interface ConsentAnalytics {
   totalEvents: number;
   byAction: ActionBreakdown;
+  /**
+   * Banner impressions over the window — how many times the banner was shown (the interaction-rate
+   * denominator). A disposable per-site/day counter, never audit evidence and never PII.
+   */
+  impressions: number;
+  /**
+   * `totalEvents / impressions` as a RAW RATIO in [0, ∞) — NOT a percentage; 0 when no impression was
+   * recorded. Reported raw, not clamped: it can exceed 1 at window edges (a re-consent without a fresh
+   * impression, or divergent retention). The dashboard does NOT render this field directly — it recomputes
+   * a whole percent from `totalEvents`/`impressions` via `interactionRatePct` so the tile and its delta
+   * badge share one rounding source. If you ever display this value, multiply by 100 (0.4 → "40%"); never
+   * treat it as an already-percent number. Kept on the wire for API/DTO parity with the backend.
+   */
+  interactionRate: number;
   trend: ConsentTrendPoint[];
   categoryOptIn: CategoryOptIn[];
   languageSplit: LanguageCount[];
@@ -57,6 +71,8 @@ export interface ConsentAnalytics {
 export interface PeriodSummary {
   totalEvents: number;
   byAction: ActionBreakdown;
+  /** Banner impressions over the prior window, for period-over-period impression deltas. */
+  impressions: number;
 }
 
 /** A cookie-taxonomy bucket count from the latest completed scan (backend `CategoryCount`). */

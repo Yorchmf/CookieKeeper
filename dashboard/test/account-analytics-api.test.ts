@@ -21,6 +21,8 @@ const rollup = {
   consent: {
     totalEvents: 42,
     byAction: { acceptAll: 20, rejectAll: 12, custom: 10 },
+    impressions: 100,
+    interactionRate: 0.42,
     trend: [],
     categoryOptIn: [],
     languageSplit: [],

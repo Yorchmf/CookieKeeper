@@ -66,6 +66,11 @@ class SecurityConfig(
                     .permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/v1/consent")
                     .permitAll()
+                    // Banner-impression beacon (Track 4 Slice D). Unauthenticated and CORS-open like
+                    // consent; rate-limited on its own IMPRESSION tier by RateLimitFilter. Stores no
+                    // personal data — a per-(site, day) counter — so it needs no origin token.
+                    .requestMatchers(HttpMethod.POST, "/api/v1/impression")
+                    .permitAll()
                     // Stateless origin-token mint for the consent path (ADR-13). Unauthenticated and
                     // CORS-open like consent; rate-limited on the CONSENT tier by RateLimitFilter.
                     .requestMatchers(HttpMethod.GET, "/api/v1/consent-token/*")
