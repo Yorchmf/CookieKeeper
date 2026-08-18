@@ -34,6 +34,7 @@ class AuthenticatedRateLimitFilterTest {
                     authVerifyPerMinute = 1,
                     authExportPerMinute = 2,
                     authContactPerMinute = 2,
+                    authPolicyPerMinute = 2,
                     authGeneralPerMinute = 3,
                 ),
             appBaseUrl = "http://localhost:3000",
@@ -319,6 +320,88 @@ class AuthenticatedRateLimitFilterTest {
             filter.doFilter(request("/api/v1/sites"), response, chain)
             assertEquals(200, response.status)
         }
+    }
+
+    @Test
+    fun `policy generation is throttled on its own tight policy tier`() {
+        val chain = mockk<FilterChain>(relaxed = true)
+        authenticate("24242424-2424-2424-2424-242424242424")
+        val siteId = "99999999-9999-9999-9999-999999999999"
+
+        // POST /policy renders every language and mints a new versioned document behind a per-site
+        // advisory lock, so it must not fall through to the generous GENERAL tier (3/min here) — it is
+        // capped at 2/min. The 3rd generate is refused.
+        repeat(2) {
+            val response = MockHttpServletResponse()
+            filter.doFilter(request("/api/v1/sites/$siteId/policy"), response, chain)
+            assertEquals(200, response.status)
+        }
+
+        val limited = MockHttpServletResponse()
+        filter.doFilter(request("/api/v1/sites/$siteId/policy"), limited, chain)
+        assertEquals(429, limited.status)
+        assertTrue(limited.contentAsString.contains("\"RATE_LIMITED\""), limited.contentAsString)
+    }
+
+    @Test
+    fun `the current-policy GET read stays on the general tier`() {
+        val chain = mockk<FilterChain>(relaxed = true)
+        authenticate("25252525-2525-2525-2525-252525252525")
+        val siteId = "abababab-abab-abab-abab-abababababab"
+
+        // The policy tier is uniquely method-scoped: the *same* path serves both the heavy POST generate
+        // (2/min) and the cheap GET current-policy read the policy page hits on every view. The read must
+        // stay on the generous GENERAL tier (3/min) — three GETs all pass, where the tight policy cap
+        // (2/min) would have refused the third.
+        repeat(3) {
+            val response = MockHttpServletResponse()
+            filter.doFilter(request("/api/v1/sites/$siteId/policy", method = "GET"), response, chain)
+            assertEquals(200, response.status)
+        }
+        val limited = MockHttpServletResponse()
+        filter.doFilter(request("/api/v1/sites/$siteId/policy", method = "GET"), limited, chain)
+        assertEquals(429, limited.status)
+    }
+
+    @Test
+    fun `the policy tier and the general tier are independent`() {
+        val chain = mockk<FilterChain>(relaxed = true)
+        authenticate("26262626-2626-2626-2626-262626262626")
+        val siteId = "cdcdcdcd-cdcd-cdcd-cdcd-cdcdcdcdcdcd"
+
+        // Drain the policy tier (2/min); the 3rd generate is refused.
+        repeat(2) { filter.doFilter(request("/api/v1/sites/$siteId/policy"), MockHttpServletResponse(), chain) }
+        val policyLimited = MockHttpServletResponse()
+        filter.doFilter(request("/api/v1/sites/$siteId/policy"), policyLimited, chain)
+        assertEquals(429, policyLimited.status)
+
+        // The general tier (3/min) still has its full allowance — it did not borrow from policy.
+        repeat(3) {
+            val response = MockHttpServletResponse()
+            filter.doFilter(request("/api/v1/sites"), response, chain)
+            assertEquals(200, response.status)
+        }
+    }
+
+    @Test
+    fun `draining the policy tier with POSTs does not lock the current-policy GET read out`() {
+        val chain = mockk<FilterChain>(relaxed = true)
+        authenticate("27272727-2727-2727-2727-272727272727")
+        val siteId = "efefefef-efef-efef-efef-efefefefefef"
+
+        // The precise reason POLICY is method-scoped: a POST flood of the heavy generate must not lock the
+        // dashboard out of the cheap same-path GET current-policy read. Drain the POLICY bucket (2/min) with
+        // POSTs — the 3rd POST is refused — then the GET on the identical path still returns 200 because it
+        // rides the separate, generous GENERAL tier. A future refactor dropping the POST guard (or merging
+        // the branches) would flip this GET to 429.
+        repeat(2) { filter.doFilter(request("/api/v1/sites/$siteId/policy"), MockHttpServletResponse(), chain) }
+        val postLimited = MockHttpServletResponse()
+        filter.doFilter(request("/api/v1/sites/$siteId/policy"), postLimited, chain)
+        assertEquals(429, postLimited.status)
+
+        val getRead = MockHttpServletResponse()
+        filter.doFilter(request("/api/v1/sites/$siteId/policy", method = "GET"), getRead, chain)
+        assertEquals(200, getRead.status)
     }
 
     @Test
