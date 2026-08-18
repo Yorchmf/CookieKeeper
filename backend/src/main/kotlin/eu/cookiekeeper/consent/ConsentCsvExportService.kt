@@ -19,7 +19,7 @@ import java.util.UUID
 class ConsentCsvExportService(
     private val entitlementService: EntitlementService,
     private val consentLogService: ConsentLogService,
-    @Value("\${complyr.consent.export-batch-size:$DEFAULT_EXPORT_BATCH}")
+    @Value("\${cookiekeeper.consent.export-batch-size:$DEFAULT_EXPORT_BATCH}")
     private val exportBatch: Int = DEFAULT_EXPORT_BATCH,
 ) {
     /**

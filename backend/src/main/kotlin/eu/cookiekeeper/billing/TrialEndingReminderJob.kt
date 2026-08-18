@@ -60,7 +60,7 @@ class TrialEndingReminderJob(
      * via `cookiekeeper.billing.trial-reminder-cron` (defaulted here so no yml entry is required). [now] is
      * captured once so the due window and every marker in this run agree on a single instant.
      */
-    @Scheduled(cron = "\${complyr.billing.trial-reminder-cron:$DEFAULT_TRIAL_REMINDER_CRON}")
+    @Scheduled(cron = "\${cookiekeeper.billing.trial-reminder-cron:$DEFAULT_TRIAL_REMINDER_CRON}")
     fun sendDueTrialReminders() {
         val now = clock.instant()
         val dueUserIds = transactionTemplate.execute { selectDueUsers(now) } ?: emptyList()

@@ -37,10 +37,10 @@ class ConsentOriginToken(
 
     init {
         require(secret.toByteArray(Charsets.UTF_8).size >= MIN_SECRET_BYTES) {
-            "complyr.consent.origin-token-secret must be at least $MIN_SECRET_BYTES bytes"
+            "cookiekeeper.consent.origin-token-secret must be at least $MIN_SECRET_BYTES bytes"
         }
         require(!ttl.isZero && !ttl.isNegative) {
-            "complyr.consent.origin-token-ttl must be a positive duration (was $ttl)"
+            "cookiekeeper.consent.origin-token-ttl must be a positive duration (was $ttl)"
         }
     }
 

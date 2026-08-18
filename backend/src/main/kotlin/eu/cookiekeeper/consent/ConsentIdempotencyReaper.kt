@@ -54,7 +54,7 @@ class ConsentIdempotencyReaper(
      * Not `@Transactional`: each batch runs in its own transaction via [pruneBatch], so between
      * batches the advisory lock is released and autovacuum can reclaim the freed rows.
      */
-    @Scheduled(cron = "\${complyr.consent.idempotency-prune-cron:$DEFAULT_PRUNE_CRON}")
+    @Scheduled(cron = "\${cookiekeeper.consent.idempotency-prune-cron:$DEFAULT_PRUNE_CRON}")
     fun prune() {
         val cutoff = clock.instant().minus(properties.consent.idempotencyRetention)
         val batchSize = properties.consent.idempotencyPruneBatchSize

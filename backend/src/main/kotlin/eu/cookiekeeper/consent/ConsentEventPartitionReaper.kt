@@ -66,7 +66,7 @@ class ConsentEventPartitionReaper(
      * Daily cron entrypoint. Overridable via `cookiekeeper.consent.retention-drop-cron` (defaulted here so
      * no yml entry is required, and offset after the provisioner + reapers so it never contends with them).
      */
-    @Scheduled(cron = "\${complyr.consent.retention-drop-cron:$DEFAULT_RETENTION_DROP_CRON}")
+    @Scheduled(cron = "\${cookiekeeper.consent.retention-drop-cron:$DEFAULT_RETENTION_DROP_CRON}")
     fun scheduledReap() {
         reap()
     }

@@ -62,7 +62,7 @@ class ConsentEventPartitionProvisioner(
      * Nightly cron entrypoint. Overridable via `cookiekeeper.consent.partition-provision-cron` (defaulted
      * here so no yml entry is required, and offset ahead of the reapers so it never waits on them).
      */
-    @Scheduled(cron = "\${complyr.consent.partition-provision-cron:$DEFAULT_PROVISION_CRON}")
+    @Scheduled(cron = "\${cookiekeeper.consent.partition-provision-cron:$DEFAULT_PROVISION_CRON}")
     fun scheduledProvision() {
         provision()
     }

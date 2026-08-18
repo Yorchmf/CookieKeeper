@@ -135,7 +135,7 @@ class SentryConfig(
         fun requireEuResidency(dsn: String) {
             val host = runCatching { URI(dsn).host }.getOrNull()?.lowercase()
             require(host != null && (host == EU_INGEST_HOST || host.endsWith(".$EU_INGEST_HOST"))) {
-                "complyr.observability.sentry.dsn (SENTRY_DSN_BACKEND) must be a Sentry EU-region DSN " +
+                "cookiekeeper.observability.sentry.dsn (SENTRY_DSN_BACKEND) must be a Sentry EU-region DSN " +
                     "(host *.$EU_INGEST_HOST) for EU data residency (ADR-15, CLAUDE.md #2). A non-EU " +
                     "(or malformed) DSN would send error events to a non-EU processor."
             }

@@ -38,7 +38,7 @@ class StripeApiGateway(
         // mirroring how the ConsentOriginToken / Brevo beans reject a blank secret at startup, so the
         // empty test-only default on `Billing.webhookSecret` still lets the data class construct.
         require(properties.billing.webhookSecret.isNotBlank()) {
-            "complyr.billing.webhook-secret (STRIPE_WEBHOOK_SECRET) must not be blank — an empty signing " +
+            "cookiekeeper.billing.webhook-secret (STRIPE_WEBHOOK_SECRET) must not be blank — an empty signing " +
                 "secret makes inbound Stripe webhook signatures forgeable"
         }
     }

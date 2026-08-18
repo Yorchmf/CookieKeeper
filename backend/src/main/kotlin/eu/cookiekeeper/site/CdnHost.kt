@@ -39,10 +39,10 @@ class CdnHost(
                 ?.lowercase()
                 ?.removeSuffix(".")
         require(!host.isNullOrEmpty()) {
-            "complyr.cdn-base-url (CDN_BASE_URL) must be an absolute URL with a host (was '$cdnBaseUrl')"
+            "cookiekeeper.cdn-base-url (CDN_BASE_URL) must be an absolute URL with a host (was '$cdnBaseUrl')"
         }
         require(!isProduction || host !in LOOPBACK_HOSTS) {
-            "complyr.cdn-base-url (CDN_BASE_URL) still points at '$host' in the $PRODUCTION_PROFILE profile; " +
+            "cookiekeeper.cdn-base-url (CDN_BASE_URL) still points at '$host' in the $PRODUCTION_PROFILE profile; " +
                 "domain verification would never match a customer's snippet"
         }
         return host

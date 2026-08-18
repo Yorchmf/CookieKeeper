@@ -57,7 +57,7 @@ class PublicScanReaper(
      * Not `@Transactional`: each batch runs in its own transaction via [pruneBatch], so between
      * batches the advisory lock is released and autovacuum can reclaim the freed rows.
      */
-    @Scheduled(cron = "\${complyr.scan.public-scan-prune-cron:$DEFAULT_PRUNE_CRON}")
+    @Scheduled(cron = "\${cookiekeeper.scan.public-scan-prune-cron:$DEFAULT_PRUNE_CRON}")
     fun prune() {
         val cutoff = clock.instant()
         val batchSize = properties.scan.publicScanPruneBatchSize

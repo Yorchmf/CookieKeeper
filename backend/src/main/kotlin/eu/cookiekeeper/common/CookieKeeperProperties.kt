@@ -176,14 +176,14 @@ data class CookieKeeperProperties(
         val maxTrackedKeys: Int = DEFAULT_MAX_TRACKED_KEYS,
     ) {
         init {
-            require(authBillingPerMinute > 0) { "complyr.rate-limit.auth-billing-per-minute must be > 0" }
-            require(authAccountPerMinute > 0) { "complyr.rate-limit.auth-account-per-minute must be > 0" }
-            require(authVerifyPerMinute > 0) { "complyr.rate-limit.auth-verify-per-minute must be > 0" }
-            require(authExportPerMinute > 0) { "complyr.rate-limit.auth-export-per-minute must be > 0" }
-            require(authContactPerMinute > 0) { "complyr.rate-limit.auth-contact-per-minute must be > 0" }
-            require(authPolicyPerMinute > 0) { "complyr.rate-limit.auth-policy-per-minute must be > 0" }
-            require(authGeneralPerMinute > 0) { "complyr.rate-limit.auth-general-per-minute must be > 0" }
-            require(maxTrackedKeys > 0) { "complyr.rate-limit.max-tracked-keys must be > 0" }
+            require(authBillingPerMinute > 0) { "cookiekeeper.rate-limit.auth-billing-per-minute must be > 0" }
+            require(authAccountPerMinute > 0) { "cookiekeeper.rate-limit.auth-account-per-minute must be > 0" }
+            require(authVerifyPerMinute > 0) { "cookiekeeper.rate-limit.auth-verify-per-minute must be > 0" }
+            require(authExportPerMinute > 0) { "cookiekeeper.rate-limit.auth-export-per-minute must be > 0" }
+            require(authContactPerMinute > 0) { "cookiekeeper.rate-limit.auth-contact-per-minute must be > 0" }
+            require(authPolicyPerMinute > 0) { "cookiekeeper.rate-limit.auth-policy-per-minute must be > 0" }
+            require(authGeneralPerMinute > 0) { "cookiekeeper.rate-limit.auth-general-per-minute must be > 0" }
+            require(maxTrackedKeys > 0) { "cookiekeeper.rate-limit.max-tracked-keys must be > 0" }
         }
 
         companion object {
@@ -274,18 +274,18 @@ data class CookieKeeperProperties(
             // A zero/negative window makes cutoff >= now, so the reaper would delete still-active,
             // in-flight keys and silently disable dedupe (fails open). Refuse the misconfig at startup.
             require(!idempotencyRetention.isZero && !idempotencyRetention.isNegative) {
-                "complyr.consent.idempotency-retention must be a positive duration (was $idempotencyRetention)"
+                "cookiekeeper.consent.idempotency-retention must be a positive duration (was $idempotencyRetention)"
             }
             // A non-positive batch size would make the reaper delete nothing and loop forever;
             // refuse it at startup rather than silently disabling the prune.
             require(idempotencyPruneBatchSize > 0) {
-                "complyr.consent.idempotency-prune-batch-size must be positive (was $idempotencyPruneBatchSize)"
+                "cookiekeeper.consent.idempotency-prune-batch-size must be positive (was $idempotencyPruneBatchSize)"
             }
             // At least the current + next month must always exist ahead of the write path, or a
             // month-boundary crossing between provisioning runs lands rows in the un-reclaimable
             // DEFAULT partition (GDPR storage-limitation risk, see ConsentEventPartitionProvisioner).
             require(partitionLookaheadMonths >= 1) {
-                "complyr.consent.partition-lookahead-months must be at least 1 (was $partitionLookaheadMonths)"
+                "cookiekeeper.consent.partition-lookahead-months must be at least 1 (was $partitionLookaheadMonths)"
             }
             // Consent evidence is dropped a whole partition at a time and irreversibly (ADR-16), and the
             // window is TENANT-BLIND, so it MUST cover the LONGEST plan retention (Pro/Business, 3 yr =
@@ -294,14 +294,14 @@ data class CookieKeeperProperties(
             // next run. The floor is the longest plan window, refusing that misconfig (and any fat-finger
             // like 0/1) at startup — see ADR-16 and [ConsentEventPartitionReaper].
             require(retentionMonths >= MIN_RETENTION_MONTHS) {
-                "complyr.consent.retention-months must be at least $MIN_RETENTION_MONTHS " +
+                "cookiekeeper.consent.retention-months must be at least $MIN_RETENTION_MONTHS " +
                     "(the longest plan retention; was $retentionMonths)"
             }
             // A zero/negative TTL would mint already-expired tokens, rejecting every token-bearing
             // (i.e. every current-widget) consent post. Refuse it at startup. Secret length is
             // validated by the ConsentOriginToken bean, not here, so the empty test default passes.
             require(!originTokenTtl.isZero && !originTokenTtl.isNegative) {
-                "complyr.consent.origin-token-ttl must be a positive duration (was $originTokenTtl)"
+                "cookiekeeper.consent.origin-token-ttl must be a positive duration (was $originTokenTtl)"
             }
         }
 
@@ -366,12 +366,12 @@ data class CookieKeeperProperties(
             // very days the dashboard still reports on — silently zeroing recent impression counts and
             // the interaction rate. Refuse the misconfig at startup.
             require(!retention.isZero && !retention.isNegative) {
-                "complyr.impression.retention must be a positive duration (was $retention)"
+                "cookiekeeper.impression.retention must be a positive duration (was $retention)"
             }
             // A non-positive batch size makes the reaper delete nothing and loop until its per-run cap;
             // refuse it at startup rather than silently disabling the prune.
             require(pruneBatchSize > 0) {
-                "complyr.impression.prune-batch-size must be positive (was $pruneBatchSize)"
+                "cookiekeeper.impression.prune-batch-size must be positive (was $pruneBatchSize)"
             }
         }
 
@@ -441,23 +441,23 @@ data class CookieKeeperProperties(
     ) {
         init {
             require(!visibilityTimeout.isZero && !visibilityTimeout.isNegative) {
-                "complyr.scan.visibility-timeout must be a positive duration (was $visibilityTimeout)"
+                "cookiekeeper.scan.visibility-timeout must be a positive duration (was $visibilityTimeout)"
             }
             require(!retryBackoff.isNegative) {
-                "complyr.scan.retry-backoff must not be negative (was $retryBackoff)"
+                "cookiekeeper.scan.retry-backoff must not be negative (was $retryBackoff)"
             }
-            require(maxAttempts > 0) { "complyr.scan.max-attempts must be positive (was $maxAttempts)" }
-            require(maxJobsPerPoll > 0) { "complyr.scan.max-jobs-per-poll must be positive (was $maxJobsPerPoll)" }
-            require(maxPages > 0) { "complyr.scan.max-pages must be positive (was $maxPages)" }
+            require(maxAttempts > 0) { "cookiekeeper.scan.max-attempts must be positive (was $maxAttempts)" }
+            require(maxJobsPerPoll > 0) { "cookiekeeper.scan.max-jobs-per-poll must be positive (was $maxJobsPerPoll)" }
+            require(maxPages > 0) { "cookiekeeper.scan.max-pages must be positive (was $maxPages)" }
             require(!pageTimeout.isZero && !pageTimeout.isNegative) {
-                "complyr.scan.page-timeout must be a positive duration (was $pageTimeout)"
+                "cookiekeeper.scan.page-timeout must be a positive duration (was $pageTimeout)"
             }
             require(!jobTimeout.isZero && !jobTimeout.isNegative) {
-                "complyr.scan.job-timeout must be a positive duration (was $jobTimeout)"
+                "cookiekeeper.scan.job-timeout must be a positive duration (was $jobTimeout)"
             }
-            require(maxCookies > 0) { "complyr.scan.max-cookies must be positive (was $maxCookies)" }
+            require(maxCookies > 0) { "cookiekeeper.scan.max-cookies must be positive (was $maxCookies)" }
             require(maxCookieNameLength > 0) {
-                "complyr.scan.max-cookie-name-length must be positive (was $maxCookieNameLength)"
+                "cookiekeeper.scan.max-cookie-name-length must be positive (was $maxCookieNameLength)"
             }
             require(maxConcurrentScansPerIp > 0) {
                 "cookiekeeper.scan.max-concurrent-scans-per-ip must be positive (was $maxConcurrentScansPerIp)"
@@ -465,24 +465,24 @@ data class CookieKeeperProperties(
             // A non-positive batch size makes the reaper delete nothing and loop until its per-run cap;
             // refuse it at startup rather than silently disabling the retention prune.
             require(publicScanPruneBatchSize > 0) {
-                "complyr.scan.public-scan-prune-batch-size must be positive (was $publicScanPruneBatchSize)"
+                "cookiekeeper.scan.public-scan-prune-batch-size must be positive (was $publicScanPruneBatchSize)"
             }
             // A non-positive batch would make the scheduled re-scan job examine (and thus enqueue)
             // nothing, silently freezing all scheduled re-scans; refuse it at startup.
             require(rescanBatchSize > 0) {
-                "complyr.scan.rescan-batch-size must be positive (was $rescanBatchSize)"
+                "cookiekeeper.scan.rescan-batch-size must be positive (was $rescanBatchSize)"
             }
             // Zero is legitimate (enqueue every due site at `now`, no spread); only a negative window is
             // nonsense — it would make the jitter offset negative and back-date `available_at`.
             require(!rescanJitterWindow.isNegative) {
-                "complyr.scan.rescan-jitter-window must not be negative (was $rescanJitterWindow)"
+                "cookiekeeper.scan.rescan-jitter-window must not be negative (was $rescanJitterWindow)"
             }
             // The queue redelivers a job once its visibility lease lapses; if a healthy crawl could run
             // longer than that lease it would be double-claimed (ADR-4 invariant). The job budget is
             // only checked *between* pages, so the last page can start at ~jobTimeout and run a further
             // pageTimeout — include that tail so a slow-but-live crawl always finishes before redelivery.
             require(jobTimeout + pageTimeout <= visibilityTimeout) {
-                "complyr.scan.job-timeout ($jobTimeout) + page-timeout ($pageTimeout) must not exceed " +
+                "cookiekeeper.scan.job-timeout ($jobTimeout) + page-timeout ($pageTimeout) must not exceed " +
                     "visibility-timeout ($visibilityTimeout)"
             }
         }
@@ -563,22 +563,22 @@ data class CookieKeeperProperties(
             // One hop must fit inside the whole operation, or the per-hop timeout is unreachable and the
             // budget is the only real bound — a misconfig that silently changes which limit applies.
             require(requestTimeout <= totalBudget) {
-                "complyr.verification.request-timeout ($requestTimeout) must not exceed total-budget ($totalBudget)"
+                "cookiekeeper.verification.request-timeout ($requestTimeout) must not exceed total-budget ($totalBudget)"
             }
             // Likewise: a connect that may outlast the whole operation makes the budget the only bound.
             require(connectTimeout <= totalBudget) {
-                "complyr.verification.connect-timeout ($connectTimeout) must not exceed total-budget ($totalBudget)"
+                "cookiekeeper.verification.connect-timeout ($connectTimeout) must not exceed total-budget ($totalBudget)"
             }
             // Negative would be nonsense; 0 is legitimate (refuse to follow redirects at all). The ceiling
             // matters for a subtler reason too: SiteVerificationFetcher loops `maxRedirects + 1` times, so
             // Int.MAX_VALUE overflows to a negative count and silently performs *zero* hops.
             require(maxRedirects in 0..MAX_REDIRECTS_CEILING) {
-                "complyr.verification.max-redirects must be between 0 and $MAX_REDIRECTS_CEILING (was $maxRedirects)"
+                "cookiekeeper.verification.max-redirects must be between 0 and $MAX_REDIRECTS_CEILING (was $maxRedirects)"
             }
             // A non-positive cap would read an empty body and fail every snippet check; the ceiling keeps a
             // hostile endless body from being buffered toward 2GB on a 4GB box.
             require(maxBodyBytes in 1..MAX_BODY_BYTES_CEILING) {
-                "complyr.verification.max-body-bytes must be between 1 and $MAX_BODY_BYTES_CEILING (was $maxBodyBytes)"
+                "cookiekeeper.verification.max-body-bytes must be between 1 and $MAX_BODY_BYTES_CEILING (was $maxBodyBytes)"
             }
             // Validated in milliseconds, not as a Duration, because milliseconds is what reaches the JNDI
             // provider: PT0.0009S is a positive Duration whose toMillis() is 0, and 0 makes the provider's
@@ -586,7 +586,7 @@ data class CookieKeeperProperties(
             // permanently. At the other end, a value past Int.MAX_VALUE ms makes the provider's internal
             // Integer.parseInt throw an unchecked exception straight past DnsTxtLookup's catch.
             require(dnsTimeout.toMillis() in MIN_DNS_TIMEOUT_MILLIS..MAX_DNS_TIMEOUT_MILLIS) {
-                "complyr.verification.dns-timeout must be between ${MIN_DNS_TIMEOUT_MILLIS}ms and " +
+                "cookiekeeper.verification.dns-timeout must be between ${MIN_DNS_TIMEOUT_MILLIS}ms and " +
                     "${MAX_DNS_TIMEOUT_MILLIS}ms (was $dnsTimeout)"
             }
         }
@@ -597,7 +597,7 @@ data class CookieKeeperProperties(
             ceiling: Duration,
         ) {
             require(!value.isZero && !value.isNegative && value <= ceiling) {
-                "complyr.verification.$name must be a positive duration of at most $ceiling (was $value)"
+                "cookiekeeper.verification.$name must be a positive duration of at most $ceiling (was $value)"
             }
         }
 
@@ -684,31 +684,31 @@ data class CookieKeeperProperties(
     ) {
         init {
             require(!trialPeriod.isZero && !trialPeriod.isNegative) {
-                "complyr.billing.trial-period must be a positive duration (was $trialPeriod)"
+                "cookiekeeper.billing.trial-period must be a positive duration (was $trialPeriod)"
             }
             require(trialConsentEventCap > 0) {
-                "complyr.billing.trial-consent-event-cap must be positive (was $trialConsentEventCap)"
+                "cookiekeeper.billing.trial-consent-event-cap must be positive (was $trialConsentEventCap)"
             }
             // A zero/negative window makes cutoff >= now, so the reaper would delete rows for events
             // Stripe may still redeliver — reopening the dedupe window. Refuse the misconfig at startup.
             require(!stripeEventRetention.isZero && !stripeEventRetention.isNegative) {
-                "complyr.billing.stripe-event-retention must be a positive duration (was $stripeEventRetention)"
+                "cookiekeeper.billing.stripe-event-retention must be a positive duration (was $stripeEventRetention)"
             }
             // A non-positive batch size makes the reaper delete nothing and loop until its per-run cap.
             require(stripeEventPruneBatchSize > 0) {
-                "complyr.billing.stripe-event-prune-batch-size must be positive (was $stripeEventPruneBatchSize)"
+                "cookiekeeper.billing.stripe-event-prune-batch-size must be positive (was $stripeEventPruneBatchSize)"
             }
             // A zero/negative lead makes the candidate window empty, so the reminder would silently never
             // fire; a lead longer than the trial itself would mail people on their signup day.
             require(!trialReminderLeadTime.isZero && !trialReminderLeadTime.isNegative) {
-                "complyr.billing.trial-reminder-lead-time must be a positive duration (was $trialReminderLeadTime)"
+                "cookiekeeper.billing.trial-reminder-lead-time must be a positive duration (was $trialReminderLeadTime)"
             }
             require(trialReminderLeadTime < trialPeriod) {
-                "complyr.billing.trial-reminder-lead-time ($trialReminderLeadTime) must be shorter than " +
+                "cookiekeeper.billing.trial-reminder-lead-time ($trialReminderLeadTime) must be shorter than " +
                     "trial-period ($trialPeriod)"
             }
             require(trialReminderBatchSize > 0) {
-                "complyr.billing.trial-reminder-batch-size must be positive (was $trialReminderBatchSize)"
+                "cookiekeeper.billing.trial-reminder-batch-size must be positive (was $trialReminderBatchSize)"
             }
         }
 
@@ -772,7 +772,7 @@ data class CookieKeeperProperties(
             // neither sender's case-sensitive @ConditionalOnProperty, leaving no EmailSender bean and an
             // opaque NoSuchBeanDefinitionException elsewhere. Fail fast here with the real cause instead.
             require(provider in SUPPORTED_PROVIDERS) {
-                "complyr.mail.provider (MAIL_PROVIDER) must be one of $SUPPORTED_PROVIDERS, was '$provider'"
+                "cookiekeeper.mail.provider (MAIL_PROVIDER) must be one of $SUPPORTED_PROVIDERS, was '$provider'"
             }
         }
 
@@ -815,7 +815,7 @@ data class CookieKeeperProperties(
         ) {
             init {
                 require(tracesSampleRate in 0.0..1.0) {
-                    "complyr.observability.sentry.traces-sample-rate must be within [0.0, 1.0] " +
+                    "cookiekeeper.observability.sentry.traces-sample-rate must be within [0.0, 1.0] " +
                         "(was $tracesSampleRate)"
                 }
             }

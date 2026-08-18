@@ -82,7 +82,7 @@ class ScheduledRescanJob(
      * transaction (see the class KDoc). [now] is captured once so the due decision and the jittered
      * `available_at` are computed against a single instant even though the enqueues commit slightly later.
      */
-    @Scheduled(cron = "\${complyr.scan.rescan-cron:$DEFAULT_RESCAN_CRON}")
+    @Scheduled(cron = "\${cookiekeeper.scan.rescan-cron:$DEFAULT_RESCAN_CRON}")
     fun enqueueDueRescans() {
         val now = clock.instant()
         val dueSites = transactionTemplate.execute { selectDueSites(now) } ?: emptyList()

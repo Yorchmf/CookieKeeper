@@ -44,7 +44,7 @@ class StripeWebhookReaper(
      * (defaulted so no yml entry is required, and offset from the other nightly reapers so the sweeps
      * don't collide).
      */
-    @Scheduled(cron = "\${complyr.billing.stripe-event-prune-cron:$DEFAULT_PRUNE_CRON}")
+    @Scheduled(cron = "\${cookiekeeper.billing.stripe-event-prune-cron:$DEFAULT_PRUNE_CRON}")
     fun prune() {
         val cutoff = clock.instant().minus(properties.billing.stripeEventRetention)
         val batchSize = properties.billing.stripeEventPruneBatchSize

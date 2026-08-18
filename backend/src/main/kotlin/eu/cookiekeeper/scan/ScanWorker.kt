@@ -39,7 +39,7 @@ class ScanWorker(
         log.info("Scanner profile active — polling the scan queues")
     }
 
-    @Scheduled(fixedDelayString = "\${complyr.scan.poll-interval-millis:5000}")
+    @Scheduled(fixedDelayString = "\${cookiekeeper.scan.poll-interval-millis:5000}")
     fun poll() {
         var processed = 0
         while (processed < properties.scan.maxJobsPerPoll) {
