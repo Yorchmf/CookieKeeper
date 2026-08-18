@@ -7,6 +7,10 @@
     "close": "Cerrar",
     "lockedFeature": {
       "upgrade": "Mejorar plan"
+    },
+    "entitlementError": {
+      "reason": "No pudimos verificar tu plan.",
+      "retry": "Reintentar"
     }
   },
   "marketing": {

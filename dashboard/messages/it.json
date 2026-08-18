@@ -7,6 +7,10 @@
     "close": "Chiudi",
     "lockedFeature": {
       "upgrade": "Aggiorna"
+    },
+    "entitlementError": {
+      "reason": "Impossibile verificare il tuo piano.",
+      "retry": "Riprova"
     }
   },
   "marketing": {

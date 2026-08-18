@@ -7,6 +7,10 @@
     "close": "Schließen",
     "lockedFeature": {
       "upgrade": "Upgraden"
+    },
+    "entitlementError": {
+      "reason": "Wir konnten Ihren Tarif nicht überprüfen.",
+      "retry": "Erneut versuchen"
     }
   },
   "marketing": {

@@ -7,6 +7,10 @@
     "close": "Fermer",
     "lockedFeature": {
       "upgrade": "Mettre à niveau"
+    },
+    "entitlementError": {
+      "reason": "Nous n'avons pas pu vérifier votre offre.",
+      "retry": "Réessayer"
     }
   },
   "marketing": {

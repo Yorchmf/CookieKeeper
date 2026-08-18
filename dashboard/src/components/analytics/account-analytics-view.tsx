@@ -14,9 +14,9 @@ import { LanguageSplit } from "@/components/analytics/language-split";
 import { parseRange, type RangeDays, RangeSelector } from "@/components/analytics/range-selector";
 import { StatTile } from "@/components/analytics/stat-tile";
 import { useConsentDeltas } from "@/components/analytics/use-consent-deltas";
+import { useEntitlementGate } from "@/components/analytics/use-entitlement-gate";
 import { LockedFeature } from "@/components/ui/locked-feature";
 import { useAccountAnalytics } from "@/hooks/use-account-analytics";
-import { useEntitlement } from "@/hooks/use-billing";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { acceptShareDelta, acceptSharePct, eventsDelta } from "@/lib/analytics/delta";
 import type { AnalyticsFilter } from "@/lib/api/analytics";
@@ -41,7 +41,7 @@ export function AccountAnalyticsView() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
-  const entitlement = useEntitlement();
+  const gate = useEntitlementGate((limits) => limits.crossSiteAnalytics);
 
   // Anchor the window to a single "now" captured once (lazy initializer runs a single time, keeping the
   // render pure), so the resolved `from` — and thus the query key — stays stable across re-renders.
@@ -52,10 +52,10 @@ export function AccountAnalyticsView() {
     [anchorMs, range],
   );
 
-  // `entitled` is undefined until the entitlement resolves; gate the roll-up read on it being confirmed
-  // true so a locked (or still-loading) account never fires the request the backend would 403 anyway.
-  const entitled = entitlement.data?.limits.crossSiteAnalytics;
-  const query = useAccountAnalytics(filter, { enabled: entitled === true });
+  // `entitled` is only true once the entitlement resolves in our favour; gate the roll-up read on it so
+  // a locked, still-loading, or errored account never fires the request the backend would 403 anyway.
+  const entitled = gate.status === "entitled";
+  const query = useAccountAnalytics(filter, { enabled: entitled });
   const deltaBadge = useConsentDeltas(range);
 
   const applyRange = useCallback(
@@ -101,12 +101,12 @@ export function AccountAnalyticsView() {
   );
 
   // Entitlement still resolving → skeleton, so the gate stays closed until we actually know the plan.
-  if (entitlement.isPending) {
+  if (gate.status === "pending") {
     return shell(<AnalyticsSkeleton />);
   }
   // Entitlement fetch itself failed → error, not the upgrade prompt: a Pro/Business account must never be
   // told to upgrade because a transient request failed. Distinct from resolved-but-not-entitled below.
-  if (entitlement.isError) {
+  if (gate.status === "error") {
     return shell(
       <p role="alert" className="text-sm text-destructive">
         {t("crossSite.loadError")}
@@ -114,7 +114,7 @@ export function AccountAnalyticsView() {
     );
   }
   // Plan gate: entitlement resolved and this account doesn't have it → upgrade prompt, never the dashboard.
-  if (!entitled) {
+  if (gate.status === "locked") {
     return shell(
       <LockedFeature label={t("crossSite.title")} reason={t("crossSite.locked")} />,
     );

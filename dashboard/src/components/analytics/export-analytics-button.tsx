@@ -2,17 +2,19 @@
 
 import { useTranslations } from "next-intl";
 
+import { useEntitlementGate } from "@/components/analytics/use-entitlement-gate";
 import { Button } from "@/components/ui/button";
+import { EntitlementGateError } from "@/components/ui/entitlement-gate-error";
 import { LockedFeature } from "@/components/ui/locked-feature";
-import { useEntitlement } from "@/hooks/use-billing";
 import { analyticsExportPath, type AnalyticsFilter } from "@/lib/api/analytics";
 
 /**
  * CSV export trigger for the consent trend, gated on the Business-plan `csvExport` entitlement. The gate
- * here is display-only — the backend enforces it (403) — so a non-entitled user sees a `<LockedFeature>`
- * (focusable, announced, with an upgrade link) rather than a dead `disabled` button. The download itself
- * is a same-origin `<a download>`, so the browser streams straight from the backend with auth cookies
- * attached. The export honours the active window.
+ * here is display-only — the backend enforces it (403). Gate states come from {@link useEntitlementGate}
+ * so a *failed* entitlement fetch is never rendered as "not entitled": `error` shows a retry, distinct
+ * from `locked`, which shows the `<LockedFeature>` upgrade prompt. The download itself is a same-origin
+ * `<a download>`, so the browser streams straight from the backend with auth cookies attached. The
+ * export honours the active window.
  */
 export function ExportAnalyticsButton({
   siteId,
@@ -22,9 +24,9 @@ export function ExportAnalyticsButton({
   filter: AnalyticsFilter;
 }) {
   const t = useTranslations("analytics.export");
-  const entitlement = useEntitlement();
+  const gate = useEntitlementGate((limits) => limits.csvExport);
 
-  if (entitlement.isPending) {
+  if (gate.status === "pending") {
     return (
       <Button variant="outline" aria-disabled="true" aria-busy="true">
         {t("label")}
@@ -32,7 +34,11 @@ export function ExportAnalyticsButton({
     );
   }
 
-  if (!entitlement.data?.limits.csvExport) {
+  if (gate.status === "error") {
+    return <EntitlementGateError label={t("label")} onRetry={gate.retry} />;
+  }
+
+  if (gate.status === "locked") {
     return <LockedFeature label={t("label")} reason={t("businessOnly")} />;
   }
 
