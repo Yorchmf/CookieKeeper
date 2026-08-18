@@ -35,6 +35,7 @@ import java.util.UUID
 class AnalyticsService(
     private val siteRepository: SiteRepository,
     private val consentAnalyticsRepository: ConsentAnalyticsRepository,
+    private val bannerImpressionRepository: BannerImpressionRepository,
     private val scanRepository: ScanRepository,
     private val scanCookieRepository: ScanCookieRepository,
     private val policyRepository: PolicyRepository,
@@ -71,7 +72,10 @@ class AnalyticsService(
         floor: Instant,
     ): PeriodSummary? =
         rangeResolver.priorWindow(range, floor)?.let { prior ->
-            consentAnalyticsAssembler.summarize(consentAnalyticsRepository.dailyActionCounts(siteId, prior.from, prior.to))
+            consentAnalyticsAssembler.summarize(
+                consentAnalyticsRepository.dailyActionCounts(siteId, prior.from, prior.to),
+                bannerImpressionRepository.impressionCounts(siteId, prior.from, prior.to),
+            )
         }
 
     /** The consent-trend series alone (the CSV export payload); ownership already asserted by the caller. */
@@ -94,6 +98,7 @@ class AnalyticsService(
             daily = consentAnalyticsRepository.dailyActionCounts(siteId, range.from, range.to),
             optIn = consentAnalyticsRepository.categoryOptInCounts(siteId, range.from, range.to),
             languages = consentAnalyticsRepository.languageCounts(siteId, range.from, range.to),
+            impressions = bannerImpressionRepository.impressionCounts(siteId, range.from, range.to),
         )
 
     private fun cookieAnalytics(siteId: UUID): CookieAnalytics? {

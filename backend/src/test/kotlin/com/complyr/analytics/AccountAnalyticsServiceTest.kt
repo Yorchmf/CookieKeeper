@@ -29,6 +29,7 @@ class AccountAnalyticsServiceTest {
 
     private val siteRepository = mockk<SiteRepository>()
     private val consentRepository = mockk<ConsentAnalyticsRepository>()
+    private val impressionRepository = mockk<BannerImpressionRepository>()
     private val floor = now.minusSeconds(365 * 86_400)
     private val prior = AnalyticsRange(from = range.from.minusSeconds(30 * 86_400), to = range.from)
     private val rangeResolver =
@@ -40,7 +41,13 @@ class AccountAnalyticsServiceTest {
             every { priorWindow(range, floor) } returns null
         }
     private val service =
-        AccountAnalyticsService(siteRepository, consentRepository, ConsentAnalyticsAssembler(), rangeResolver)
+        AccountAnalyticsService(
+            siteRepository,
+            consentRepository,
+            impressionRepository,
+            ConsentAnalyticsAssembler(),
+            rangeResolver,
+        )
 
     private fun site() = SiteEntity(userId = userId, domain = "d-${UUID.randomUUID()}.eu", siteKey = "k")
 
@@ -59,6 +66,7 @@ class AccountAnalyticsServiceTest {
         verify(exactly = 0) { consentRepository.accountDailyActionCounts(any(), any(), any()) }
         verify(exactly = 0) { consentRepository.accountCategoryOptInCounts(any(), any(), any()) }
         verify(exactly = 0) { consentRepository.accountLanguageCounts(any(), any(), any()) }
+        verify(exactly = 0) { impressionRepository.accountImpressionCounts(any(), any(), any()) }
     }
 
     @Test
@@ -78,11 +86,15 @@ class AccountAnalyticsServiceTest {
             listOf(CategoryOptInCount(category = "statistics", optIns = 6, decisions = 10))
         every { consentRepository.accountLanguageCounts(siteIds, range.from, range.to) } returns
             listOf(LanguageCountRow("en", 7), LanguageCountRow("de", 3))
+        // 10 decisions across the portfolio against 40 impressions → 0.25 interaction rate.
+        every { impressionRepository.accountImpressionCounts(siteIds, range.from, range.to) } returns 40L
 
         val result = service.rollup(userId, AnalyticsFilter())
 
         assertEquals(2, result.siteCount)
         assertEquals(10, result.consent.totalEvents)
+        assertEquals(40, result.consent.impressions)
+        assertEquals(0.25, result.consent.interactionRate)
         assertEquals(5, result.consent.byAction.acceptAll)
         assertEquals(
             0.6,
@@ -112,11 +124,13 @@ class AccountAnalyticsServiceTest {
             listOf(DailyActionCount(day, "accept_all", 8), DailyActionCount(day, "reject_all", 2))
         every { consentRepository.accountCategoryOptInCounts(siteIds, range.from, range.to) } returns emptyList()
         every { consentRepository.accountLanguageCounts(siteIds, range.from, range.to) } returns emptyList()
+        every { impressionRepository.accountImpressionCounts(siteIds, range.from, range.to) } returns 0L
         // A comparable prior window exists; its consent is aggregated over the *same* current portfolio.
         every { rangeResolver.priorWindow(range, floor) } returns prior
         val priorDay = LocalDate.parse("2026-07-14")
         every { consentRepository.accountDailyActionCounts(siteIds, prior.from, prior.to) } returns
             listOf(DailyActionCount(priorDay, "accept_all", 3), DailyActionCount(priorDay, "custom", 1))
+        every { impressionRepository.accountImpressionCounts(siteIds, prior.from, prior.to) } returns 20L
 
         val result = service.rollup(userId, AnalyticsFilter())
 
@@ -124,8 +138,11 @@ class AccountAnalyticsServiceTest {
         assertEquals(4, previous.totalEvents)
         assertEquals(3, previous.byAction.acceptAll)
         assertEquals(1, previous.byAction.custom)
+        // The prior window's impressions ride the same baseline, aggregated over the same sites.
+        assertEquals(20, previous.impressions)
         // The baseline reads the shifted prior window, not the current one.
         verify { consentRepository.accountDailyActionCounts(siteIds, prior.from, prior.to) }
+        verify { impressionRepository.accountImpressionCounts(siteIds, prior.from, prior.to) }
     }
 
     @Test
@@ -136,6 +153,7 @@ class AccountAnalyticsServiceTest {
         every { consentRepository.accountDailyActionCounts(siteIds, range.from, range.to) } returns emptyList()
         every { consentRepository.accountCategoryOptInCounts(siteIds, range.from, range.to) } returns emptyList()
         every { consentRepository.accountLanguageCounts(siteIds, range.from, range.to) } returns emptyList()
+        every { impressionRepository.accountImpressionCounts(siteIds, range.from, range.to) } returns 0L
 
         val result = service.rollup(userId, AnalyticsFilter())
 

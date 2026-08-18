@@ -1031,6 +1031,10 @@
     "retry": "Erneut versuchen",
     "summary": {
       "totalEvents": "Einwilligungsereignisse",
+      "impressions": "Banner-Einblendungen",
+      "impressionsHint": "Wie oft das Banner angezeigt wurde",
+      "interactionRate": "Interaktionsrate",
+      "interactionRateHint": "Entscheidungen pro Einblendung",
       "acceptShare": "Alle-akzeptieren-Quote",
       "policyVersion": "Richtlinienversion",
       "noPolicy": "Keine",

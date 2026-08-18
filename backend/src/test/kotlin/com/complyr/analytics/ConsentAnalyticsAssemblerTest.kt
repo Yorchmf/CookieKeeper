@@ -6,8 +6,9 @@ import kotlin.test.assertEquals
 
 /**
  * Unit tests for [ConsentAnalyticsAssembler] — the shared consent arithmetic behind both the per-site and
- * the cross-site reads. Locks the accept/reject/custom breakdown, the dense day-ordered trend, and the
- * opt-in rate (including the division-by-zero guard), so the two views can never disagree on a figure.
+ * the cross-site reads. Locks the accept/reject/custom breakdown, the dense day-ordered trend, the opt-in
+ * rate (including the division-by-zero guard), and the banner-impression interaction rate (Track 4 Slice D),
+ * so the two views can never disagree on a figure.
  */
 class ConsentAnalyticsAssemblerTest {
     private val assembler = ConsentAnalyticsAssembler()
@@ -28,6 +29,7 @@ class ConsentAnalyticsAssemblerTest {
                     ),
                 optIn = emptyList(),
                 languages = emptyList(),
+                impressions = 0,
             )
 
         assertEquals(40, consent.byAction.acceptAll)
@@ -50,6 +52,7 @@ class ConsentAnalyticsAssemblerTest {
                     ),
                 optIn = emptyList(),
                 languages = emptyList(),
+                impressions = 0,
             )
 
         assertEquals(listOf(aug12, aug13), consent.trend.map { it.date })
@@ -73,6 +76,7 @@ class ConsentAnalyticsAssemblerTest {
                         CategoryOptInCount(category = "marketing", optIns = 0, decisions = 0),
                     ),
                 languages = emptyList(),
+                impressions = 0,
             )
 
         val stats = consent.categoryOptIn.single { it.category == "statistics" }
@@ -88,13 +92,66 @@ class ConsentAnalyticsAssemblerTest {
                 daily = emptyList(),
                 optIn = emptyList(),
                 languages = listOf(LanguageCountRow("de", 12), LanguageCountRow("en", 7)),
+                impressions = 0,
             )
 
         assertEquals(listOf("de" to 12L, "en" to 7L), consent.languageSplit.map { it.lang to it.count })
     }
 
     @Test
-    fun `summarize returns the action totals and their sum, matching assemble's breakdown`() {
+    fun `impressions pass through and interaction rate is events over impressions`() {
+        // 110 decisions against 200 impressions → 0.55 interaction rate.
+        val consent =
+            assembler.assemble(
+                daily =
+                    listOf(
+                        DailyActionCount(aug12, "accept_all", 60),
+                        DailyActionCount(aug12, "reject_all", 30),
+                        DailyActionCount(aug13, "custom", 20),
+                    ),
+                optIn = emptyList(),
+                languages = emptyList(),
+                impressions = 200,
+            )
+
+        assertEquals(200, consent.impressions)
+        assertEquals(110, consent.totalEvents)
+        assertEquals(0.55, consent.interactionRate)
+    }
+
+    @Test
+    fun `zero impressions yield interaction rate 0 not a divide-by-zero`() {
+        val consent =
+            assembler.assemble(
+                daily = listOf(DailyActionCount(aug12, "accept_all", 5)),
+                optIn = emptyList(),
+                languages = emptyList(),
+                impressions = 0,
+            )
+
+        assertEquals(0, consent.impressions)
+        assertEquals(5, consent.totalEvents)
+        // Decisions with no recorded impression must not blow up — rate is defined as 0, not NaN/Infinity.
+        assertEquals(0.0, consent.interactionRate)
+    }
+
+    @Test
+    fun `interaction rate can exceed 1 when decisions outnumber impressions`() {
+        // Re-consent on a page that didn't re-show the banner, or divergent retention windows: decisions
+        // can outnumber impressions. The assembler reports the raw ratio rather than clamping it.
+        val consent =
+            assembler.assemble(
+                daily = listOf(DailyActionCount(aug12, "accept_all", 3)),
+                optIn = emptyList(),
+                languages = emptyList(),
+                impressions = 2,
+            )
+
+        assertEquals(1.5, consent.interactionRate)
+    }
+
+    @Test
+    fun `summarize returns the action totals, their sum, and the impressions, matching assemble's breakdown`() {
         val daily =
             listOf(
                 DailyActionCount(aug12, "accept_all", 30),
@@ -103,13 +160,14 @@ class ConsentAnalyticsAssemblerTest {
                 DailyActionCount(aug13, "custom", 20),
             )
 
-        val summary = assembler.summarize(daily)
+        val summary = assembler.summarize(daily, impressions = 300)
 
         assertEquals(40, summary.byAction.acceptAll)
         assertEquals(50, summary.byAction.rejectAll)
         assertEquals(20, summary.byAction.custom)
         assertEquals(110, summary.totalEvents)
+        assertEquals(300, summary.impressions)
         // The lean baseline and the full view count an action mix the same way — one arithmetic, one source.
-        assertEquals(assembler.assemble(daily, emptyList(), emptyList()).byAction, summary.byAction)
+        assertEquals(assembler.assemble(daily, emptyList(), emptyList(), impressions = 300).byAction, summary.byAction)
     }
 }

@@ -9,6 +9,7 @@
 import {
   flushPendingEvents,
   sendConsentEvent,
+  sendImpression,
   type ConsentEventPayload,
 } from './api';
 import { removeBanner, renderBanner, type BannerAction } from './banner';
@@ -50,6 +51,12 @@ declare global {
 // currentScript is only reliable during synchronous top-level execution, so
 // read our own <script> tag's attributes now, before any async work.
 const ownScript = readOwnScript();
+
+// Impressions are counted at most once per page load: Complyr.show() can render
+// the banner repeatedly (a visitor reopening it to withdraw consent), but that
+// is one banner *appearance*, not N. The interaction-rate denominator must stay
+// comparable to unique page loads that saw the banner, so guard the beacon here.
+let impressionSent = false;
 
 // 1. Diagnostics opt-in (silent by default) — set before anything can warn().
 setDebug(readDebugFlag(ownScript));
@@ -129,6 +136,14 @@ async function loadAndShowBanner(): Promise<void> {
     onAction: (action) => applyChoice(config, action, lang),
     onPreferences: () => openPreferences(config, lang),
   });
+
+  // Count the banner appearance once it has actually rendered, at most once per
+  // page load. Fire-and-forget: a dropped beacon only under-counts the
+  // interaction-rate denominator and never blocks the visitor.
+  if (!impressionSent) {
+    impressionSent = true;
+    sendImpression(siteKey);
+  }
 }
 
 /** Open the granular preferences panel, seeded with any prior choice. */

@@ -12,6 +12,7 @@ data class ComplyrProperties(
     val rateLimit: RateLimit = RateLimit(),
     val cors: Cors = Cors(),
     val consent: Consent = Consent(),
+    val impression: Impression = Impression(),
     val scan: Scan = Scan(),
     val verification: Verification = Verification(),
     val billing: Billing = Billing(),
@@ -103,6 +104,14 @@ data class ComplyrProperties(
         // visitor loads it once. This is only the coarse per-IP backstop against a single id being
         // hammered past the edge cache; enumeration is infeasible (random UUID public id).
         val publicPolicyPerMinute: Long = DEFAULT_PUBLIC_POLICY_PER_MINUTE,
+        // Requests per minute per client IP on the public banner-impression beacon (Track 4 Slice D).
+        // Sized like consent, and for the same reason: shared corporate NAT / CGNAT egress puts many
+        // real visitors behind one IP, and the widget fires exactly one beacon per page-load. The beacon
+        // is a single UPSERT with no audit write, so a generous per-IP backstop is right here — edge rate
+        // limiting (Cloudflare) absorbs volumetric floods. (Not strictly "cheaper" than a consent post
+        // under load: impressions for one busy site all contend on the same (site, day) row where consent
+        // inserts distinct rows — fine at MVP scale; shard the counter if a single site ever outgrows it.)
+        val impressionPerMinute: Long = DEFAULT_IMPRESSION_PER_MINUTE,
         // Requests per minute per authenticated user on `/api/v1/billing/**` (post-auth, keyed by the
         // JWT subject — see [com.complyr.common.AuthenticatedRateLimitFilter]). Tight: every billing
         // call is a live Stripe API round-trip, so one account looping checkout/portal could burn the
@@ -168,6 +177,7 @@ data class ComplyrProperties(
         companion object {
             const val DEFAULT_AUTH_PER_MINUTE = 10L
             const val DEFAULT_CONSENT_PER_MINUTE = 120L
+            const val DEFAULT_IMPRESSION_PER_MINUTE = 120L
             const val DEFAULT_PUBLIC_SCAN_PER_MINUTE = 10L
             const val DEFAULT_PUBLIC_POLICY_PER_MINUTE = 120L
             const val DEFAULT_AUTH_BILLING_PER_MINUTE = 20L
@@ -202,6 +212,9 @@ data class ComplyrProperties(
             val DEFAULT_PATHS =
                 listOf(
                     "/api/v1/consent",
+                    // The banner-impression beacon (Track 4 Slice D) — fired cross-origin from the
+                    // customer's page exactly like the consent post, so it needs the same CORS grant.
+                    "/api/v1/impression",
                     "/api/v1/consent-token/**",
                     "/api/v1/widget-config/**",
                     // The widget's own config URL (ADR-19). Cross-origin by construction: it is
@@ -310,6 +323,54 @@ data class ComplyrProperties(
             // depend on the billing `Plan` type (see [Billing.PriceIds]), so the value is duplicated here
             // and kept honest by a drift guard in ComplyrPropertiesTest.
             const val MIN_RETENTION_MONTHS = 36
+        }
+    }
+
+    /**
+     * Banner-impression counter tuning (Track 4 Slice D; see [com.complyr.analytics.BannerImpressionReaper]).
+     *
+     * [retention] is how long a per-(site, day) counter row survives before the scheduled reaper prunes
+     * it. Impressions are read over the dashboard's analytics windows AND their period-over-period *prior*
+     * window, which reaches back up to twice the widest preset — the 90-day view compares against days
+     * 90–180 back. So this must comfortably exceed 2× the widest window (not just the window itself), or the
+     * prior-window impression / interaction-rate deltas silently vanish once their baseline days are pruned
+     * — but still NOT the multi-year consent retention. Unlike the consent log this is a disposable
+     * aggregate with no personal data and no audit obligation, so pruning it early loses nothing we must
+     * keep. The prune schedule itself is the raw `complyr.impression.prune-cron` property read by
+     * `@Scheduled`, not a typed field here.
+     *
+     * [pruneBatchSize] caps how many counter rows the reaper deletes per transaction, so a backlog drains
+     * in bounded, vacuum-friendly chunks instead of one long DELETE — mirrors the consent-idempotency
+     * reaper's batching. The grain is one row per (site, day), so even a large multi-site deployment
+     * accumulates few rows per day; this batch clears far more than a normal day's expiries at once.
+     */
+    data class Impression(
+        val retention: Duration = Duration.ofDays(DEFAULT_RETENTION_DAYS),
+        val pruneBatchSize: Int = DEFAULT_PRUNE_BATCH_SIZE,
+    ) {
+        init {
+            // A zero/negative window makes the cutoff day today-or-later, so the reaper would prune the
+            // very days the dashboard still reports on — silently zeroing recent impression counts and
+            // the interaction rate. Refuse the misconfig at startup.
+            require(!retention.isZero && !retention.isNegative) {
+                "complyr.impression.retention must be a positive duration (was $retention)"
+            }
+            // A non-positive batch size makes the reaper delete nothing and loop until its per-run cap;
+            // refuse it at startup rather than silently disabling the prune.
+            require(pruneBatchSize > 0) {
+                "complyr.impression.prune-batch-size must be positive (was $pruneBatchSize)"
+            }
+        }
+
+        companion object {
+            // Must exceed 2× the widest analytics preset (90-day view → 180-day prior comparison window) so
+            // a pruned counter can never affect a shown figure or a period-over-period delta; 210 = 180 + a
+            // month of headroom for reaper lag and boundary days. Still tiny: one row per (site, day).
+            const val DEFAULT_RETENTION_DAYS = 210L
+
+            // Rows per prune transaction. The (site, day) grain means few rows accrue per day, so this
+            // clears well beyond a normal day's expiries in one short, vacuum-friendly transaction.
+            const val DEFAULT_PRUNE_BATCH_SIZE = 10_000
         }
     }
 

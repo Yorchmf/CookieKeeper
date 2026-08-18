@@ -93,6 +93,14 @@ complyr:
     # Retention-drop schedule (Spring cron, server zone). Default 04:00 daily is baked into the job;
     # runs after the provisioner (03:15) and the idempotency/public-scan reapers (03:30/03:45).
     retention-drop-cron: ${CONSENT_RETENTION_DROP_CRON:0 0 4 * * *}
+  impression:
+    # Banner-impression counter retention (Track 4 Slice D). A disposable per-(site, day) aggregate
+    # with no personal data, read only over the dashboard's analytics windows — so this only has to
+    # exceed the widest window (~30d) with headroom, not the multi-year consent retention.
+    retention: ${IMPRESSION_RETENTION:90d}
+    # Reaper schedule (Spring cron, server zone). Default 03:45 daily is also baked into the job;
+    # staggered off the consent idempotency prune (03:30) so the nightly reapers don't overlap.
+    prune-cron: ${IMPRESSION_PRUNE_CRON:0 45 3 * * *}
   scan:
     # How often a scanner worker polls the queue (only the `scanner` profile runs the poller).
     poll-interval-millis: ${SCAN_POLL_INTERVAL_MS:5000}

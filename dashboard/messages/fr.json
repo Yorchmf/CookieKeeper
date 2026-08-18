@@ -1031,6 +1031,10 @@
     "retry": "Réessayer",
     "summary": {
       "totalEvents": "Événements de consentement",
+      "impressions": "Affichages de la bannière",
+      "impressionsHint": "Nombre d'affichages de la bannière",
+      "interactionRate": "Taux d'interaction",
+      "interactionRateHint": "Décisions par affichage",
       "acceptShare": "Taux de « tout accepter »",
       "policyVersion": "Version de la politique",
       "noPolicy": "Aucune",

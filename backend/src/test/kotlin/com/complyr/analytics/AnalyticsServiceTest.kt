@@ -35,6 +35,7 @@ class AnalyticsServiceTest {
 
     private val siteRepository = mockk<SiteRepository>()
     private val consentRepository = mockk<ConsentAnalyticsRepository>()
+    private val impressionRepository = mockk<BannerImpressionRepository>()
     private val scanRepository = mockk<ScanRepository>()
     private val scanCookieRepository = mockk<ScanCookieRepository>()
     private val policyRepository = mockk<PolicyRepository>()
@@ -50,6 +51,7 @@ class AnalyticsServiceTest {
         AnalyticsService(
             siteRepository,
             consentRepository,
+            impressionRepository,
             scanRepository,
             scanCookieRepository,
             policyRepository,
@@ -63,6 +65,7 @@ class AnalyticsServiceTest {
         every { consentRepository.dailyActionCounts(siteId, range.from, range.to) } returns emptyList()
         every { consentRepository.categoryOptInCounts(siteId, range.from, range.to) } returns emptyList()
         every { consentRepository.languageCounts(siteId, range.from, range.to) } returns emptyList()
+        every { impressionRepository.impressionCounts(siteId, range.from, range.to) } returns 0L
         // No completed scan and no published policy — the consent path is what is under test.
         every { scanRepository.findFirstBySiteIdAndStatusOrderByCreatedAtDesc(siteId, ScanStatus.DONE) } returns null
         every { policyRepository.findFirstBySiteIdAndPublishedAtIsNotNullOrderByVersionDesc(siteId) } returns null
@@ -75,6 +78,7 @@ class AnalyticsServiceTest {
         val priorDay = LocalDate.parse("2026-07-14")
         every { consentRepository.dailyActionCounts(siteId, prior.from, prior.to) } returns
             listOf(DailyActionCount(priorDay, "accept_all", 8), DailyActionCount(priorDay, "custom", 2))
+        every { impressionRepository.impressionCounts(siteId, prior.from, prior.to) } returns 40L
 
         val result = service.summarize(userId, siteId, AnalyticsFilter())
 
@@ -82,8 +86,26 @@ class AnalyticsServiceTest {
         assertEquals(10, previous.totalEvents)
         assertEquals(8, previous.byAction.acceptAll)
         assertEquals(2, previous.byAction.custom)
+        // The prior window's impressions ride the same baseline, read from the shifted window.
+        assertEquals(40, previous.impressions)
         // The baseline reads the shifted prior window, never the current one.
         verify { consentRepository.dailyActionCounts(siteId, prior.from, prior.to) }
+        verify { impressionRepository.impressionCounts(siteId, prior.from, prior.to) }
+    }
+
+    @Test
+    fun `threads current-window impressions into the interaction rate`() {
+        stubOwnedSiteWithEmptyCurrentWindow()
+        // 3 decisions over the current window against 12 impressions → 0.25 interaction rate.
+        every { consentRepository.dailyActionCounts(siteId, range.from, range.to) } returns
+            listOf(DailyActionCount(LocalDate.parse("2026-08-13"), "accept_all", 3))
+        every { impressionRepository.impressionCounts(siteId, range.from, range.to) } returns 12L
+
+        val result = service.summarize(userId, siteId, AnalyticsFilter())
+
+        assertEquals(12, result.consent.impressions)
+        assertEquals(3, result.consent.totalEvents)
+        assertEquals(0.25, result.consent.interactionRate)
     }
 
     @Test

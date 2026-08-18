@@ -64,6 +64,37 @@ function endpoint(): string {
   return `${API_BASE}/api/v1/consent`;
 }
 
+function impressionEndpoint(): string {
+  return `${API_BASE}/api/v1/impression`;
+}
+
+/**
+ * Report a banner impression → POST /api/v1/impression. The denominator behind
+ * the dashboard's interaction rate: how often the banner was shown, against how
+ * many consent decisions followed.
+ *
+ * Deliberately the opposite of sendConsentEvent's guarantees: an impression is a
+ * disposable analytics count, NOT audit evidence, so there is no retry queue, no
+ * idempotency key, and no origin token. A dropped beacon just under-counts the
+ * denominator slightly — losing one is cosmetic, not a compliance defect — so
+ * the cost of a localStorage queue isn't justified (and keeps the bundle lean).
+ * keepalive lets it survive the page-unload that a consent click triggers; the
+ * body carries only the public site key — no vid, timestamp, or personal data.
+ * Fire-and-forget: never blocks the page, never throws to the caller.
+ */
+export function sendImpression(siteKey: string): void {
+  void fetch(impressionEndpoint(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ siteKey }),
+    keepalive: true,
+  }).catch((error: unknown) => {
+    // A missed impression only under-counts the interaction-rate denominator;
+    // surface it for diagnostics but never disrupt the visitor.
+    warn('banner impression POST failed; count skipped', error);
+  });
+}
+
 /**
  * Report a consent event via fetch(keepalive). If delivery can be observed to
  * have failed (fetch rejects or returns a non-2xx), the event is queued for

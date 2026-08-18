@@ -18,7 +18,14 @@ import { useEntitlementGate } from "@/components/analytics/use-entitlement-gate"
 import { LockedFeature } from "@/components/ui/locked-feature";
 import { useAccountAnalytics } from "@/hooks/use-account-analytics";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { acceptShareDelta, acceptSharePct, eventsDelta } from "@/lib/analytics/delta";
+import {
+  acceptShareDelta,
+  acceptSharePct,
+  eventsDelta,
+  impressionsDelta,
+  interactionRateDelta,
+  interactionRatePct,
+} from "@/lib/analytics/delta";
 import type { AnalyticsFilter } from "@/lib/api/analytics";
 
 const MS_PER_DAY = 86_400_000;
@@ -133,6 +140,7 @@ export function AccountAnalyticsView() {
 
   const { consent, siteCount, previous } = query.data;
   const acceptShare = acceptSharePct(consent);
+  const interactionRate = interactionRatePct(consent);
 
   const trendLegend = (
     <div className="flex flex-wrap items-center gap-3">
@@ -144,12 +152,24 @@ export function AccountAnalyticsView() {
 
   return shell(
     <>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <StatTile label={t("crossSite.siteCount")} value={siteCount} />
+        <StatTile
+          label={t("summary.impressions")}
+          value={consent.impressions}
+          hint={t("summary.impressionsHint")}
+          delta={deltaBadge(impressionsDelta(consent.impressions, previous), "percent")}
+        />
         <StatTile
           label={t("summary.totalEvents")}
           value={consent.totalEvents}
           delta={deltaBadge(eventsDelta(consent.totalEvents, previous), "percent")}
+        />
+        <StatTile
+          label={t("summary.interactionRate")}
+          value={`${interactionRate}%`}
+          hint={t("summary.interactionRateHint")}
+          delta={deltaBadge(interactionRateDelta(consent, previous), "points")}
         />
         <StatTile
           label={t("summary.acceptShare")}

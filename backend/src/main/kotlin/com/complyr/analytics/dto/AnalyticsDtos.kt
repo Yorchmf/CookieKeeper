@@ -40,6 +40,15 @@ data class AnalyticsRange(
 data class ConsentAnalytics(
     val totalEvents: Long,
     val byAction: ActionBreakdown,
+    // How many times the banner was shown over the window (Track 4 Slice D), from the `banner_impressions`
+    // counter — the denominator behind [interactionRate]. 0 for a window with no recorded impressions
+    // (e.g. before the beacon shipped, or after the impression retention window has pruned those days).
+    val impressions: Long,
+    // Fraction of banner impressions that produced a consent decision: [totalEvents] / [impressions], and
+    // 0.0 (not a division-by-zero) when [impressions] is 0. Can exceed 1.0 at the edges — a decision can be
+    // recorded without a fresh impression (re-consent on a page that didn't re-show the banner), and the two
+    // series have different retention windows — so the dashboard treats it as an indicator, not an invariant.
+    val interactionRate: Double,
     val trend: List<ConsentTrendPoint>,
     val categoryOptIn: List<CategoryOptIn>,
     val languageSplit: List<LanguageCount>,
@@ -63,6 +72,10 @@ data class ActionBreakdown(
 data class PeriodSummary(
     val totalEvents: Long,
     val byAction: ActionBreakdown,
+    // Banner impressions over the prior window (Track 4 Slice D), so the dashboard can show a
+    // period-over-period delta on the impression count and the interaction rate alongside the consent
+    // deltas. Same 0-when-none / can-exceed semantics as [ConsentAnalytics.impressions].
+    val impressions: Long,
 )
 
 /** One UTC day of the consent trend; [total] = [acceptAll] + [rejectAll] + [custom]. */

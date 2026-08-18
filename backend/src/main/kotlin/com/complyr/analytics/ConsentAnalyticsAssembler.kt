@@ -25,11 +25,15 @@ class ConsentAnalyticsAssembler {
         daily: List<DailyActionCount>,
         optIn: List<CategoryOptInCount>,
         languages: List<LanguageCountRow>,
+        impressions: Long,
     ): ConsentAnalytics {
-        val summary = summarize(daily)
+        val summary = summarize(daily, impressions)
         return ConsentAnalytics(
             totalEvents = summary.totalEvents,
             byAction = summary.byAction,
+            impressions = summary.impressions,
+            // 0.0 (not a division-by-zero) when the banner recorded no impressions over the window.
+            interactionRate = interactionRate(summary.totalEvents, impressions),
             trend = trend(daily),
             categoryOptIn =
                 optIn.map {
@@ -50,7 +54,10 @@ class ConsentAnalyticsAssembler {
      * period-over-period delta needs, and the same arithmetic [assemble] uses for its own breakdown, so the
      * current window and its prior-window comparison can never disagree on how an action mix is counted.
      */
-    fun summarize(daily: List<DailyActionCount>): PeriodSummary {
+    fun summarize(
+        daily: List<DailyActionCount>,
+        impressions: Long,
+    ): PeriodSummary {
         val byAction =
             ActionBreakdown(
                 acceptAll = daily.filter { it.action == AnalyticsService.ACTION_ACCEPT_ALL }.sumOf { it.count },
@@ -60,8 +67,20 @@ class ConsentAnalyticsAssembler {
         return PeriodSummary(
             totalEvents = byAction.acceptAll + byAction.rejectAll + byAction.custom,
             byAction = byAction,
+            impressions = impressions,
         )
     }
+
+    /**
+     * Fraction of banner impressions that produced a consent decision — the one definition of interaction
+     * rate, shared by the per-site read and the cross-site roll-up so the two can never disagree. 0.0 (not a
+     * division-by-zero) when there were no impressions; see [ConsentAnalytics.interactionRate] for why the
+     * ratio can legitimately exceed 1.0 at the window edges.
+     */
+    fun interactionRate(
+        totalEvents: Long,
+        impressions: Long,
+    ): Double = if (impressions == 0L) 0.0 else totalEvents.toDouble() / impressions
 
     /**
      * Collapse the (day, action) rows into one dense point per day, ascending — the series the client charts,

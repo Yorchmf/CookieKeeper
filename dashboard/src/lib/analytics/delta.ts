@@ -20,6 +20,12 @@ export interface ActionTotals {
   byAction: { acceptAll: number; rejectAll: number; custom: number };
 }
 
+/** The lean impression totals an interaction-rate figure needs — shared by the current window and the baseline. */
+export interface InteractionTotals {
+  totalEvents: number;
+  impressions: number;
+}
+
 function toDelta(signed: number): Delta {
   return {
     direction: signed > 0 ? "up" : signed < 0 ? "down" : "flat",
@@ -54,4 +60,43 @@ export function acceptShareDelta(current: ActionTotals, previous: ActionTotals |
 export function eventsDelta(current: number, previous: ActionTotals | null): Delta | null {
   if (!previous || previous.totalEvents === 0) return null;
   return toDelta(Math.round(((current - previous.totalEvents) / previous.totalEvents) * 100));
+}
+
+/**
+ * Interaction rate (consent decisions per banner impression) as a whole-percent 0–100+; 0 when the window
+ * recorded no impression. Not clamped: it can exceed 100 at window edges (a re-consent without a fresh
+ * impression, or impressions and events aging out on different clocks) — reported raw, matching the tile.
+ */
+export function interactionRatePct(summary: InteractionTotals): number {
+  return summary.impressions === 0
+    ? 0
+    : Math.round((summary.totalEvents / summary.impressions) * 100);
+}
+
+/**
+ * Percentage-point change in interaction rate between the current window and its baseline (40% → 55% is
+ * +15). Null when there is no baseline or it recorded no impressions — a rate over zero impressions has no
+ * meaning, so there is nothing to compare.
+ */
+export function interactionRateDelta(
+  current: InteractionTotals,
+  previous: InteractionTotals | null,
+): Delta | null {
+  if (!previous || previous.impressions === 0) return null;
+  // Subtract the two already-rounded whole-percent rates so the badge equals the arithmetic of the two
+  // rounded percentages the tiles display — no drift the tiles can't account for.
+  return toDelta(interactionRatePct(current) - interactionRatePct(previous));
+}
+
+/**
+ * Relative percent change in impression volume between the current window and its baseline (500 → 650 is
+ * +30). Null when there is no baseline or it recorded no impressions — dividing by a zero base yields no
+ * meaningful percentage, so no delta is shown.
+ */
+export function impressionsDelta(
+  current: number,
+  previous: { impressions: number } | null,
+): Delta | null {
+  if (!previous || previous.impressions === 0) return null;
+  return toDelta(Math.round(((current - previous.impressions) / previous.impressions) * 100));
 }
