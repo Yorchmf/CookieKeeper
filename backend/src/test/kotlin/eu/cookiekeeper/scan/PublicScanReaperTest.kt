@@ -27,7 +27,7 @@ import kotlin.test.assertTrue
 @SpringBootTest
 @Import(TestcontainersConfiguration::class)
 // Pin a tiny batch size so a handful of rows forces the multi-batch prune loop (prod default 500).
-@TestPropertySource(properties = ["complyr.scan.public-scan-prune-batch-size=2"])
+@TestPropertySource(properties = ["cookiekeeper.scan.public-scan-prune-batch-size=2"])
 class PublicScanReaperTest {
     @Autowired
     private lateinit var reaper: PublicScanReaper

@@ -31,7 +31,7 @@ class BrevoEmailSenderTest {
             ),
         appBaseUrl = "http://localhost:3000",
         cdnBaseUrl = "http://localhost:8081",
-        mailFrom = "no-reply@complyr.eu",
+        mailFrom = "support@cookiekeeper.eu",
         mail =
             CookieKeeperProperties.Mail(
                 provider = "brevo",
@@ -50,7 +50,7 @@ class BrevoEmailSenderTest {
             .andExpect(method(HttpMethod.POST))
             .andExpect(header("api-key", "xkeysib-test"))
             .andExpect(header("Content-Type", containsString(MediaType.APPLICATION_JSON_VALUE)))
-            .andExpect(jsonPath("$.sender.email").value("no-reply@complyr.eu"))
+            .andExpect(jsonPath("$.sender.email").value("support@cookiekeeper.eu"))
             .andExpect(jsonPath("$.sender.name").value("Complyr"))
             .andExpect(jsonPath("$.to[0].email").value("alice@example.com"))
             .andExpect(jsonPath("$.subject").value("Subject line"))
@@ -77,7 +77,7 @@ class BrevoEmailSenderTest {
             .andExpect(jsonPath("$.replyTo.email").value("customer@example.com"))
             .andRespond(withStatus(HttpStatus.CREATED))
 
-        sender.send("support@complyr.eu", "Subject line", "<p>Hello</p>", replyTo = "customer@example.com")
+        sender.send("support@cookiekeeper.eu", "Subject line", "<p>Hello</p>", replyTo = "customer@example.com")
 
         server.verify()
     }

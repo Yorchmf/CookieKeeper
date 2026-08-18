@@ -39,7 +39,7 @@ class SiteServiceTest {
                 ),
             appBaseUrl = "http://localhost:3000",
             cdnBaseUrl = "https://cdn.cookiekeeper.eu",
-            mailFrom = "no-reply@complyr.eu",
+            mailFrom = "support@cookiekeeper.eu",
         )
 
     private val now: Instant = Instant.parse("2026-07-28T12:00:00Z")
@@ -351,7 +351,7 @@ class SiteServiceTest {
         val detail = service.get(userId, existing.id)
 
         assertEquals(
-            """<script async src="https://cdn.cookiekeeper.eu/v1.js" data-complyr="pk_key"></script>""",
+            """<script async src="https://cdn.cookiekeeper.eu/v1.js" data-cookiekeeper="pk_key"></script>""",
             detail.embedSnippet,
         )
     }

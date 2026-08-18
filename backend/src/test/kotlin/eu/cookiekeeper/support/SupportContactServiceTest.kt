@@ -31,7 +31,7 @@ import kotlin.test.assertTrue
 class SupportContactServiceTest {
     private val userRepository = mockk<UserRepository>()
     private val emailSender = mockk<EmailSender>()
-    private val properties = props(supportInbox = "support@complyr.eu")
+    private val properties = props(supportInbox = "support@cookiekeeper.eu")
     private val service = SupportContactService(userRepository, emailSender, ContactEmailComposer(), properties)
 
     private val userId = UUID.randomUUID()
@@ -46,7 +46,7 @@ class SupportContactServiceTest {
 
         service.submit(userId, SupportContactRequest(subject = "Billing question", message = "How do I upgrade?"))
 
-        assertEquals("support@complyr.eu", to.captured)
+        assertEquals("support@cookiekeeper.eu", to.captured)
         assertEquals("alice@example.com", replyTo.captured)
         assertTrue(body.captured.contains("Billing question"))
         assertTrue(body.captured.contains("How do I upgrade?"))
@@ -93,7 +93,7 @@ class SupportContactServiceTest {
                 ),
             appBaseUrl = "http://localhost:3000",
             cdnBaseUrl = "https://cdn.cookiekeeper.eu",
-            mailFrom = "no-reply@complyr.eu",
+            mailFrom = "support@cookiekeeper.eu",
             supportInbox = supportInbox,
         )
 }

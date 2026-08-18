@@ -28,9 +28,9 @@ import kotlin.test.assertTrue
 @Import(TestcontainersConfiguration::class)
 @TestPropertySource(
     properties = [
-        "complyr.scan.max-attempts=2",
-        "complyr.scan.retry-backoff=0s",
-        "complyr.scan.visibility-timeout=15m",
+        "cookiekeeper.scan.max-attempts=2",
+        "cookiekeeper.scan.retry-backoff=0s",
+        "cookiekeeper.scan.visibility-timeout=15m",
     ],
 )
 class ScanQueueTest {

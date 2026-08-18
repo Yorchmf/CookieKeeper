@@ -24,7 +24,7 @@ import java.util.concurrent.Executors
  * — the whole reason [LoginAttemptService.recordFailure] runs in `REQUIRES_NEW`. A mock-based unit test
  * cannot cover this; only the real transaction manager can.
  */
-@SpringBootTest(properties = ["complyr.auth.max-failed-login-attempts=3", "complyr.auth.login-lockout-duration=15m"])
+@SpringBootTest(properties = ["cookiekeeper.auth.max-failed-login-attempts=3", "cookiekeeper.auth.login-lockout-duration=15m"])
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration::class, RecordingEmailConfig::class)
 class LoginLockoutIntegrationTest {

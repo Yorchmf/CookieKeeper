@@ -46,7 +46,7 @@ class AuthServiceTest {
                 ),
             appBaseUrl = "http://localhost:3000",
             cdnBaseUrl = "http://localhost:8081",
-            mailFrom = "no-reply@complyr.eu",
+            mailFrom = "support@cookiekeeper.eu",
         )
 
     private val now: Instant = Instant.parse("2026-07-28T12:00:00Z")

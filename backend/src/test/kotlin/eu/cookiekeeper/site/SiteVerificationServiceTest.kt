@@ -37,10 +37,10 @@ class SiteVerificationServiceTest {
     private val siteKey = "pk_AbC123"
 
     private val snippetHtml =
-        """<html><head><script async src="https://cdn.cookiekeeper.eu/v1.js" data-complyr="$siteKey"></script></head></html>"""
+        """<html><head><script async src="https://cdn.cookiekeeper.eu/v1.js" data-cookiekeeper="$siteKey"></script></head></html>"""
 
     init {
-        every { cdnHost.value } returns "cdn.complyr.eu"
+        every { cdnHost.value } returns "cdn.cookiekeeper.eu"
     }
 
     private fun site(

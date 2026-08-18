@@ -28,8 +28,8 @@ import kotlin.test.assertEquals
 @Import(TestcontainersConfiguration::class)
 @TestPropertySource(
     properties = [
-        "complyr.scan.rescan-cron=-",
-        "complyr.scan.rescan-batch-size=2",
+        "cookiekeeper.scan.rescan-cron=-",
+        "cookiekeeper.scan.rescan-batch-size=2",
     ],
 )
 class ScheduledRescanJobBatchTest {

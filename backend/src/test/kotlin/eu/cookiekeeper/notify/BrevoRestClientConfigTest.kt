@@ -18,7 +18,7 @@ class BrevoRestClientConfigTest {
     @Test
     fun `supplies a RestClient Builder bean when brevo is the provider`() {
         contextRunner
-            .withPropertyValues("complyr.mail.provider=brevo")
+            .withPropertyValues("cookiekeeper.mail.provider=brevo")
             .run { context ->
                 assertThat(context).hasSingleBean(RestClient.Builder::class.java)
             }
@@ -27,7 +27,7 @@ class BrevoRestClientConfigTest {
     @Test
     fun `supplies no builder for the default smtp provider`() {
         contextRunner
-            .withPropertyValues("complyr.mail.provider=smtp")
+            .withPropertyValues("cookiekeeper.mail.provider=smtp")
             .run { context ->
                 assertThat(context).doesNotHaveBean(RestClient.Builder::class.java)
             }

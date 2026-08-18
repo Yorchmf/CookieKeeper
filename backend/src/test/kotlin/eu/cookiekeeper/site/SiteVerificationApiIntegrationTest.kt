@@ -157,7 +157,7 @@ class SiteVerificationApiIntegrationTest {
     }
 
     private fun snippetFor(siteKey: String): String =
-        """<!doctype html><html><head><script async src="http://localhost:8081/v1.js" data-complyr="$siteKey">""" +
+        """<!doctype html><html><head><script async src="http://localhost:8081/v1.js" data-cookiekeeper="$siteKey">""" +
             """</script></head><body>hi</body></html>"""
 
     @Test
@@ -182,7 +182,7 @@ class SiteVerificationApiIntegrationTest {
                 .path("dnsRecordName")
                 .asString()
         // The instruction the customer follows must be exactly the name DnsTxtLookup queries.
-        assertEquals("_complyr.", dnsRecordName.take("_complyr.".length))
+        assertEquals("_cookiekeeper.", dnsRecordName.take("_cookiekeeper.".length))
 
         fetcher.html = snippetFor(siteKey)
         mockMvc

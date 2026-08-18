@@ -35,9 +35,9 @@ import kotlin.test.assertNull
 @Import(TestcontainersConfiguration::class)
 @TestPropertySource(
     properties = [
-        "complyr.billing.trial-reminder-cron=-",
-        "complyr.billing.trial-period=14d",
-        "complyr.billing.trial-reminder-lead-time=3d",
+        "cookiekeeper.billing.trial-reminder-cron=-",
+        "cookiekeeper.billing.trial-period=14d",
+        "cookiekeeper.billing.trial-reminder-lead-time=3d",
     ],
 )
 class TrialEndingReminderJobTest {

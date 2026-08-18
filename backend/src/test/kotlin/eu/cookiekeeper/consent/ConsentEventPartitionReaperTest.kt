@@ -30,7 +30,7 @@ import kotlin.test.assertTrue
 // 20 years — pins every created month far before the V3/provisioner range so the reaper never touches a
 // live partition. The literal MUST match [RETENTION_MONTHS] below (annotation args can't reference the
 // const); it exceeds the app default (36) and stays above the MIN_RETENTION_MONTHS floor (36).
-@TestPropertySource(properties = ["complyr.consent.retention-months=240"])
+@TestPropertySource(properties = ["cookiekeeper.consent.retention-months=240"])
 class ConsentEventPartitionReaperTest {
     @Autowired
     private lateinit var reaper: ConsentEventPartitionReaper

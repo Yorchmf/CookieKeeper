@@ -143,7 +143,7 @@ class ScanWorkerTest {
                 ),
             appBaseUrl = "http://localhost:3000",
             cdnBaseUrl = "https://cdn.cookiekeeper.eu",
-            mailFrom = "no-reply@complyr.eu",
+            mailFrom = "support@cookiekeeper.eu",
             scan = CookieKeeperProperties.Scan(maxJobsPerPoll = maxJobsPerPoll),
         )
 }

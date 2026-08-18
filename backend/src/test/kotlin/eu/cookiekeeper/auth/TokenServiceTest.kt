@@ -42,7 +42,7 @@ class TokenServiceTest {
                 ),
             appBaseUrl = "http://localhost:3000",
             cdnBaseUrl = "http://localhost:8081",
-            mailFrom = "no-reply@complyr.eu",
+            mailFrom = "support@cookiekeeper.eu",
         )
 
     // Fixed at the real current instant (JWT timestamps have second precision and the

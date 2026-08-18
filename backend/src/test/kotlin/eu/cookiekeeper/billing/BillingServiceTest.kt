@@ -75,7 +75,7 @@ class BillingServiceTest {
                 ),
             appBaseUrl = "https://app.cookiekeeper.test",
             cdnBaseUrl = "https://cdn.cookiekeeper.test",
-            mailFrom = "no-reply@complyr.test",
+            mailFrom = "support@cookiekeeper.test",
         )
 
     private val planCatalog = PlanCatalog(properties)

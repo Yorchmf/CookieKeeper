@@ -33,7 +33,7 @@ class BillingEmailComposerTest {
                 ),
             appBaseUrl = "https://app.cookiekeeper.eu",
             cdnBaseUrl = "https://cdn.cookiekeeper.eu",
-            mailFrom = "no-reply@complyr.eu",
+            mailFrom = "support@cookiekeeper.eu",
         )
 
     // Fixed UTC clock: the trial-ending email renders a localized DATE, so the assertion below would

@@ -84,7 +84,7 @@ class BillingWebhookServiceTest {
                 ),
             appBaseUrl = "https://app.cookiekeeper.test",
             cdnBaseUrl = "https://cdn.cookiekeeper.test",
-            mailFrom = "no-reply@complyr.test",
+            mailFrom = "support@cookiekeeper.test",
         )
 
     private val now = Instant.parse("2026-08-01T12:00:00Z")

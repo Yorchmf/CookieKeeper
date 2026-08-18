@@ -38,7 +38,7 @@ import kotlin.test.assertTrue
  * as header + rows with per-visitor PII (`ipHash`, `ua`) still excluded. The denial paths must fail *before* the
  * stream starts, so they assert a normal JSON error envelope rather than a truncated 200.
  */
-@SpringBootTest(properties = ["complyr.consent.export-batch-size=2"])
+@SpringBootTest(properties = ["cookiekeeper.consent.export-batch-size=2"])
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration::class, RecordingEmailConfig::class)
 class ConsentCsvExportApiIntegrationTest {

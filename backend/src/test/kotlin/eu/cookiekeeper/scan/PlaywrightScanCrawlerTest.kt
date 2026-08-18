@@ -34,7 +34,7 @@ class PlaywrightScanCrawlerTest {
                 ),
             appBaseUrl = "http://localhost:3000",
             cdnBaseUrl = "https://cdn.cookiekeeper.eu",
-            mailFrom = "no-reply@complyr.eu",
+            mailFrom = "support@cookiekeeper.eu",
         )
 
     private val now: Instant = Instant.parse("2026-08-01T12:00:00Z")

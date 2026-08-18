@@ -32,7 +32,7 @@ import kotlin.test.assertEquals
  */
 @SpringBootTest
 @Import(TestcontainersConfiguration::class)
-@TestPropertySource(properties = ["complyr.scan.rescan-cron=-"])
+@TestPropertySource(properties = ["cookiekeeper.scan.rescan-cron=-"])
 class ScheduledRescanJobTest {
     @Autowired
     private lateinit var job: ScheduledRescanJob

@@ -26,7 +26,7 @@ import kotlin.test.assertTrue
 @Import(TestcontainersConfiguration::class)
 // Pin a small horizon so the assertions are deterministic regardless of the prod default.
 // The literal MUST match [LOOKAHEAD] below (annotation args can't reference the const).
-@TestPropertySource(properties = ["complyr.consent.partition-lookahead-months=2"])
+@TestPropertySource(properties = ["cookiekeeper.consent.partition-lookahead-months=2"])
 class ConsentEventPartitionProvisionerTest {
     @Autowired
     private lateinit var provisioner: ConsentEventPartitionProvisioner

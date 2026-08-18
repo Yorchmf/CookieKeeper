@@ -25,7 +25,7 @@ class RateLimitFilterTest {
             rateLimit = CookieKeeperProperties.RateLimit(authPerMinute = 2, consentPerMinute = 3, publicScanPerMinute = 2),
             appBaseUrl = "http://localhost:3000",
             cdnBaseUrl = "http://localhost:8081",
-            mailFrom = "no-reply@complyr.eu",
+            mailFrom = "support@cookiekeeper.eu",
         )
 
     private val filter = RateLimitFilter(properties, JsonMapper.builder().build())

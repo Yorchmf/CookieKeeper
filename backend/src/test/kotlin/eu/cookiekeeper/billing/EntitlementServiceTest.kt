@@ -48,7 +48,7 @@ class EntitlementServiceTest {
             billing = CookieKeeperProperties.Billing(trialPeriod = trialPeriod, trialConsentEventCap = trialCap),
             appBaseUrl = "http://localhost:3000",
             cdnBaseUrl = "https://cdn.cookiekeeper.eu",
-            mailFrom = "no-reply@complyr.eu",
+            mailFrom = "support@cookiekeeper.eu",
         )
 
     private val userRepository = mockk<UserRepository>()

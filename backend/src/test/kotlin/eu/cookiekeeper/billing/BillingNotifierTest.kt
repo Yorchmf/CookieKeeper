@@ -37,7 +37,7 @@ class BillingNotifierTest {
             billing = CookieKeeperProperties.Billing(trialPeriod = trialPeriod),
             appBaseUrl = "https://app.cookiekeeper.eu",
             cdnBaseUrl = "https://cdn.cookiekeeper.eu",
-            mailFrom = "no-reply@complyr.eu",
+            mailFrom = "support@cookiekeeper.eu",
         )
 
     private val notifier =

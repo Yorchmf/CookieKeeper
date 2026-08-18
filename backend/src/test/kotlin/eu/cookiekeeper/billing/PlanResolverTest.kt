@@ -33,7 +33,7 @@ class PlanResolverTest {
                 ),
             appBaseUrl = "http://localhost:3000",
             cdnBaseUrl = "https://cdn.cookiekeeper.eu",
-            mailFrom = "no-reply@complyr.eu",
+            mailFrom = "support@cookiekeeper.eu",
         )
 
     private val resolver = PlanResolver(properties, Clock.fixed(now, ZoneOffset.UTC))

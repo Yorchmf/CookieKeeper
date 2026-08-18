@@ -26,7 +26,7 @@ import kotlin.test.assertTrue
 @SpringBootTest
 @Import(TestcontainersConfiguration::class)
 // Pin a tiny batch size so a handful of rows forces the multi-batch prune loop (prod default 10k).
-@TestPropertySource(properties = ["complyr.consent.idempotency-prune-batch-size=2"])
+@TestPropertySource(properties = ["cookiekeeper.consent.idempotency-prune-batch-size=2"])
 class ConsentIdempotencyReaperTest {
     @Autowired
     private lateinit var reaper: ConsentIdempotencyReaper

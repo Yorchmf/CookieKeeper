@@ -55,7 +55,7 @@ class AccountEmailServiceTest {
                 ),
             appBaseUrl = "http://localhost:3000",
             cdnBaseUrl = "http://localhost:8081",
-            mailFrom = "no-reply@complyr.eu",
+            mailFrom = "support@cookiekeeper.eu",
         )
 
     // Low bcrypt cost for test speed; production strength is configured in JwtConfig.

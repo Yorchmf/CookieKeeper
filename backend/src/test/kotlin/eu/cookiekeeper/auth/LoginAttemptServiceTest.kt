@@ -35,7 +35,7 @@ class LoginAttemptServiceTest {
                 ),
             appBaseUrl = "http://localhost:3000",
             cdnBaseUrl = "http://localhost:8081",
-            mailFrom = "no-reply@complyr.eu",
+            mailFrom = "support@cookiekeeper.eu",
         )
 
     private val userRepository = mockk<UserRepository>()

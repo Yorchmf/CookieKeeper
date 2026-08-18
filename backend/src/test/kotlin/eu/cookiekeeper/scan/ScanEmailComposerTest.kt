@@ -32,7 +32,7 @@ class ScanEmailComposerTest {
                 ),
             appBaseUrl = "https://app.cookiekeeper.eu",
             cdnBaseUrl = "https://cdn.cookiekeeper.eu",
-            mailFrom = "no-reply@complyr.eu",
+            mailFrom = "support@cookiekeeper.eu",
         )
 
     private val composer = ScanEmailComposer(messageSource, properties)
