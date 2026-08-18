@@ -43,5 +43,5 @@ Status legend: ☐ open · ◐ in progress · ☑ done
 
 | # | Item | Note |
 |---|------|------|
-| 14 | ☐ **Authed throttle on policy generate** | Byte-identical debounce shipped; a vary-a-byte abuse path remains, explicitly accepted. Optional. |
+| 14 | ☑ **Authed throttle on policy generate** | Closed the accepted vary-a-byte version-spam gap: added a dedicated tight `POLICY` tier (5/min/user, VERIFY/EXPORT/CONTACT parity) to `AuthenticatedRateLimitFilter`. It is the filter's first **method-scoped** tier — `POST /api/v1/sites/{id}/policy` is the heavy write, but the *same* path serves the cheap `GET` current-policy read the dashboard hits on every policy-page view, so the branch gates on POST and the read stays on GENERAL. Sites sub-resource matching extracted into a behavior-preserving `sitesTier` helper (keeps detekt complexity under threshold). Two opus reviews (security + kotlin): no CRITICAL/HIGH/MEDIUM; kotlin LOWs applied (method-scoping regression test + comment nits), security LOWs pre-existing/immaterial (trailing-slash coupling shared with VERIFY/EXPORT; concurrency already bounded by the per-site advisory lock). |
 | 15 | ☐ **Shorter-plan over-retention** | Tenant-blind 3yr `DROP PARTITION` can let shorter-plan data outlive its window physically (read-layer floor hides it). Accepted per ADR-16. |
