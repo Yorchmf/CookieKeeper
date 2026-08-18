@@ -1,8 +1,81 @@
-# CookieKeeper — Architecture
+# CookieKeeper — Architecture & Brand
 
 **Status:** Accepted (v1, 2026-07-28) · **Owner:** Yorch · **Scope:** MVP v1.0 + upgrade paths
 
 GDPR/cookie consent management for small EU businesses. One repo, one primary provider, ~€5/month infrastructure, deployable to dev and prd from day one.
+
+## Product Identity
+
+**Name:** CookieKeeper
+
+**Tagline:** Simple GDPR cookie consent for European businesses
+
+**One-liner:** The simplest, most affordable GDPR cookie consent tool for EU small businesses, freelancers, and agencies.
+
+**Category:** GDPR / cookie-consent management (CMP) micro-SaaS
+
+### Positioning
+
+CookieKeeper is the **simplest, most affordable** GDPR cookie consent tool for EU small businesses, freelancers, and agencies. Enterprise CMPs (Cookiebot, Osano, OneTrust) are powerful but overbuilt, expensive (€50–500+/mo), and take training to use. CookieKeeper does the 95% that a small European business actually needs — scan, banner, policy, consent logs, Consent Mode v2 — for €9–29/mo, with an interface you understand in 30 seconds.
+
+**We win on:** simplicity, price, EU data residency, and being genuinely nice to use.
+**We do not compete on:** enterprise breadth, custom legal consulting, or a free-forever tier.
+
+### Target Audience
+
+Primary:
+- **EU freelancers** running a portfolio or client sites
+- **Small agencies** managing consent across a handful of client domains
+- **Small e-commerce** (Shopify/WooCommerce shops) that added a tracker and now need consent
+- **Indie SaaS founders** who want compliance handled and forgotten
+
+Shared traits: not lawyers, not privacy engineers, time-poor, price-sensitive, allergic to enterprise sales calls. They want to paste one line of code and move on.
+
+### Tone of Voice
+
+**Friendly, direct, human, slightly witty. Anti-corporate. Speak *to* the user, not *at* them.**
+
+Do:
+- Short sentences. Plain words. Second person ("you", "your site").
+- A little dry humour where it lands — never forced.
+- Confident and reassuring about compliance; we remove anxiety, not add jargon.
+- Concrete over abstract ("under 20KB, won't slow your site" > "high performance").
+
+Don't:
+- Legalese, buzzwords, or "leverage synergies" corporate filler.
+- Fear-mongering about fines as the main hook (mention consequences, don't weaponise them).
+- Overpromise. Every claim must be true *today*. "Coming soon" is fine; lying is not.
+
+### Messaging Pillars (the "why CookieKeeper")
+
+1. 🎨 **Beautiful by default** — "Banners your visitors won't hate. Modern designs, smooth animations, and full customisation — no CSS required."
+2. 🌍 **5 EU languages, more coming** — "Auto-detects your visitor's language. English, German, French, Spanish, and Italian today — with more on the way."
+3. 🔍 **Automatic scanner** — "We crawl your site and detect every cookie and tracker for you. No manual lists, no guesswork."
+4. 📝 **Auto-generated policy** — "A cookie policy written for you, always in sync with the trackers we actually find on your site."
+5. 🔗 **Consent Mode v2** — "Google Consent Mode v2 built in. One switch, done — mandatory for EU Google Ads since 2024."
+6. 📊 **Audit-ready logs** — "Every consent choice stored for 3 years as tamper-proof evidence. Proof you're compliant when a regulator asks."
+7. 🇪🇺 **Hosted in the EU** — "Your visitors' data never leaves Europe. Stored in German data centres — full data sovereignty, no US transfer."
+8. ⚡ **Lightning fast** — "Our widget is under 20KB and fully async. It won't slow your site or dent your Core Web Vitals."
+
+### Verified Claims (Product Scope)
+
+| Claim | Truth | Notes |
+|-------|----|-------|
+| Data residency | **EU — Germany (Hetzner, Falkenstein/Nuremberg)** | Never say "Amsterdam/Netherlands" — infra is German. |
+| Consent-log retention | **3 years** (36-month rolling default) | Not "2 years". CLAUDE.md ceiling is 5y; default shipped is 36 months. |
+| Languages | **5 today: EN, DE, FR, ES, IT** — "more coming" | Not "12". Overclaiming here breaks CLAUDE.md. |
+| Widget size | **Under 20KB gzipped** (actually ~6.7KB today) | Safe to say "under 20KB"; "under 7KB" is even stronger if desired. |
+| Consent Mode v2 | **Built in, defaults to `denied`** before any vendor script | Core differentiator, fully shipped. |
+| Pricing | **Starter €9 · Pro €19 · Business €29** /mo (annual ~10× monthly) | Keep in sync with billing (`billing/Plan.kt`). |
+| Trial | **14 days, no credit card** | Consent ingestion capped during trial. |
+| Scanner | Playwright crawl, homepage + up to 10 same-origin pages | Detects cookies, trackers, localStorage, third-party hosts. |
+| Policy generator | **Template-based (not LLM)**, versioned, 5 languages | Deterministic + auditable = a selling point, not a limitation. |
+| Consent logs | **Append-only, tamper-proof** (DB-enforced), no raw IPs | "Audit-ready evidence" is literally true. |
+| WordPress plugin | **Not yet — "coming soon"** | Do not imply it exists today. |
+
+---
+
+
 
 ---
 
