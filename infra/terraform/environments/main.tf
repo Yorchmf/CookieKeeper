@@ -13,7 +13,7 @@ locals {
 
   # Every hostname this environment owns, proxied through Cloudflare (orange cloud). Proxying is
   # what gives us the CDN, the WAF and the origin-IP concealment; a grey-clouded record would
-  # expose the VPS address directly and bypass every cache rule below.
+  # expose the app host's address directly and bypass every cache rule below.
   hosts = merge(
     {
       app = var.app_host

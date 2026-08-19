@@ -4,16 +4,20 @@ Infrastructure as code for CookieKeeper. Two **separate root modules**, delibera
 
 | Module | What it owns | Who applies it | How often |
 |--------|--------------|----------------|-----------|
-| `platform/` | The Hetzner VPS, its firewall, SSH keys, the Cloudflare zone's global settings | **You, by hand** | Rarely — initial build, resize, provider change |
+| `platform/` | The four Hetzner servers, the two private networks, the cloud firewalls, SSH keys, the Cloudflare zone's global settings | **You, by hand** | Rarely — initial build, resize, provider change |
 | `environments/` | Per-environment DNS records, cache rules and WAF rate limits | The deploy pipelines | Every release |
 
 ## Why two modules and not one
 
-Both `dev` and `prd` run as compose projects on a **single** VPS (ARCHITECTURE.md §3). If one
-Terraform config owned the server *and* both environments' DNS, then the dev pipeline's
-`terraform apply` would hold a plan that could destroy or recreate production's server. Splitting
+Each environment owns two machines — an app host running the compose stack and a dedicated Postgres
+host — on a private network only that pair is attached to (ADR-24, ARCHITECTURE.md §3). If one
+Terraform config owned the servers *and* both environments' DNS, then the dev pipeline's
+`terraform apply` would hold a plan that could destroy or recreate production's machines. Splitting
 means the pipeline's blast radius is a handful of DNS records, and nothing a routine deploy does can
-reach the machine that both environments live on.
+reach a server — least of all a database.
+
+Every instance also carries `prevent_destroy`, which `platform/` can afford because a human runs it
+and reads the plan.
 
 `environments/` uses a **workspace per environment** (`dev`, `prd`), so each has its own state file
 and a `terraform apply` in one cannot see, let alone modify, the other's resources.
@@ -23,7 +27,15 @@ and a `terraform apply` in one cannot see, let alone modify, the other's resourc
 - **Secrets.** No `.env` value is a Terraform variable. Anything passed as a variable is written to
   state in **plaintext**, so putting the JWT secret or the Stripe key in here would turn the state
   bucket into a credential store. Secrets live only in `/opt/cookiekeeper/<env>/.env`, edited by
-  hand on the server (`chmod 600`). See DEPLOYMENT.md §7.
+  hand on the app host (`chmod 600`). See DEPLOYMENT.md §7.
+
+  This is also why `cloud-init-db.yaml` creates the `cookiekeeper` role with **no password at all**
+  rather than a generated one: an operator sets it by hand (DEPLOYMENT.md §11.1). Until they do,
+  the database refuses every connection — it fails closed, not open.
+- **Postgres configuration after first boot.** `cloud-init-db.yaml` runs once, and `user_data` is in
+  `ignore_changes`, so editing it later is a no-op on running machines. Changes to `pg_hba.conf`,
+  `listen_addresses` or ufw are made on the host and written down in
+  [infra/scripts/server-setup.md](../scripts/server-setup.md).
 - **Docker containers and images.** `deploy.sh` + compose own those.
 - **The Caddyfile.** It is copied to the server verbatim, not templated — one less indirection when
   you are debugging a 502 at 2am.
