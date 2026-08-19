@@ -1,0 +1,29 @@
+# Stage 1 — feature branches and pull requests.
+#
+# Validate only: lint, compile, terraform fmt/validate. No tests, no builds, no deploy.
+#
+# NOTE ON TESTS. `run_tests: false` is a deliberate choice you made, not an oversight — the
+# trade-off is that a PR can go green while its tests are red, and the failure surfaces only after
+# it lands on main. If you would rather catch that before merge, flip the flag below to `true`;
+# that is the entire change, because the gates are shared with main via quality.yml.
+name: validate
+
+on:
+  pull_request:
+  push:
+    branches-ignore:
+      - main
+
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    uses: ./.github/workflows/quality.yml
+    with:
+      run_tests: false
+      run_build: false

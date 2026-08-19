@@ -1,8 +1,17 @@
-# Single shared Caddy instance for the whole VPS — routes BOTH dev and prd
-# stacks by hostname over the external `caddy-net` docker network.
-# One-time setup: docker network create caddy-net   (see scripts/server-setup.md)
-# Run from /opt/complyr/caddy:
-#   docker compose -f compose.caddy.yml --project-name complyr-caddy up -d
+# Caddy — ONE instance per application host, fronting the single stack that runs
+# there (ADR-24). It reaches the api and dashboard containers over the external
+# `caddy-net` docker network.
+#
+# One-time setup: docker network create --subnet 10.31.30.0/24 caddy-net
+# (cloud-init does this; see scripts/server-setup.md).
+#
+# Run from /opt/cookiekeeper/caddy:
+#   docker compose -f compose.caddy.yml --project-name cookiekeeper-caddy up -d
+#
+# CADDY_ENV (dev|prd) comes from /opt/cookiekeeper/caddy/.env, written by hand at
+# setup. It selects which Caddyfile is mounted. `:?` rather than a default: a
+# missing value must stop the deploy, because defaulting it would silently serve
+# one environment's vhosts from the other environment's machine.
 
 services:
   caddy:
@@ -13,9 +22,13 @@ services:
       - "443:443"
       - "443:443/udp" # HTTP/3
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      # Widget static assets (v1.js + per-site config JSON), uploaded by CI:
-      #   /srv/cdn/dev ← deploy-dev.yml   /srv/cdn/prd ← deploy-prd.yml
+      - ./Caddyfile.${CADDY_ENV:?CADDY_ENV missing from .env (dev|prd)}:/etc/caddy/Caddyfile:ro
+      # The shared snippets, imported by both Caddyfiles. `import` resolves
+      # relative to /etc/caddy, so the name on the right must not change.
+      - ./snippets.caddy:/etc/caddy/snippets.caddy:ro
+      # Widget static assets (the built bundle), uploaded by CI:
+      #   /srv/cdn/dev ← release-dev.yml   /srv/cdn/prd ← release-prd.yml
+      # Per-site config (/cfg/*) is NOT a file — Caddy proxies it to the API.
       - /srv/cdn:/srv/cdn:ro
       - caddy-data:/data # TLS certificates
       - caddy-config:/config
@@ -23,9 +36,18 @@ services:
       caddy-net:
         # Pinned: the egress firewall (ADR-18) lets ONLY this address open a
         # connection inside caddy-net. Upstreams answer Caddy (ESTABLISHED) and
-        # never initiate — which is what stops a rebound scanner from reaching
-        # the other environment's containers over this shared network.
+        # never initiate — so a rebound scanner cannot use this network to reach
+        # the containers sitting behind the proxy.
         ipv4_address: 10.31.30.2
+    # Caddy is the one process that must survive a bad hour on this box: if it is
+    # OOM-killed the site is down even though the app is healthy. The ceiling is
+    # generous for what it does (a few hundred connections and static files) and
+    # is accounted for in the compose.{dev,prd}.yml budget.
+    mem_limit: 256m
+    memswap_limit: 256m
+    cpus: 1.0
+    cpu_shares: 1024
+    pids_limit: 128
 
 volumes:
   caddy-data:

@@ -1,5 +1,5 @@
 # Backstop for the egress firewall (ADR-18). Install to
-# /etc/systemd/system/complyr-egress-firewall.timer — see server-setup.md §2.1.
+# /etc/systemd/system/cookiekeeper-egress-firewall.timer — see server-setup.md §2.1.
 #
 # The service already reruns with docker. This catches the slower drift, and the
 # case that matters most: a run that FAILED (an xtables lock collision with
@@ -10,13 +10,13 @@
 # barely has — and a unit left in `failed` is exactly when the retry must still
 # happen. A wall-clock schedule fires regardless of what state the unit is in.
 [Unit]
-Description=Reapply the Complyr container egress firewall periodically
+Description=Reapply the CookieKeeper container egress firewall periodically
 
 [Timer]
 OnBootSec=1min
 OnCalendar=*:0/2
 AccuracySec=30s
-Unit=complyr-egress-firewall.service
+Unit=cookiekeeper-egress-firewall.service
 
 [Install]
 WantedBy=timers.target

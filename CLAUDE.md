@@ -13,8 +13,9 @@ cookiekeeper/
 │                     #   activated via Spring profile `scanner`)
 ├── dashboard/        # Next.js (App Router, latest stable) + TypeScript + Tailwind + shadcn/ui (customer dashboard)
 ├── widget/           # Embeddable consent banner — vanilla TypeScript, Vite build, ZERO runtime deps
-├── infra/            # docker-compose files (local/dev/prd), Caddyfile, deploy scripts, backup scripts
-├── .github/workflows/# CI/CD pipelines
+├── infra/            # docker-compose files (workstation/dev/prd), Terraform (terraform/),
+│                     #   Caddyfile, deploy scripts, backup scripts
+├── .github/workflows/# validate → main → release-dev → release-prd
 └── docs/             # Architecture, ADRs, runbooks
 ```
 
@@ -22,14 +23,15 @@ cookiekeeper/
 
 | Task | Command |
 |------|---------|
-| Full local stack | `docker compose -f infra/compose.local.yml up` |
+| Full stack on your machine | `docker compose -f infra/compose.workstation.yml up` |
 | Backend build + test | `cd backend && ./gradlew build` |
-| Backend run (local) | `cd backend && ./gradlew bootRun` |
+| Backend run (bare) | `cd backend && ./gradlew bootRun` |
 | Backend lint | `cd backend && ./gradlew ktlintCheck detekt` |
 | Dashboard dev | `cd dashboard && pnpm dev` |
 | Dashboard lint/test/build | `cd dashboard && pnpm lint && pnpm test && pnpm build` |
 | Widget dev | `cd widget && pnpm dev` |
 | Widget build + size gate | `cd widget && pnpm build && pnpm size` |
+| Terraform check | `cd infra/terraform/<module> && terraform fmt -recursive && terraform validate` |
 
 Package manager for JS workspaces: **pnpm**. Backend: Gradle wrapper, JDK 21.
 
@@ -45,13 +47,24 @@ Package manager for JS workspaces: **pnpm**. Backend: Gradle wrapper, JDK 21.
 
 ## Environments
 
-| Env | Where | Trigger |
-|-----|-------|---------|
-| local | `docker compose` on dev machine (includes Postgres + Mailpit) | manual |
-| dev | Hetzner VPS, compose project `cookiekeeper-dev`, `dev.` subdomains | auto-deploy on merge to `main` |
-| prd | Same VPS (v1), compose project `cookiekeeper-prd`, production domains | manual approval on git tag `v*` |
+There are exactly **two**: `dev` and `prd`. Both are Spring profiles, Compose projects and Terraform workspaces of the same name. There is no `local` — a workstation runs the `dev` profile against a repo-root `.env`, which is the only thing that makes it different.
 
-Deploys are GitHub Actions → build images → push to GHCR → SSH to VPS → `docker compose pull && up -d`. Never deploy by hand-editing files on the server.
+Each environment owns **two** Hetzner CX22 servers (ADR-24): an app host running the containers and a dedicated Postgres host, on a private network only those two are on. There is **no `postgres` service in a deployed compose stack** — only `infra/compose.workstation.yml` still runs one. The database hosts have no Docker, no DNS record, and no CI access; `backup.sh` and `restore-drill.sh` live there.
+
+| Env | Where | Deployed by |
+|-----|-------|-------------|
+| dev | `cookiekeeper-dev-app` + `cookiekeeper-dev-db`, compose project `cookiekeeper-dev`, `dev.` subdomains | `release-dev`, dispatched by hand on `main` |
+| prd | `cookiekeeper-prd-app` + `cookiekeeper-prd-db`, compose project `cookiekeeper-prd`, production domains | `release-prd`, dispatched by hand on a `vX.Y.Z` tag |
+
+Dev mail goes to a Mailpit container (`MAIL_PROVIDER=smtp`); only prd uses Brevo. Getting that backwards on dev mails real people.
+
+Four pipelines, escalating: `validate` (PRs and feature branches — lint/compile only) → `main` (tests, builds, pushes `sha-…` images, **never deploys**) → `release-dev` (tests, version bump, tag, `terraform apply`, deploy to dev) → `release-prd` (tests, `terraform apply`, promotes the *same image digests* to prd behind a manual approval). Merging to `main` does not deploy anything; releasing is always someone's decision.
+
+Infrastructure is Terraform (`infra/terraform/`): `platform/` owns the four servers, the two private networks and the zone-wide Cloudflare settings and is applied **by hand only**; `environments/` owns per-environment DNS, caching and rate-limit rules and is applied by the release pipelines against a workspace named for the environment.
+
+Secrets are **not** in Terraform (any variable is written to state in plaintext) and not in GitHub. They are hand-edited `.env` files on each app host at `/opt/cookiekeeper/{dev,prd}/.env`, `chmod 600`, plus the database role password set by hand on each database host. `deploy.sh` writes only `.env.deploy` (the image tag) so automation can never clobber a credential. Never deploy by hand-editing anything else on the server.
+
+Full setup instructions — accounts, keys, Terraform bootstrap, Caddy, CDN: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Conventions
 

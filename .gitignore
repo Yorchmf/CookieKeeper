@@ -27,3 +27,16 @@ widget/dist/
 # Logs / temp
 *.log
 tmp/
+
+# Terraform (infra/terraform/)
+# .terraform.lock.hcl is deliberately NOT ignored — it pins provider hashes, so CI and every
+# workstation resolve the same provider binaries. It must be committed.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+# Real variable values (zone IDs, origin IPs, SSH keys). The two *.tfvars files that ARE committed
+# (dev.tfvars, prd.tfvars) hold only hostnames and TTLs; anything else stays out of git.
+terraform.tfvars
+*.auto.tfvars

@@ -1,0 +1,31 @@
+# Copy to terraform.tfvars (gitignored) and fill in. No secrets belong in here — everything below
+# is public-key or identifier material. Application secrets (the Postgres role password above all)
+# live only in the servers' hand-written files, because any Terraform variable is written to state
+# in plaintext.
+
+ssh_public_key       = "ssh-ed25519 AAAAC3Nza... you@workstation"
+ci_deploy_public_key = "ssh-ed25519 AAAAC3Nza... cookiekeeper-ci"
+cloudflare_zone_id   = "0000000000000000000000000000000000"
+
+# Narrow this to your own address if deploys ever move to a fixed-IP runner. It also gates SSH to
+# the database hosts, which nothing automated ever logs into — so it can be tighter than the app
+# hosts strictly need.
+# admin_ssh_cidrs = ["203.0.113.4/32"]
+
+# The four machines. Defaults are in variables.tf; override the whole map only if you are resizing
+# or renaming. Changing `private_ip` after creation is NOT a config-only change — it invalidates the
+# db host's pg_hba.conf and ufw rules, which were rendered into cloud-init at first boot and are in
+# `ignore_changes`. Edit those on the box (server-setup.md) if you ever renumber.
+#
+# servers = {
+#   "cookiekeeper-dev-app" = { environment = "dev", role = "app", server_type = "cx22", private_ip = "10.20.10.10" }
+#   "cookiekeeper-dev-db"  = { environment = "dev", role = "db",  server_type = "cx22", private_ip = "10.20.10.20" }
+#   "cookiekeeper-prd-app" = { environment = "prd", role = "app", server_type = "cx22", private_ip = "10.20.20.10" }
+#   "cookiekeeper-prd-db"  = { environment = "prd", role = "db",  server_type = "cx22", private_ip = "10.20.20.20" }
+# }
+#
+# NOTE ON SERVER TYPE: Hetzner rotates its shared-vCPU line and raised prices twice in 2026. `cx22`
+# may no longer be orderable — check `hcloud server-type list` before the first apply and use the
+# current entry model (cx23 at the time of writing) if it is gone. A type that no longer exists
+# fails at apply, which is the good outcome; the bad one is resizing an EXISTING instance later,
+# because any resize moves that instance to current pricing.

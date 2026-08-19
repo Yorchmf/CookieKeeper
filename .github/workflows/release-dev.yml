@@ -1,0 +1,284 @@
+# Stage 3 — cut a release and ship it to dev. Manual (workflow_dispatch) on main.
+#
+#   1. validate + run tests
+#   2. bump the project version
+#   3. commit the bump, then tag that commit
+#   4. terraform apply (dev) + deploy the app to dev
+#
+# ORDER NOTE: the bump is committed BEFORE the tag is created. Tagging first would leave v1.2.3
+# pointing at a commit whose VERSION file still says 1.2.2, so the artifact and the tag would
+# disagree about what they are — which is exactly the question a tag exists to answer.
+#
+# The images this workflow builds are the ones prd will later run: release-prd.yml promotes them by
+# digest and never rebuilds, so whatever is verified in dev is bit-for-bit what ships.
+name: release-dev
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Semver component to increment"
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+        required: true
+
+concurrency:
+  group: release-dev
+  cancel-in-progress: false
+
+permissions:
+  contents: write # push the version-bump commit and the tag
+  packages: write
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refuse to release from anywhere but main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::release-dev must be dispatched on main (got ${{ github.ref }})."
+          exit 1
+
+  quality:
+    needs: guard
+    uses: ./.github/workflows/quality.yml
+    with:
+      run_tests: true
+      run_build: true
+
+  version:
+    needs: quality
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
+      tag: ${{ steps.bump.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The default GITHUB_TOKEN can push to the repo, but a push made with it does NOT
+          # re-trigger workflows. That is what we want here: the bump commit must not kick off
+          # main.yml, and the tag must not auto-start release-prd.yml (prd is manual, always).
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Compute and write the next version
+        id: bump
+        env:
+          BUMP: ${{ inputs.bump }}
+        run: |
+          set -euo pipefail
+          current="$(tr -d '[:space:]' < VERSION)"
+          [[ "$current" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]] || {
+            echo "::error::VERSION is not a bare semver: '$current'"; exit 1; }
+          major="${BASH_REMATCH[1]}"; minor="${BASH_REMATCH[2]}"; patch="${BASH_REMATCH[3]}"
+
+          case "$BUMP" in
+            major) major=$((major + 1)); minor=0; patch=0 ;;
+            minor) minor=$((minor + 1)); patch=0 ;;
+            patch) patch=$((patch + 1)) ;;
+          esac
+          version="${major}.${minor}.${patch}"
+
+          if git rev-parse -q --verify "refs/tags/v${version}" >/dev/null; then
+            echo "::error::Tag v${version} already exists. VERSION and the tag list have diverged."
+            exit 1
+          fi
+
+          # VERSION is the single source of truth; backend/build.gradle.kts reads it directly, so
+          # only the two package.json files need mirroring.
+          echo "$version" > VERSION
+          for pkg in dashboard/package.json widget/package.json; do
+            node -e '
+              const fs = require("fs");
+              const [file, version] = process.argv.slice(1);
+              const pkg = JSON.parse(fs.readFileSync(file, "utf8"));
+              pkg.version = version;
+              fs.writeFileSync(file, JSON.stringify(pkg, null, 2) + "\n");
+            ' "$pkg" "$version"
+          done
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version"    >> "$GITHUB_OUTPUT"
+          echo "### Releasing \`v$version\` (was \`$current\`)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit the bump, then tag it
+        env:
+          VERSION: ${{ steps.bump.outputs.version }}
+          TAG: ${{ steps.bump.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add VERSION dashboard/package.json widget/package.json
+          git commit -m "chore(release): ${TAG}"
+          git tag -a "${TAG}" -m "Release ${TAG}"
+          # Atomic: either the branch and the tag both move, or neither does. A partial push here
+          # would leave a tag with no corresponding commit on main.
+          git push --atomic origin HEAD:main "refs/tags/${TAG}"
+
+  build-images:
+    needs: version
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - image: cookiekeeper-api
+            context: ./backend
+            dockerfile: ./backend/Dockerfile
+          - image: cookiekeeper-scanner
+            context: ./backend
+            dockerfile: ./backend/Dockerfile.scanner
+          - image: cookiekeeper-dashboard
+            context: ./dashboard
+            dockerfile: ./dashboard/Dockerfile
+    steps:
+      # Build from the TAG, not from main — main may already have moved on.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - name: Lowercase image owner
+        id: owner
+        run: echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          # The backend build context is backend/, so it cannot see the repo-root VERSION file.
+          # The dashboard Dockerfile ignores this arg; passing it uniformly keeps the matrix flat.
+          build-args: |
+            APP_VERSION=${{ needs.version.outputs.version }}
+          tags: |
+            ghcr.io/${{ steps.owner.outputs.owner }}/${{ matrix.image }}:${{ needs.version.outputs.tag }}
+            ghcr.io/${{ steps.owner.outputs.owner }}/${{ matrix.image }}:dev-latest
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,scope=${{ matrix.image }},mode=max
+
+  infra:
+    needs: version
+    runs-on: ubuntu-latest
+    outputs:
+      origin_ipv4: ${{ steps.platform.outputs.ipv4 }}
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.TFSTATE_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.TFSTATE_SECRET_ACCESS_KEY }}
+      TF_VAR_cloudflare_zone_id: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.8"
+
+      # Read-only: the platform module is applied by hand, never by a pipeline. We only pull the
+      # APP server's IP out of its state so the DNS records point somewhere real. The outputs are
+      # maps keyed by environment now that each environment has its own app and database host
+      # (ADR-24) — the database host is deliberately not in DNS at all.
+      - name: Read the origin IP from platform state
+        id: platform
+        working-directory: infra/terraform/platform
+        run: |
+          set -euo pipefail
+          terraform init -input=false
+          ipv4="$(terraform output -json app_ipv4 | jq -r '.dev // empty')"
+          [[ -n "$ipv4" ]] || { echo "::error::platform state has no app_ipv4 for dev"; exit 1; }
+          echo "ipv4=$ipv4" >> "$GITHUB_OUTPUT"
+
+      - name: Apply dev infrastructure
+        working-directory: infra/terraform/environments
+        env:
+          TF_VAR_origin_ipv4: ${{ steps.platform.outputs.ipv4 }}
+        run: |
+          set -euo pipefail
+          terraform init -input=false
+          terraform workspace select dev || terraform workspace new dev
+          terraform apply -input=false -auto-approve -var-file=dev.tfvars
+
+  widget-cdn:
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build widget + size gate
+        working-directory: widget
+        run: pnpm build && pnpm size
+
+      - uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEV_SSH_HOST }}
+          username: ${{ secrets.DEV_SSH_USER }}
+          key: ${{ secrets.DEV_SSH_KEY }}
+          source: widget/dist/*
+          target: /srv/cdn/dev/
+          strip_components: 2
+
+  deploy:
+    needs: [version, build-images, infra, widget-cdn]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEV_SSH_HOST }}
+          username: ${{ secrets.DEV_SSH_USER }}
+          key: ${{ secrets.DEV_SSH_KEY }}
+          source: infra/compose.dev.yml,infra/scripts/deploy.sh
+          target: /opt/cookiekeeper/dev/
+          strip_components: 1
+
+      # deploy.sh reads the hand-maintained /opt/cookiekeeper/dev/.env for secrets and writes only
+      # .env.deploy (the image tag), so nothing here can overwrite a credential. Flyway migrates on
+      # container boot.
+      - uses: appleboy/ssh-action@v1.2.2
+        env:
+          DEPLOY_TAG: ${{ needs.version.outputs.tag }}
+        with:
+          host: ${{ secrets.DEV_SSH_HOST }}
+          username: ${{ secrets.DEV_SSH_USER }}
+          key: ${{ secrets.DEV_SSH_KEY }}
+          envs: DEPLOY_TAG
+          script: |
+            chmod +x /opt/cookiekeeper/dev/scripts/deploy.sh
+            /opt/cookiekeeper/dev/scripts/deploy.sh dev "$DEPLOY_TAG"
+
+  smoke:
+    needs: [version, deploy]
+    runs-on: ubuntu-latest
+    steps:
+      - name: API health
+        run: curl --fail --silent --show-error --retry 5 --retry-delay 10 --max-time 20 https://api.dev.cookiekeeper.eu/actuator/health
+      - name: Dashboard health
+        run: curl --fail --silent --show-error --retry 5 --retry-delay 10 --max-time 20 https://dev.cookiekeeper.eu/api/health
+      - name: Widget on the CDN
+        run: curl --fail --silent --show-error --retry 5 --retry-delay 10 --max-time 20 -o /dev/null https://cdn.dev.cookiekeeper.eu/v1.js
+
+      - name: Summary
+        run: |
+          echo "### Deployed \`${{ needs.version.outputs.tag }}\` to dev" >> "$GITHUB_STEP_SUMMARY"
+          echo "Promote to production by dispatching **release-prd** on tag \`${{ needs.version.outputs.tag }}\`." >> "$GITHUB_STEP_SUMMARY"

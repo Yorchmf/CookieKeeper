@@ -1,4 +1,4 @@
-// smoke.js — k6 load smoke test for the Complyr backend on a CX22 (2 vCPU / 4GB).
+// smoke.js — k6 load smoke test for the CookieKeeper backend on a CX22 (2 vCPU / 4GB).
 //
 // Goal: confirm the box holds a realistic sustained load with acceptable latency
 // and no 5xx, and surface the true capacity ceiling (Tomcat threads + Hikari pool,
@@ -7,7 +7,7 @@
 // Run against DEV ONLY. `POST /api/v1/consent` writes APPEND-ONLY audit rows that a
 // retention job can only DROP by the month — never point this at prd (CLAUDE.md #3).
 //
-//   k6 run -e BASE_URL=https://api.dev.complyr.eu \
+//   k6 run -e BASE_URL=https://api.dev.cookiekeeper.eu \
 //          -e SITE_KEY=<a-real-dev-site-key> \
 //          -e PUBLIC_ID=<a-real-dev-policy-public-id> \
 //          infra/load/smoke.js

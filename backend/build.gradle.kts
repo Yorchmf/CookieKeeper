@@ -10,7 +10,18 @@ plugins {
 }
 
 group = "eu.cookiekeeper"
-version = "0.0.1-SNAPSHOT"
+
+// The repo-root VERSION file is the single source of truth for the release number; release-dev.yml
+// bumps it and mirrors it into the two package.json files. Reading it here means the jar, the
+// container tag and the git tag can never disagree about which release they are.
+//
+// The Docker build context is backend/, so ../VERSION is not visible inside the image build — the
+// Dockerfile passes it through as -PappVersion instead. The literal fallback only applies to an
+// exotic checkout with no VERSION file at all.
+version =
+    (findProperty("appVersion") as String?)?.takeIf { it.isNotBlank() }
+        ?: file("../VERSION").takeIf { it.isFile }?.readText()?.trim()
+        ?: "0.0.0-SNAPSHOT"
 
 java {
     toolchain {

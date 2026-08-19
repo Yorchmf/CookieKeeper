@@ -1,0 +1,101 @@
+# Workstation stack: `docker compose -f infra/compose.workstation.yml up`
+#
+# This is NOT a third environment. There are exactly two — `dev` and `prd` — and this file runs the
+# `dev` profile on your own machine, building the images from source instead of pulling them from
+# GHCR. Everything secret comes from the repo-root `.env` (copy `.env.example` → `.env`), which is
+# the same mechanism the servers use; the only difference is the file's location.
+#
+# Postgres + Mailpit always; scanner is opt-in via `--profile scanner` (heavy Playwright image).
+
+name: cookiekeeper-workstation
+
+services:
+  postgres:
+    image: postgres:16
+    # Workstation credentials are deliberately FIXED (not read from .env): they are throwaway, and
+    # reading them from two places (compose interpolation vs env_file) caused postgres/api
+    # credential drift. Real secrets exist only in the dev/prd server .env files.
+    environment:
+      POSTGRES_DB: cookiekeeper
+      POSTGRES_USER: cookiekeeper
+      POSTGRES_PASSWORD: cookiekeeper
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432" # workstation convenience only — never published on the server
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cookiekeeper -d cookiekeeper"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Catches all outgoing email locally (SMTP :1025, web UI :8025). Set MAIL_PROVIDER=smtp in .env.
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  api:
+    build:
+      context: ../backend
+    env_file:
+      - path: ../.env
+        required: true # copy .env.example → .env; the app fails fast without JWT_SECRET et al.
+    environment:
+      SPRING_PROFILES_ACTIVE: api,dev
+      DB_URL: jdbc:postgresql://postgres:5432/cookiekeeper
+      DB_USER: cookiekeeper # matches the fixed postgres credentials above
+      DB_PASSWORD: cookiekeeper
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      # The dashboard is served over plain http://localhost here, and browsers discard Secure
+      # cookies on an insecure origin — so login would appear to succeed and never persist.
+      # This override exists ONLY in this file; dev and prd never set it.
+      COOKIE_SECURE: "false"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Cookie scanner worker (same jar, Spring profile `scanner`, Playwright base image).
+  # Opt-in: docker compose -f infra/compose.workstation.yml --profile scanner up
+  scanner:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.scanner
+    profiles: ["scanner"]
+    # Chromium puts renderer shared memory in /dev/shm, which docker sizes at
+    # 64 MB by default. A content-heavy page overruns that and the tab dies with
+    # a bare "Target crashed" — matches the deployed stacks so a scan that works
+    # here works there.
+    shm_size: 512mb
+    env_file:
+      - path: ../.env
+        required: true
+    environment:
+      SPRING_PROFILES_ACTIVE: scanner,dev
+      DB_URL: jdbc:postgresql://postgres:5432/cookiekeeper
+      DB_USER: cookiekeeper
+      DB_PASSWORD: cookiekeeper
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  dashboard:
+    build:
+      context: ../dashboard
+      args:
+        # The Next server proxies same-origin /api/v1/* calls to the backend (next.config.ts
+        # rewrite — baked into the route manifest at BUILD time, so this is a build arg, not
+        # runtime env). Keeps the httpOnly auth cookies first-party. Workstation-only: dev/prd
+        # builds leave it unset (Caddy proxies /api/v1 on the app domain there).
+        API_PROXY_TARGET: http://api:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:

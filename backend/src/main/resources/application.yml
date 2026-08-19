@@ -1,17 +1,21 @@
 spring:
   application:
-    name: complyr-backend
+    name: cookiekeeper-backend
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/complyr}
-    username: ${DB_USER:complyr}
-    password: ${DB_PASSWORD:complyr}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/cookiekeeper}
+    username: ${DB_USER:cookiekeeper}
+    password: ${DB_PASSWORD:cookiekeeper}
     hikari:
-      # CX22 (2 vCPU / 4GB) runs dev+prd side by side (two API JVMs, two Postgres,
-      # dashboards, scanner). A small pool is correct: Postgres throughput on 2 vCPU
-      # peaks around a handful of active connections, and each idle connection still
-      # costs backend memory. Env-overridable so the load smoke test (infra/load) can
-      # tune it without a rebuild. Must stay well under Postgres max_connections
-      # summed across every service that connects.
+      # Postgres has its own CX22 (2 vCPU / 4GB) per environment since ADR-24, but the
+      # pool stays small on purpose: throughput on 2 vCPU peaks at a handful of ACTIVE
+      # connections, and past that a bigger pool only converts queueing into context
+      # switching while each idle connection still costs a backend process. The
+      # dedicated box bought headroom for the database's own memory (shared_buffers,
+      # work_mem), not for more connections.
+      # Budget: api + scanner each open up to this many, and the sum must stay well
+      # under the server's max_connections = 50 (cloud-init-db.yaml) with room left
+      # for a psql session during an incident. Env-overridable so the load smoke test
+      # (infra/load) can tune it without a rebuild.
       maximum-pool-size: ${DB_POOL_MAX:10}
       minimum-idle: ${DB_POOL_MIN_IDLE:2}
       connection-timeout: ${DB_POOL_CONNECTION_TIMEOUT_MS:10000}
@@ -64,8 +68,8 @@ server:
   forward-headers-strategy: native
 
 cookiekeeper:
-  # No default for JWT_SECRET here on purpose: dev/prd fail fast at startup if unset.
-  # A dev-only fallback exists in application-local.yml; tests set it in test resources.
+  # No default for JWT_SECRET here on purpose: every environment fails fast at startup if unset.
+  # Workstations supply it from the repo-root .env (see .env.example); tests set it in test resources.
   auth:
     jwt-secret: ${JWT_SECRET}
     access-token-ttl: 15m
@@ -73,6 +77,9 @@ cookiekeeper:
     verification-token-ttl: 24h
     reset-token-ttl: 1h
     email-change-token-ttl: 24h
+    # Defaults to true. Set COOKIE_SECURE=false ONLY in a workstation .env — a browser drops a
+    # Secure cookie sent over http://localhost, so login would appear to work but never persist.
+    cookie-secure: ${COOKIE_SECURE:true}
   consent:
     # How long a claimed dedupe key lives before the reaper prunes it. Only has to outlive a
     # pending widget retry (localStorage replays drain within days); short keeps the table small.
@@ -80,8 +87,8 @@ cookiekeeper:
     # Reaper schedule (Spring cron, server zone). Default 03:30 daily is also baked into the job.
     idempotency-prune-cron: ${CONSENT_IDEMPOTENCY_PRUNE_CRON:0 30 3 * * *}
     # HMAC secret for the stateless consent-origin token (ADR-13). No default here on purpose:
-    # dev/prd fail fast at startup if unset (dev-only fallback lives in application-local.yml,
-    # tests set it in test resources). Must be >= 32 bytes — validated by the ConsentOriginToken bean.
+    # every environment fails fast at startup if unset (workstations supply it from the repo-root
+    # .env, tests set it in test resources). Must be >= 32 bytes — validated by the ConsentOriginToken bean.
     origin-token-secret: ${CONSENT_ORIGIN_TOKEN_SECRET}
     # How long a minted origin token stays valid. Short (bounds replay) but above client→server
     # latency; the widget self-censors tokens older than ~90s to stay clear of this ceiling.
@@ -138,11 +145,11 @@ cookiekeeper:
     # nameserver per retry — a lookup can cost ~2 x this x (nameservers in resolv.conf).
     dns-timeout: ${VERIFICATION_DNS_TIMEOUT:2s}
   billing:
-    # Stripe credentials. No defaults here on purpose: dev/prd fail fast at startup if unset, and each
-    # environment MUST supply its own — local/dev use Stripe TEST-mode keys+prices (sk_test_/test-mode
-    # price_...), prd uses LIVE-mode ones (sk_live_/live price_...). A test-mode price id is invalid
-    # against a live key and vice versa, so they are never shared. A dev-only fallback lives in
-    # application-local.yml; tests set placeholders in application.properties.
+    # Stripe credentials. No defaults here on purpose: startup fails fast if unset, and each
+    # environment MUST supply its own — workstations and dev use Stripe TEST-mode keys+prices
+    # (sk_test_/test-mode price_...), prd uses LIVE-mode ones (sk_live_/live price_...). A test-mode
+    # price id is invalid against a live key and vice versa, so they are never shared. Tests set
+    # placeholders in application.properties.
     stripe-secret-key: ${STRIPE_SECRET_KEY}
     # Webhook endpoint signing secret (whsec_...). Also env-specific and no default here: each
     # environment registers its own Stripe webhook endpoint and gets its own secret. Every inbound
@@ -168,7 +175,7 @@ cookiekeeper:
   observability:
     # Error tracking (ADR-15). Sentry SaaS EU region ONLY (DSN host *.de.sentry.io) for GDPR data
     # residency (CLAUDE.md #2) — a non-EU DSN is refused at startup. A BLANK dsn disables Sentry, so
-    # local (and any environment that hasn't set SENTRY_DSN_BACKEND) runs with error tracking off. No
+    # a workstation (and any environment that has not set SENTRY_DSN_BACKEND) runs with tracking off. No
     # PII is ever sent: send-default-pii stays off and request/user context is scrubbed (CLAUDE.md #4).
     sentry:
       dsn: ${SENTRY_DSN_BACKEND:}

@@ -53,6 +53,11 @@ data class CookieKeeperProperties(
         // mitigation (self-service unlock / step-up challenge after N failures) is a tracked follow-up.
         val maxFailedLoginAttempts: Int = DEFAULT_MAX_FAILED_LOGIN_ATTEMPTS,
         val loginLockoutDuration: Duration = Duration.ofMinutes(DEFAULT_LOGIN_LOCKOUT_MINUTES),
+        // `Secure` flag on the session cookies (see [eu.cookiekeeper.auth.AuthCookieFactory]).
+        // Defaults to true so every deployed environment is safe without configuring anything; the
+        // only supported reason to turn it off is a workstation serving the dashboard over plain
+        // http://localhost, where browsers discard Secure cookies outright.
+        val cookieSecure: Boolean = true,
     ) {
         init {
             require(jwtSecret.toByteArray(Charsets.UTF_8).size >= MIN_JWT_SECRET_BYTES) {

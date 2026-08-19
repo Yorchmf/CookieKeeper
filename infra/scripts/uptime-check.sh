@@ -2,11 +2,14 @@
 # =============================================================================
 # uptime-check.sh — on-box dead-man's-switch health probe (see monitoring/uptime.md).
 #
-# Curls the API health, dashboard, and widget CDN from the VPS. If ALL are
+# Curls the API health, dashboard, and widget CDN from the APP HOST it runs on
+# (one instance per app host since ADR-24, each with its own HEARTBEAT_URL — a
+# shared heartbeat would let a healthy dev keep production's alarm quiet). If ALL are
 # healthy it pings HEARTBEAT_URL; on ANY failure it logs which check failed and
 # does NOT ping, so the external heartbeat monitor alerts after its grace period.
 # This backstops the external synthetic checks and catches app-degraded states a
-# bare HTTP 200 would hide (e.g. API up but DB down → health reports DOWN).
+# bare HTTP 200 would hide (e.g. API up but DB down → health reports DOWN — which
+# is also how a dead database HOST surfaces, since it is not probed directly).
 #
 # Runs every minute from cron, sourcing /opt/cookiekeeper/monitoring.env for config.
 # =============================================================================

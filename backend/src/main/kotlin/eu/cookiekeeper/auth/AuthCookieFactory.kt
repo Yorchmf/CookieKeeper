@@ -2,7 +2,6 @@ package eu.cookiekeeper.auth
 
 import eu.cookiekeeper.common.AuthCookies
 import eu.cookiekeeper.common.CookieKeeperProperties
-import org.springframework.core.env.Environment
 import org.springframework.http.ResponseCookie
 import org.springframework.stereotype.Component
 import java.time.Duration
@@ -10,14 +9,19 @@ import java.time.Duration
 /**
  * Builds the HttpOnly session cookies: `cmplyr_at` (access, Path=/), `cmplyr_rt`
  * (refresh, Path=/api/v1/auth) and `cmplyr_session` (non-secret marker, Path=/, lives as long
- * as the refresh token). `Secure` everywhere except the local profile.
+ * as the refresh token).
+ *
+ * `Secure` is on by default and comes from configuration rather than the active profile. There are
+ * only two profiles now — `dev` and `prd` — and a workstation runs `dev` against `http://localhost`,
+ * where a `Secure` cookie is silently dropped and login appears to succeed but never sticks. Making
+ * it an explicit opt-out (`COOKIE_SECURE=false`, set only in a workstation `.env`) keeps the unsafe
+ * setting a deliberate, greppable act instead of a side effect of which profile happens to be active.
  */
 @Component
 class AuthCookieFactory(
     private val properties: CookieKeeperProperties,
-    environment: Environment,
 ) {
-    private val secure: Boolean = "local" !in environment.activeProfiles
+    private val secure: Boolean = properties.auth.cookieSecure
 
     fun accessCookie(token: String): ResponseCookie =
         build(AuthCookies.ACCESS_TOKEN, token, path = "/", maxAge = properties.auth.accessTokenTtl)

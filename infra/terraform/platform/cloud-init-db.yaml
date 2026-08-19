@@ -1,0 +1,182 @@
+#cloud-config
+# First-boot bootstrap for a CookieKeeper DATABASE server (${environment}).
+#
+# Runs ONCE, at creation — `user_data` is in the server's `ignore_changes` for exactly that reason.
+# Anything you need to change later belongs in infra/scripts/server-setup.md, not here.
+#
+# This host runs bare Postgres 16 on the metal. No Docker, no application containers, nothing that
+# competes with the database for RAM or page cache. It is reachable only at ${db_private_ip} on the
+# ${environment} private network, and only from ${app_private_ip}.
+#
+# WHAT THIS FILE DELIBERATELY DOES NOT DO: create the `cookiekeeper` role's PASSWORD. Every
+# Terraform variable is written to state in plaintext, and cloud-init user_data is a Terraform
+# variable. The role is created without one, which — given the scram-sha-256-only pg_hba below —
+# means nothing can authenticate until an operator sets it by hand. That fails closed. See
+# server-setup.md §3.
+#
+# FOUR independent layers restrict who reaches 5432, because the usual first layer is missing:
+# a Hetzner cloud firewall filters PUBLIC traffic only and cannot see this private network at all.
+#   1. listen_addresses   — Postgres binds the private address and loopback, never the public NIC
+#   2. ufw                — 5432 accepted only from ${app_private_ip}
+#   3. pg_hba.conf        — one hostssl line, one source, scram-sha-256; no plaintext line exists
+#   4. no public exposure — the cloud firewall admits SSH and ICMP, and nothing else
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - ca-certificates
+  - curl
+  - ufw
+  - fail2ban
+  - unattended-upgrades
+  - postgresql-16
+  # Backups run HERE, not on the app host: pg_dump over a unix socket means the plaintext dump never
+  # crosses the network, and the app host never needs credentials that can read every table.
+  - age
+  - rclone
+
+users:
+  - name: deploy
+    # Present but inert. CI has no key on this host (see platform/variables.tf) and no reason to log
+    # in; the account exists only so file ownership matches the app hosts if that ever changes.
+    shell: /usr/sbin/nologin
+    lock_passwd: true
+    sudo: null
+
+write_files:
+  - path: /etc/ssh/sshd_config.d/99-cookiekeeper.conf
+    content: |
+      PasswordAuthentication no
+      PermitRootLogin prohibit-password
+      KbdInteractiveAuthentication no
+
+  # Staged, then copied into place by runcmd — write_files runs BEFORE packages are installed, so
+  # anything written directly into /etc/postgresql would either land in a directory that does not
+  # exist yet or be overwritten by the package's own config.
+  - path: /root/pg-staging/99-cookiekeeper.conf
+    content: |
+      # Sizing for a DEDICATED 2 vCPU / 4 GB host running nothing but Postgres. These numbers assume
+      # the whole machine; they were far too generous when Postgres shared a box with two JVMs and a
+      # headless Chromium, which is exactly why it no longer does (ADR-24).
+      listen_addresses = 'localhost,${db_private_ip}'
+      port = 5432
+
+      # ~25% of RAM to shared_buffers is the standard starting point; the remainder is left to the
+      # kernel page cache, which effective_cache_size advertises to the planner.
+      shared_buffers = 1GB
+      effective_cache_size = 3GB
+      maintenance_work_mem = 256MB
+
+      # Deliberately modest. work_mem is per SORT NODE, not per connection — a single query with
+      # several sorts and a parallel plan can multiply this many times over, and 50 connections
+      # doing that at 64MB would swap the box. Raise it per-session for a known-heavy report
+      # instead of globally.
+      work_mem = 8MB
+
+      # Comfortably above the sum of the app pools (see backend/src/main/resources/application.yml)
+      # with room for a psql session during an incident. Higher is not better: each connection is a
+      # backend process with its own memory.
+      max_connections = 50
+
+      # NVMe, not spinning rust — the planner's defaults assume the latter and under-use indexes.
+      random_page_cost = 1.1
+      effective_io_concurrency = 200
+
+      # Spread checkpoint writes instead of stalling on a wall of dirty pages.
+      checkpoint_completion_target = 0.9
+      wal_compression = on
+      max_wal_size = 2GB
+      min_wal_size = 256MB
+
+      # md5 is still the compiled-in default in some builds. Being explicit means a role created
+      # before an operator remembers to check still gets a modern verifier.
+      password_encryption = scram-sha-256
+
+      # TLS on the private network. Hetzner private networks are isolated per-project and do not
+      # traverse the public internet, so the realistic threat is passive capture inside the
+      # facility rather than an active MITM — but this carries visitor PII and append-only consent
+      # audit evidence (CLAUDE.md #3, #4), and "probably nobody is listening" is not a control.
+      ssl = on
+      ssl_cert_file = '/etc/postgresql/ssl/server.crt'
+      ssl_key_file = '/etc/postgresql/ssl/server.key'
+      ssl_min_protocol_version = 'TLSv1.2'
+
+      # Log slow queries only. Logging every statement on a database of consent events would put
+      # visitor data in a plaintext log file, which constraint #4 forbids outright.
+      log_min_duration_statement = 1000
+      log_line_prefix = '%m [%p] %q%u@%d '
+
+  # Replaces the distribution's pg_hba.conf wholesale rather than appending to it. Appending leaves
+  # the package's permissive `host all all 127.0.0.1/32` lines in force above ours, and the first
+  # matching line wins — so an append would be silently weaker than it reads.
+  - path: /root/pg-staging/pg_hba.conf
+    content: |
+      # TYPE  DATABASE      USER          ADDRESS              METHOD
+
+      # Unix socket, for local administration and for the nightly pg_dump. `peer` means the OS user
+      # must already be `postgres`; there is no password to steal.
+      local   all           postgres                           peer
+      local   all           all                                peer
+
+      # The ONLY network line. hostssl (not `host`) means a plaintext connection is REFUSED by the
+      # server rather than merely discouraged — there is no non-TLS fallback to negotiate down to.
+      hostssl cookiekeeper  cookiekeeper  ${app_private_ip}/32 scram-sha-256
+
+      # Deliberately absent: any `host` line, any 0.0.0.0/0, and any `trust`. If you need to add a
+      # source, add another hostssl line scoped to one /32.
+
+runcmd:
+  - systemctl restart ssh
+
+  # --- Host firewall ---------------------------------------------------------------------------
+  # ufw is not a second layer here, it is the FIRST and only packet filter on the private
+  # interface: Hetzner cloud firewalls do not see private network traffic.
+  - ufw default deny incoming
+  - ufw default allow outgoing
+  - ufw allow 22/tcp
+  - ufw allow from ${app_private_ip} to any port 5432 proto tcp
+  - ufw --force enable
+
+  # --- TLS keypair -----------------------------------------------------------------------------
+  # Self-signed, and its own CA: the app pins this exact certificate as sslrootcert and connects
+  # with sslmode=verify-ca. A public CA would add nothing — there is no third party to establish
+  # trust with on a two-host private network — and would add a renewal that can expire the product.
+  # The IP SAN is what lets a client verify a certificate presented for an address rather than a
+  # name. Copy /etc/postgresql/ssl/server.crt to the app host as pgca.crt (server-setup.md §3).
+  - mkdir -p /etc/postgresql/ssl
+  - >
+    openssl req -new -x509 -nodes -days 3650
+    -subj "/CN=cookiekeeper-${environment}-db"
+    -addext "subjectAltName=IP:${db_private_ip}"
+    -keyout /etc/postgresql/ssl/server.key
+    -out /etc/postgresql/ssl/server.crt
+  - chown -R postgres:postgres /etc/postgresql/ssl
+  - chmod 700 /etc/postgresql/ssl
+  - chmod 600 /etc/postgresql/ssl/server.key
+  - chmod 644 /etc/postgresql/ssl/server.crt
+
+  # --- Postgres configuration ------------------------------------------------------------------
+  # conf.d is included at the end of Debian/Ubuntu's postgresql.conf, so a file there overrides the
+  # packaged defaults without editing a file the next package upgrade will rewrite.
+  - install -o postgres -g postgres -m 640 /root/pg-staging/99-cookiekeeper.conf /etc/postgresql/16/main/conf.d/99-cookiekeeper.conf
+  - install -o postgres -g postgres -m 640 /root/pg-staging/pg_hba.conf /etc/postgresql/16/main/pg_hba.conf
+  - rm -rf /root/pg-staging
+  - systemctl enable postgresql
+  - systemctl restart postgresql@16-main
+
+  # --- Database and role -------------------------------------------------------------------------
+  # No password, by design (see the header). Until an operator runs ALTER ROLE ... PASSWORD, the
+  # scram-sha-256 line in pg_hba has nothing to verify against and every connection is rejected.
+  - su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"CREATE ROLE cookiekeeper LOGIN;\""
+  - su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"CREATE DATABASE cookiekeeper OWNER cookiekeeper;\""
+
+  # --- Backups ----------------------------------------------------------------------------------
+  # infra/scripts/backup.sh runs from cron HERE. /opt/cookiekeeper/backup.env (the age recipient and
+  # rclone remote) is written BY HAND, chmod 600 — server-setup.md §7.
+  - mkdir -p /opt/cookiekeeper/backups /opt/cookiekeeper/scripts
+  - chmod 700 /opt/cookiekeeper/backups
+
+  - systemctl enable --now fail2ban unattended-upgrades
+
+final_message: "CookieKeeper ${environment} DB host ready after $UPTIME s. Set the role password and copy the TLS cert — infra/scripts/server-setup.md §3."

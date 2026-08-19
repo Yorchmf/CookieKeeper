@@ -1,0 +1,116 @@
+#cloud-config
+# First-boot bootstrap for a CookieKeeper APPLICATION server (${environment}).
+#
+# Runs ONCE, at creation — `user_data` is in the server's `ignore_changes` for exactly that reason.
+# Anything you need to change later belongs in infra/scripts/server-setup.md, not here.
+#
+# Deliberately minimal: this brings the machine to "Docker runs, deploy user exists, sshd is
+# hardened". Everything after that (Caddy, the egress firewall, the .env file, the Postgres CA
+# certificate) is in server-setup.md, because those steps need secrets or judgement and must not be
+# baked into an image-level config that lands in Terraform state.
+#
+# This host runs NO database. Postgres lives on cookiekeeper-${environment}-db and is reached over
+# the private network (ADR-24).
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - ca-certificates
+  - curl
+  - gnupg
+  - ufw
+  - fail2ban
+  - unattended-upgrades
+  # psql only, no server. For answering "can this host actually reach the database?" during triage
+  # without installing anything mid-incident.
+  - postgresql-client-16
+
+users:
+  - name: deploy
+    # No shell and no password: this account exists only for `docker compose` over SSH. A
+    # forced-command-free key still can't get an interactive session.
+    shell: /usr/sbin/nologin
+    groups: [docker]
+    lock_passwd: true
+    sudo: null
+
+write_files:
+  # Docker daemon: explicit resolvers, IPv6 off (we do not run dual-stack container networking), and
+  # userland-proxy off so published ports go through iptables DNAT — which is what the ADR-18 egress
+  # firewall filters on.
+  #
+  # The resolvers are Hetzner's own EU recursors, not 8.8.8.8/1.1.1.1. Two reasons: every hostname a
+  # scanner crawls would otherwise be a DNS query to a US-operated resolver (CLAUDE.md #2), and the
+  # egress rules DROP private destinations — so a resolver must be a public address the rules allow.
+  - path: /etc/docker/daemon.json
+    content: |
+      {
+        "dns": ["185.12.64.1", "185.12.64.2"],
+        "ipv6": false,
+        "userland-proxy": false,
+        "log-driver": "json-file",
+        "log-opts": { "max-size": "10m", "max-file": "3" }
+      }
+
+  - path: /etc/sysctl.d/99-cookiekeeper.conf
+    content: |
+      # Required so the DOCKER-USER chain actually sees bridged container traffic (ADR-18).
+      net.bridge.bridge-nf-call-iptables=1
+      # Conntrack helpers off: with them on, a hostile server the scanner connects to can create an
+      # expectation and earn a RELATED exemption to an arbitrary address, walking around the rules.
+      net.netfilter.nf_conntrack_helper=0
+
+  - path: /etc/ssh/sshd_config.d/99-cookiekeeper.conf
+    content: |
+      PasswordAuthentication no
+      PermitRootLogin prohibit-password
+      KbdInteractiveAuthentication no
+
+  # The JVM caches DNS forever by default on some configurations. Stripe, Brevo and Sentry all
+  # rotate IPs; a 30s TTL means a rotation is a blip rather than an outage needing a restart.
+  - path: /etc/environment.d/99-java-dns.conf
+    content: |
+      JAVA_TOOL_OPTIONS=-Dsun.net.inetaddr.ttl=30
+
+runcmd:
+  # Docker CE from Docker's own repo (Ubuntu's docker.io lags badly).
+  - install -m 0755 -d /etc/apt/keyrings
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  - chmod a+r /etc/apt/keyrings/docker.asc
+  - >
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc]
+    https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable"
+    > /etc/apt/sources.list.d/docker.list
+  - apt-get update
+  - apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  - systemctl enable --now docker
+
+  # Host firewall. The Hetzner cloud firewall already fronts the PUBLIC interface; ufw is the second
+  # layer, and the only layer at all on the private interface — Hetzner firewalls do not see private
+  # network traffic. Nothing should ever connect INTO this host over the private network (the
+  # database is the server in that relationship, this host is the client), so the default deny needs
+  # no private-network exception.
+  - ufw default deny incoming
+  - ufw default allow outgoing
+  - ufw allow 22/tcp
+  - ufw allow 80/tcp
+  - ufw allow 443/tcp
+  - ufw --force enable
+
+  - sysctl --system
+  - systemctl restart ssh
+
+  # Deploy targets. `deploy` owns them so the CI user can write the compose file and the CDN payload
+  # without sudo. /opt/cookiekeeper/${environment}/.env is created BY HAND afterwards (chmod 600) —
+  # it is never written by automation.
+  - mkdir -p /opt/cookiekeeper/${environment} /opt/cookiekeeper/caddy /srv/cdn/${environment}
+  - chown -R deploy:deploy /opt/cookiekeeper /srv/cdn
+  # --ip-range matters as much as --subnet: docker's dynamic pool otherwise starts at .2, the address
+  # compose.caddy.yml pins for Caddy and the only source the egress rules let initiate connections on
+  # this network. Confining the pool to the upper half keeps .2 reserved.
+  - docker network create --subnet 10.31.30.0/24 --ip-range 10.31.30.128/25 caddy-net || true
+
+  - systemctl enable --now fail2ban unattended-upgrades
+
+final_message: "CookieKeeper ${environment} APP host ready after $UPTIME s. Continue with infra/scripts/server-setup.md."

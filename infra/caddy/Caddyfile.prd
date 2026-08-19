@@ -1,0 +1,40 @@
+# CookieKeeper — PRODUCTION Caddy, on cookiekeeper-prd-app.
+#
+# One instance per machine since ADR-24: this file knows only about prd, and the
+# only upstreams it can name are containers on THIS host. A misrouted vhost can
+# no longer send production traffic to a dev container, because there is no dev
+# container within reach — that used to be a config mistake away.
+#
+# NOTE: cookiekeeper.eu is a PLACEHOLDER domain — replace everywhere once the real
+# domain is bought (and update Cloudflare DNS + the .env files to match).
+#
+# TLS: Cloudflare sits in front in "Full (strict)" mode; Caddy obtains
+# certificates automatically (ACME) or use Cloudflare origin certs.
+#
+# Upstreams are container names on the external `caddy-net` network, prefixed by
+# the compose project name (cookiekeeper-prd).
+
+import snippets.caddy
+
+app.cookiekeeper.eu {
+	import security_headers
+	import consent_body_cap
+	# Same-origin API for the dashboard client: one image serves dev AND prd
+	# (no NEXT_PUBLIC_* URL baked at build time). /api/health stays with Next.js.
+	handle /api/v1/* {
+		reverse_proxy cookiekeeper-prd-api-1:8080
+	}
+	handle {
+		reverse_proxy cookiekeeper-prd-dashboard-1:3000
+	}
+}
+
+api.cookiekeeper.eu {
+	import security_headers
+	import consent_body_cap
+	reverse_proxy cookiekeeper-prd-api-1:8080
+}
+
+cdn.cookiekeeper.eu {
+	import cdn_site /srv/cdn/prd cookiekeeper-prd-api-1:8080
+}

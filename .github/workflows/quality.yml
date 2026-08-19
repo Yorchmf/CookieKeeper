@@ -1,0 +1,161 @@
+# Reusable quality gate. Not triggered directly — called by validate.yml, main.yml and both
+# release workflows so there is exactly ONE definition of "is this code OK", and the difference
+# between a feature branch and a release is which inputs are switched on.
+name: quality
+
+on:
+  workflow_call:
+    inputs:
+      run_tests:
+        description: "Run the test suites (feature branches skip these by default; see validate.yml)."
+        type: boolean
+        default: false
+      run_build:
+        description: "Run the production builds and the widget size gate."
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      dashboard: ${{ steps.filter.outputs.dashboard }}
+      widget: ${{ steps.filter.outputs.widget }}
+      terraform: ${{ steps.filter.outputs.terraform }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - '.github/workflows/**'
+            dashboard:
+              - 'dashboard/**'
+              - 'pnpm-workspace.yaml'
+              - 'pnpm-lock.yaml'
+              - '.github/workflows/**'
+            widget:
+              - 'widget/**'
+              - 'pnpm-workspace.yaml'
+              - 'pnpm-lock.yaml'
+              - '.github/workflows/**'
+            terraform:
+              - 'infra/terraform/**'
+              - '.github/workflows/**'
+
+  backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Lint (ktlint + detekt)
+        run: ./gradlew ktlintCheck detekt
+
+      - name: Compile
+        run: ./gradlew classes testClasses
+
+      - name: Test
+        if: inputs.run_tests
+        run: ./gradlew test
+
+      - name: Build
+        if: inputs.run_build
+        run: ./gradlew build -x test -x ktlintCheck -x detekt
+
+  dashboard:
+    needs: changes
+    if: needs.changes.outputs.dashboard == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        if: inputs.run_tests
+        run: pnpm run --if-present test
+
+      - name: Build
+        if: inputs.run_build
+        run: pnpm build
+
+  widget:
+    needs: changes
+    if: needs.changes.outputs.widget == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: widget
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Test
+        if: inputs.run_tests
+        run: pnpm test
+
+      # The 20KB gzipped budget is a hard product constraint (CLAUDE.md #1), so the size gate runs
+      # wherever the widget is built at all — not only on release.
+      - name: Build + size gate
+        if: inputs.run_build
+        run: pnpm build && pnpm size
+
+  terraform:
+    needs: changes
+    if: needs.changes.outputs.terraform == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        module: [platform, environments]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.8"
+
+      - name: Format check
+        run: terraform fmt -check -recursive -diff
+        working-directory: infra/terraform/${{ matrix.module }}
+
+      # -backend=false: validation needs the provider schemas but not the state bucket, so this
+      # runs without any Hetzner credentials and stays safe on pull requests from forks.
+      - name: Validate
+        working-directory: infra/terraform/${{ matrix.module }}
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate

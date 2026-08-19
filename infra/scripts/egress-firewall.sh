@@ -17,10 +17,18 @@
 #                 in DOCKER-USER alone cannot see — let alone block — sshd or a
 #                 loop back in through Caddy.
 #
-# Effect: a container may reach the public internet, and the containers its own
-# environment wires it to. Cloud metadata (169.254.169.254), RFC1918, CGNAT,
-# loopback, this host, the OTHER environment and everything else behind the
-# shared reverse proxy are all unreachable.
+# Effect: a container may reach the public internet, the containers its own
+# environment wires it to, and its own environment's database — that last one on
+# port 5432 and nothing else. Cloud metadata (169.254.169.254), RFC1918, CGNAT,
+# loopback, this host and everything else behind the reverse proxy are all
+# unreachable.
+#
+# Since ADR-24 the database is a SEPARATE MACHINE on a Hetzner private network
+# (10.20.x), not a sibling container — so reaching it means crossing the bridge
+# to the private NIC, straight into the 10.0.0.0/8 bogon DROP below. That is why
+# EGRESS_DB_TARGETS exists: one RETURN per environment, scoped to a single source
+# subnet, a single /32 and a single port. Everything else about 10.20.x, the
+# database host's sshd included, stays dropped.
 #
 # It is a DENYLIST of reserved/special-use space plus the host — not a strict
 # allowlist. Any globally routable address is permitted, which is the point: the
@@ -42,6 +50,8 @@
 #                            other (one per environment)
 #   EGRESS_INGRESS_SUBNETS   space-separated <cidr>=<proxy-ip>; inside such a
 #                            network only <proxy-ip> may OPEN a connection
+#   EGRESS_DB_TARGETS        space-separated <cidr>=<db-ip>:<port>; that source
+#                            subnet may reach that one address on that one port
 #   EGRESS_CONTROL_TARGET    <ip> <port> that must stay reachable (verify only)
 #
 # Must run as root. Install it root-owned OUTSIDE the CI-rsynced tree
@@ -50,15 +60,27 @@
 # =============================================================================
 set -euo pipefail
 
-FWD_BASE="COMPLYR-EGRESS"        # hooked into DOCKER-USER
-HOST_BASE="COMPLYR-EGRESS-HOST"  # hooked into INPUT
-FWD6_BASE="COMPLYR-EGRESS6"
-HOST6_BASE="COMPLYR-EGRESS6-HOST"
+FWD_BASE="COOKIEKEEPER-EGRESS"        # hooked into DOCKER-USER
+HOST_BASE="COOKIEKEEPER-EGRESS-HOST"  # hooked into INPUT
+FWD6_BASE="COOKIEKEEPER-EGRESS6"
+HOST6_BASE="COOKIEKEEPER-EGRESS6-HOST"
 
 # Must match the `ipam` blocks in infra/compose.dev.yml / compose.prd.yml and the
 # `docker network create --subnet` for caddy-net (server-setup.md §4).
+#
+# Both environments are listed even though each app host now runs only ONE of
+# them (ADR-24). That is deliberate: the file is then byte-identical on both
+# machines, with no per-host config to drift or be forgotten, and a rule naming a
+# subnet that does not exist on this box matches nothing. Getting it wrong in the
+# other direction — a missing entry — is what breaks an environment, so both stay.
 MESH_SUBNETS=${EGRESS_MESH_SUBNETS:-"10.31.10.0/24 10.31.20.0/24"}
 INGRESS_SUBNETS=${EGRESS_INGRESS_SUBNETS:-"10.31.30.0/24=10.31.30.2"}
+
+# <container subnet>=<database ip>:<port>. The database addresses are the `db`
+# entries of `servers` in infra/terraform/platform/variables.tf; renumbering there
+# means editing here. Source-scoped, so even on a box that somehow had both
+# stacks, dev's containers could not open a connection to prd's database.
+DB_TARGETS=${EGRESS_DB_TARGETS:-"10.31.10.0/24=10.20.10.20:5432 10.31.20.0/24=10.20.20.20:5432"}
 
 # `br-+` is an iptables prefix wildcard: every docker user-defined bridge is
 # `br-<netid>`. `docker0` is the legacy default bridge — a bare `docker run`
@@ -119,13 +141,29 @@ prologue() {
 }
 
 build_forward() {
-  local ipt=$1 chain=$2 subnet spec proxy_ip iface bogon
+  local ipt=$1 chain=$2 subnet spec proxy_ip iface bogon endpoint db_ip db_port
   prologue "$ipt" "$chain" icmp
 
-  # The app's own wiring: api → postgres, scanner → postgres. Scoped to one
-  # subnet, and each environment has its own, so dev cannot reach prd.
+  # The app's own wiring: api → dashboard, and whatever else one environment's
+  # containers need from each other. Scoped to one subnet, and each environment
+  # has its own, so dev cannot reach prd.
   for subnet in $MESH_SUBNETS; do
     "$ipt" -A "$chain" -s "$subnet" -d "$subnet" -j RETURN
+  done
+
+  # api/scanner → the environment's database host. This has to be built BEFORE
+  # the bogon loop: the database lives at 10.20.x, which 10.0.0.0/8 would
+  # otherwise drop. Narrow on all three axes — one source subnet, one /32, one
+  # TCP port — so the hole is "this stack may speak Postgres to its own database"
+  # and not "this stack may reach the private network".
+  for spec in $DB_TARGETS; do
+    subnet=${spec%%=*}
+    endpoint=${spec#*=}
+    db_ip=${endpoint%%:*}
+    db_port=${endpoint##*:}
+    [[ "$subnet" != "$spec" && "$db_ip" != "$endpoint" && -n "$db_ip" && -n "$db_port" ]] \
+      || die "bad db target '${spec}' (want <cidr>=<ip>:<port>)"
+    "$ipt" -A "$chain" -s "$subnet" -d "${db_ip}/32" -p tcp --dport "$db_port" -j RETURN
   done
 
   # caddy-net exists so ONE reverse proxy can reach upstreams, and it is SHARED
@@ -150,8 +188,11 @@ build_forward() {
   done
 }
 
-# Container → this host. Nothing in the stack needs it (postgres is a container,
-# not a host service), so it is a blanket drop on the bridge interfaces.
+# Container → THIS host. Still a blanket drop on the bridge interfaces: nothing in
+# the stack needs a service on this machine. The database exemption above does not
+# weaken it — that is a FORWARD rule to another host's address, and host-destined
+# packets never reach FORWARD. A container asking this box for 5432 gets nothing,
+# which is correct: there is no Postgres here to ask.
 build_host() {
   local ipt=$1 chain=$2 iface
   prologue "$ipt" "$chain" icmp
@@ -291,9 +332,16 @@ remove_rules() {
 # Asserts BEHAVIOUR, not rule text: a throwaway container is attached to each
 # filtered network and made to try the connections that must fail and the ones
 # that must work. Every negative probe targets something that genuinely answers
-# when the firewall is absent (host sshd, this box's TLS port, the other
-# environment's postgres) — a probe at an address nothing listens on would pass
-# on a completely unprotected machine and is worse than no check at all.
+# when the firewall is absent (host sshd, this box's TLS port, the database
+# host's sshd) — a probe at an address nothing listens on would pass on a
+# completely unprotected machine and is worse than no check at all.
+#
+# Not asserted, because it CANNOT be asserted honestly: dev↔prd isolation. Since
+# ADR-24 the two environments are different machines on different private
+# networks with no route between them, so a probe from here at the other
+# environment's database would come back closed with every rule removed. That is
+# a probe that proves nothing. The isolation is now physical; what remains
+# testable is that this stack's reach into 10.20.x is one address on one port.
 
 VERIFY_IMAGE="alpine:3"
 CONTROL_TARGET=${EGRESS_CONTROL_TARGET:-"185.12.64.1 53"}  # Hetzner EU resolver
@@ -356,11 +404,15 @@ network_v4() {
   return 1
 }
 
-# IP of the container whose name contains <needle> on <network>, if any.
-container_ip() {
-  docker network inspect "$1" \
-    --format '{{range .Containers}}{{.Name}} {{.IPv4Address}}{{"\n"}}{{end}}' 2>/dev/null \
-    | awk -v needle="$2" 'index($1, needle) { split($2, a, "/"); print a[1]; exit }'
+# "<ip>:<port>" for the database <subnet> may reach, or non-zero if it has none.
+db_target_for() {
+  local subnet=$1 spec
+  for spec in $DB_TARGETS; do
+    [[ "${spec%%=*}" == "$subnet" ]] || continue
+    printf '%s\n' "${spec#*=}"
+    return 0
+  done
+  return 1
 }
 
 verify_rules() {
@@ -418,7 +470,7 @@ verify_rules() {
   host_ip=$(ip -4 route get "$1" 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p' | head -1)
   [[ -n "$host_ip" ]] || die "could not determine this host's public address"
 
-  local i j pg
+  local i endpoint db_ip db_port
   for i in "${!nets[@]}"; do
     echo "network ${nets[$i]} (${subnets[$i]}):"
     expect "cloud metadata unreachable" closed "$(probe "${nets[$i]}" 169.254.169.254 80)"
@@ -440,23 +492,22 @@ verify_rules() {
       expect "peer container blocked (only the proxy may initiate here)" closed \
         "$(peer_probe "${nets[$i]}")"
     fi
-  done
 
-  # Cross-network isolation, against a port that genuinely answers: each
-  # environment's postgres must be reachable from its own network and from
-  # nowhere else.
-  for i in "${!nets[@]}"; do
-    pg=$(container_ip "${nets[$i]}" postgres)
-    if [[ -z "$pg" ]]; then
-      log "note: no postgres on ${nets[$i]} — skipping its reachability assertions"
-      continue
+    # The database exemption, both halves. The positive probe is a control — get
+    # it wrong and the whole product is down. The negative one is the point of
+    # the pair: the database host's ufw allows 22 from anywhere, and sshd is
+    # listening, so with our rules gone this probe comes back open. "closed" here
+    # is the proof that the exemption is scoped to a PORT and not to a host.
+    if endpoint=$(db_target_for "${subnets[$i]}"); then
+      db_ip=${endpoint%%:*}
+      db_port=${endpoint##*:}
+      expect "database ${db_ip}:${db_port} reachable" open \
+        "$(probe "${nets[$i]}" "$db_ip" "$db_port")"
+      expect "database host ssh (${db_ip}:22) blocked" closed \
+        "$(probe "${nets[$i]}" "$db_ip" 22)"
+    elif [[ "${netkinds[$i]}" == "mesh" ]]; then
+      log "note: no EGRESS_DB_TARGETS entry for ${subnets[$i]} — this stack cannot reach any database, and that is not being verified"
     fi
-    expect "${nets[$i]}: own postgres (${pg}) reachable" open "$(probe "${nets[$i]}" "$pg" 5432)"
-    for j in "${!nets[@]}"; do
-      [[ "$i" != "$j" ]] || continue
-      expect "${nets[$j]} -> ${nets[$i]} postgres (${pg}) blocked" closed \
-        "$(probe "${nets[$j]}" "$pg" 5432)"
-    done
   done
 
   [[ $assertions -gt 0 ]] || die "no assertions ran — verify proved nothing"

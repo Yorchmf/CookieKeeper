@@ -1,0 +1,31 @@
+# CookieKeeper — DEV Caddy, on cookiekeeper-dev-app.
+#
+# One instance per machine since ADR-24. See Caddyfile.prd for the shared notes;
+# everything structural is identical, and everything behavioural is in
+# snippets.caddy so the two cannot drift.
+#
+# NOTE: cookiekeeper.eu is a PLACEHOLDER domain — replace everywhere once the real
+# domain is bought (and update Cloudflare DNS + the .env files to match).
+
+import snippets.caddy
+
+dev.cookiekeeper.eu {
+	import security_headers
+	import consent_body_cap
+	handle /api/v1/* {
+		reverse_proxy cookiekeeper-dev-api-1:8080
+	}
+	handle {
+		reverse_proxy cookiekeeper-dev-dashboard-1:3000
+	}
+}
+
+api.dev.cookiekeeper.eu {
+	import security_headers
+	import consent_body_cap
+	reverse_proxy cookiekeeper-dev-api-1:8080
+}
+
+cdn.dev.cookiekeeper.eu {
+	import cdn_site /srv/cdn/dev cookiekeeper-dev-api-1:8080
+}
