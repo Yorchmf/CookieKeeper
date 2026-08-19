@@ -70,13 +70,17 @@ jobs:
       - name: Compile
         run: ./gradlew classes testClasses
 
+      # The coverage gate belongs here, with the run that produces the exec data it reads.
+      # `check` also wires it in, so the Build step below excludes it explicitly — otherwise a
+      # run_build-without-run_tests job would verify coverage against exec data that no test in
+      # this job produced.
       - name: Test
         if: inputs.run_tests
-        run: ./gradlew test
+        run: ./gradlew test jacocoTestCoverageVerification
 
       - name: Build
         if: inputs.run_build
-        run: ./gradlew build -x test -x ktlintCheck -x detekt
+        run: ./gradlew build -x test -x jacocoTestCoverageVerification -x ktlintCheck -x detekt
 
   dashboard:
     needs: changes

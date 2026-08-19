@@ -159,12 +159,16 @@ val coverageClassPatterns =
         "com/complyr/scan/ScheduledRescanJob*",
     )
 
+// Both jacoco tasks read `classDirectories`, i.e. the outputs of compileKotlin, compileJava and
+// processResources. dependsOn(test) normally implies those transitively — but `-x test` severs that
+// edge, and Gradle then fails the build for an undeclared implicit dependency rather than risking
+// an ordering-dependent result. Depending on `classes` directly holds under any invocation.
 tasks.jacocoTestReport {
-    dependsOn(tasks.test)
+    dependsOn(tasks.test, tasks.named("classes"))
 }
 
 tasks.jacocoTestCoverageVerification {
-    dependsOn(tasks.test)
+    dependsOn(tasks.test, tasks.named("classes"))
     classDirectories.setFrom(
         files(
             classDirectories.files.map { dir ->
