@@ -7,6 +7,12 @@ how to run the stack lives in [RUNNING.md](RUNNING.md).
 Ordering rationale: launch-blockers first, then legal/compliance risk (we are a GDPR product —
 the bar is "exemplary"), then revenue/UX usefulness, then accepted-risk cleanup.
 
+Tiers 1–4 are the road to the first production tag. Tiers 5–8 are the "more than an MVP" programme
+agreed on 2026-08-20 and are listed **in build order** — within them, item number *is* the sequence.
+The ordering principle there is different: the cheapest items whose absence costs the *customer*
+money go first, the flagship compliance feature next, then proof and reach, then the index page that
+makes all of it findable.
+
 Status legend: ☐ open · ◐ in progress · ☑ done
 
 ---
@@ -45,3 +51,44 @@ Status legend: ☐ open · ◐ in progress · ☑ done
 |---|------|------|
 | 14 | ☑ **Authed throttle on policy generate** | Closed the accepted vary-a-byte version-spam gap: added a dedicated tight `POLICY` tier (5/min/user, VERIFY/EXPORT/CONTACT parity) to `AuthenticatedRateLimitFilter`. It is the filter's first **method-scoped** tier — `POST /api/v1/sites/{id}/policy` is the heavy write, but the *same* path serves the cheap `GET` current-policy read the dashboard hits on every policy-page view, so the branch gates on POST and the read stays on GENERAL. Sites sub-resource matching extracted into a behavior-preserving `sitesTier` helper (keeps detekt complexity under threshold). Two opus reviews (security + kotlin): no CRITICAL/HIGH/MEDIUM; kotlin LOWs applied (method-scoping regression test + comment nits), security LOWs pre-existing/immaterial (trailing-slash coupling shared with VERIFY/EXPORT; concurrency already bounded by the per-site advisory lock). |
 | 15 | ☐ **Shorter-plan over-retention** | Tenant-blind 3yr `DROP PARTITION` can let shorter-plan data outlive its window physically (read-layer floor hides it). Accepted per ADR-16. |
+
+---
+
+# Beyond MVP (Tiers 5–8)
+
+The product is already broad. These are the places where it is *shallow* in exactly the spots a
+customer is paying us to be right about. Build strictly in the order below — each tier assumes the
+one above it has landed.
+
+## Tier 5 — Consent correctness (build first)
+
+Cheap to build, and the customer pays for our being wrong. Nothing here is visible on a feature
+comparison table, which is precisely why competitors at this price point skip it.
+
+| # | Item | Why it matters |
+|---|------|----------------|
+| 16 | ☐ **Google Consent Mode v2 depth** | `widget/src/consent-mode.ts` pushes 4 of Google's 7 signals — `functionality_storage`, `personalization_storage` and `security_storage` are absent — and sets neither `ads_data_redaction` nor `url_passthrough`. Those two decide whether conversion modelling works for any customer running Google Ads, i.e. whether our banner quietly costs them attributed revenue. Consent Mode also supports `region`-scoped defaults, which buys EEA-only strictness with **no geo-IP and no PII at all** (Google does the geolocation) — the only geo-targeting design that fits constraint #4. Smallest item on this list; ships as a widget change behind the size gate. |
+| 17 | ☐ **Configurable consent lifetime** | `COOKIE_MAX_AGE_SECONDS` (`widget/src/constants.ts:109`) is hardcoded to 12 months. CNIL guidance is 6, and a customer's own DPO will eventually ask for it. Becomes a per-site banner-config field defaulting to today's 12 months, so no existing site changes behaviour on deploy. |
+| 18 | ☐ **Re-prompt when the site's tracking materially changes** (flagship) | The `version` in the consent cookie (`widget/src/storage.ts:19`) is the *payload schema* version, not the banner/policy version. A site that adds a marketing tracker in March keeps serving consents collected in January against a cookie list that never mentioned it — consent that is not valid for the new purpose. Stamp the banner-config version into the cookie and re-ask when a **material** change lands: a category newly in use, not a colour edit. Reuse `ScanDiffCalculator` — it is already the single definition of "what changed"; do not invent a second one. Caveat to design for and to say in the UI: a re-prompt wave resets the impression/interaction denominators, so analytics will show a step change that is ours, not the customer's. |
+
+## Tier 6 — Proof, reach & polish
+
+Turns "we run a banner for you" into "we can show you it is actually working".
+
+| # | Item | Why it matters |
+|---|------|----------------|
+| 19 | ☐ **Post-install blocking verification** | `ComplianceAnalyzer` already emits a `pre_consent_tracking` finding and `script-blocking.ts` blocks *tagged* scripts — but nothing tells a customer "Complyr is installed and Google Analytics still fires before consent: you never tagged this script, here is the line to change." That is the most common way an SMB ends up non-compliant *while paying for a consent tool*, and it is worse than having no banner, because the banner is a written claim the site does not honour. Needs per-tracker remediation copy plus a "still unfixed after N days" nudge riding the existing rescan schedule. |
+| 20 | ☐ **Embeddable cookie table** | A `<div data-complyr-policy>` that renders the current cookie list on the customer's **own** policy page, not only the hosted `/p/{publicId}`. Their lawyer-approved page then stays in sync with the latest scan by itself. Must hold the widget's hard constraints: size gate, zero dependencies, never blocks host render. |
+| 21 | ☐ **Banner accessibility — WCAG 2.2 AA + EAA conformance** | The European Accessibility Act has applied since June 2025 and covers exactly our e-commerce customers. Audit the banner and preferences dialog (keyboard trap, focus order and restore, contrast, reduced motion, dialog semantics), fix, then publish a conformance statement. Route via `a11y-architect` per CLAUDE.md. Compliance asset *and* marketing asset — most competitors' banners fail this. |
+
+## Tier 7 — Make all of it findable
+
+| # | Item | Why it matters |
+|---|------|----------------|
+| 22 | ☐ **In-app feature index — one page listing everything the product does** | Customers currently discover features by accident. One page listing every capability, what it is for, and a link that goes straight to using it. **Entitlement-aware**: a plan-locked feature appears as locked with its upgrade path rather than being invisible, so the page is the onboarding surface and the upsell surface at once — reuse `useEntitlementGate`'s 4-way status rather than a fresh gate. i18n in all 5 locales. Deliberately last in the programme: it is the index *of* items 16–21, so it is written once they exist and is updated whenever anything above it lands. |
+
+## Tier 8 — Growth epics (not before v1.1 ships)
+
+| # | Item | Why it matters |
+|---|------|----------------|
+| 23 | ☐ **Multi-user / agency accounts** | One account is one person today. Agencies are the best distribution channel into SMB, so this is the item most likely to change the growth curve — but roles, invites and permissions touch every endpoint and every ownership check (`requireOwnedSite` and its siblings all assume `userId` *is* the owner). A real epic with its own ADR, not a feature. Do not start it before v1.1 ships. |
