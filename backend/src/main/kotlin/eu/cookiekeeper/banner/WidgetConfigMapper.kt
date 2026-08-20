@@ -45,6 +45,7 @@ object WidgetConfigMapper {
             categories = config.categories.map { WidgetCategory(id = it.key, required = it.required) },
             removeBranding = response.removeBranding,
             consentLifetimeDays = config.consentLifetimeDays,
+            consentBasisVersion = response.consentBasisVersion,
         )
     }
 

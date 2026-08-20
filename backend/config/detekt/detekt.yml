@@ -21,6 +21,10 @@ complexity:
     # EntitlementService is the single source of truth for what a plan allows: each feature adds one
     # small `require*`/flag reader guard, so its public surface grows one method at a time by design.
     thresholdInClasses: 12
+    # A Spring Data repository is a catalogue of queries over ONE aggregate, not a class with many
+    # responsibilities: each method is a single query, and splitting one to satisfy a counter would
+    # scatter access to the same table without buying cohesion (SiteRepository is the case in point).
+    thresholdInInterfaces: 14
 
 style:
   # Align with ktlint's official-style line length (ktlintFormat reflows to 140).

@@ -1096,6 +1096,12 @@
       "languages": "Besuchersprachen",
       "none": "Keine"
     },
+    "reprompt": {
+      "title": "Besucher wurden erneut um Einwilligung gebeten",
+      "titleWithCategories": "Besucher wurden erneut gefragt – {categories} neu im Einsatz",
+      "body": "Am {when} hat diese Website Cookies oder Tracker eingesetzt, die von früheren Einwilligungen nicht abgedeckt waren. Deshalb hat das Banner erneut nach einer Auswahl gefragt. Bereits erteilte Einwilligungen blieben für alles gültig, was sie abgedeckt haben.",
+      "caveat": "Rechnen Sie um dieses Datum herum mit einem Sprung bei Banner-Einblendungen und Interaktionsrate: Das Banner wurde Besuchern erneut gezeigt, die bereits entschieden hatten. Das ist die erneute Abfrage, keine Veränderung Ihres Traffics."
+    },
     "actions": {
       "accept_all": "Alle akzeptieren",
       "reject_all": "Alle ablehnen",

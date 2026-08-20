@@ -1096,6 +1096,12 @@
       "languages": "Lingue dei visitatori",
       "none": "Nessuna"
     },
+    "reprompt": {
+      "title": "Ai visitatori è stato richiesto di nuovo il consenso",
+      "titleWithCategories": "Consenso richiesto di nuovo: {categories} in uso per la prima volta",
+      "body": "Il {when} questo sito ha iniziato a usare cookie o tracker che i consensi precedenti non coprivano, quindi il banner ha chiesto di nuovo una scelta. I consensi già raccolti sono rimasti validi per tutto ciò che coprivano.",
+      "caveat": "Intorno a quella data è normale vedere un salto nelle impressioni del banner e nel tasso di interazione: il banner è stato mostrato di nuovo a visitatori che avevano già deciso. È la nuova richiesta, non un cambiamento del tuo traffico."
+    },
     "actions": {
       "accept_all": "Accetta tutto",
       "reject_all": "Rifiuta tutto",

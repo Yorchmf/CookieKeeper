@@ -29,6 +29,24 @@ data class SiteAnalyticsResponse(
     // Null until the site has a completed scan / published policy — the dashboard shows an empty state.
     val cookies: CookieAnalytics?,
     val policy: PolicyAnalytics?,
+    // Present only when a consent re-prompt landed inside [range] — see [ConsentRepromptNotice].
+    val reprompt: ConsentRepromptNotice?,
+)
+
+/**
+ * A consent re-prompt that happened inside the displayed window (BACKLOG #18): the site started using a
+ * category its stored consents never covered, so the widget asked visitors again.
+ *
+ * This exists because the re-prompt is *our* effect on *their* numbers. A re-prompt wave re-shows the banner
+ * to visitors who already had a valid choice, so impressions jump and the interaction rate steps — a
+ * discontinuity the customer would otherwise read as a change in their traffic. The dashboard says so at the
+ * point where the step appears.
+ */
+data class ConsentRepromptNotice(
+    val changedAt: Instant,
+    // The categories newly in use that triggered it, e.g. ["marketing"]; empty only for rows written before
+    // the reason was recorded.
+    val addedCategories: List<String>,
 )
 
 /** The resolved window the figures cover ([from] inclusive, [to] exclusive). */

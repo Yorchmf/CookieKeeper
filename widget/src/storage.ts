@@ -1,6 +1,6 @@
 /**
  * First-party consent cookie `cmplyr`.
- * JSON payload: { version, categories, ts, vid, exp } — SameSite=Lax, expiring
+ * JSON payload: { version, categories, ts, vid, exp, bv } — SameSite=Lax, expiring
  * after the site's configured consent lifetime (12 months by default).
  *
  * `vid` is a random per-browser UUID (schema v2). It lives in this necessary,
@@ -14,6 +14,14 @@
  * restored browser profile, a jar synced from another device) still re-prompts.
  * It is also what keeps a returning visitor's tags running without a config
  * fetch: the widget can tell a live choice from a stale one offline.
+ *
+ * `bv` (schema v4) is the site's consent-basis version — a count of how many
+ * times a consent-decidable category came NEWLY into use on the site, bumped by
+ * the scanner, never by a banner edit. A visitor whose stamp is lower than the
+ * site's current basis consented to a shorter list of purposes than the site now
+ * uses, so they are asked again. Unlike `exp`, this cannot be judged offline: it
+ * is a property of the site, not of the decision, so the check happens AFTER the
+ * stored choice has already been enacted (see `askAgainIfStale` in main.ts).
  */
 
 import {
@@ -39,6 +47,21 @@ export interface ConsentState {
   vid?: string;
   /** Unix ms after which the choice is stale. Absent in v1/v2 cookies. */
   exp?: number;
+  /**
+   * Site consent-basis version the choice was made against. Absent in pre-v4
+   * cookies, and absent when the choice was made against the widget's built-in
+   * fallback config (a config fetch that failed knows no basis, and inventing
+   * one would re-prompt a visitor over our own network error).
+   */
+  bv?: number;
+}
+
+/** Everything about a write that comes from the site's config rather than the visitor. */
+export interface ConsentWriteOptions {
+  /** Site's configured consent lifetime in days; see [resolveLifetimeDays]. */
+  lifetimeDays?: number | undefined;
+  /** Site's current consent-basis version; omitted when unknown (see [ConsentState.bv]). */
+  basisVersion?: number | undefined;
 }
 
 const UUID_PATTERN =
@@ -100,6 +123,35 @@ export function resolveLifetimeDays(days: number | undefined): number {
 }
 
 /**
+ * A basis version worth stamping: a whole number of at least 1 (the value every
+ * site starts at). Anything else — missing, NaN, zero, negative, fractional —
+ * yields null, meaning "unknown", and the cookie carries no `bv` at all.
+ */
+export function resolveBasisVersion(version: number | undefined): number | null {
+  if (typeof version !== 'number' || !Number.isFinite(version)) return null;
+  const whole = Math.floor(version);
+  return whole >= 1 ? whole : null;
+}
+
+/**
+ * Whether a stored choice was made against an older list of purposes than the
+ * site uses now. Unknown on either side (a pre-v4 cookie, or a config that
+ * carries no basis) is NOT stale: only a strict increase between two known
+ * versions means the visitor was asked a narrower question than we would ask
+ * today. `current` is deliberately the caller's raw config value, so the same
+ * validation applies to both sides.
+ */
+export function isBasisStale(
+  state: ConsentState,
+  current: number | undefined,
+): boolean {
+  const stamped = resolveBasisVersion(state.bv);
+  const site = resolveBasisVersion(current);
+  if (stamped === null || site === null) return false;
+  return site > stamped;
+}
+
+/**
  * Return the visitor's existing vid, or mint a fresh UUID when there is none
  * (first visit, corrupt cookie, or a v1 cookie predating `vid`).
  *
@@ -115,25 +167,31 @@ export function getOrCreateVid(): string {
 /**
  * Persist a consent choice keyed to [vid]; returns the stored state.
  *
- * [lifetimeDays] is the site's configured consent lifetime, applied to both the
+ * `lifetimeDays` is the site's configured consent lifetime, applied to both the
  * cookie's `Max-Age` and the stamped `exp` so the two always agree. Changing it
  * affects choices made from then on: a cookie already in a visitor's browser
- * keeps the window it was written with until they choose again.
+ * keeps the window it was written with until they choose again. `basisVersion`
+ * is stamped the same way and read the same way — what this visitor was asked
+ * about, frozen at the moment they answered.
  */
 export function writeConsent(
   categories: ConsentDecision,
   vid: string,
-  lifetimeDays?: number,
+  options: ConsentWriteOptions = {},
 ): ConsentState {
-  const days = resolveLifetimeDays(lifetimeDays);
+  const days = resolveLifetimeDays(options.lifetimeDays);
   const maxAgeSeconds = days * SECONDS_PER_DAY;
   const now = Date.now();
+  const basisVersion = resolveBasisVersion(options.basisVersion);
   const state: ConsentState = {
     version: COOKIE_SCHEMA_VERSION,
     categories,
     ts: now,
     vid,
     exp: now + maxAgeSeconds * 1000,
+    // Omitted rather than defaulted when unknown: a `bv` we invented would make
+    // the next real basis look like a change and re-prompt the whole site.
+    ...(basisVersion === null ? {} : { bv: basisVersion }),
   };
   const value = encodeURIComponent(JSON.stringify(state));
   // Secure only on https so the local dev harness (http) keeps working.
@@ -171,12 +229,17 @@ function isConsentState(value: unknown): value is ConsentState {
   const candidate = value as Record<string, unknown>;
   const vid = candidate['vid'];
   const exp = candidate['exp'];
+  const bv = candidate['bv'];
   return (
     typeof candidate['version'] === 'number' &&
     typeof candidate['ts'] === 'number' &&
     typeof candidate['categories'] === 'object' &&
     candidate['categories'] !== null &&
     (vid === undefined || typeof vid === 'string') &&
-    (exp === undefined || typeof exp === 'number')
+    (exp === undefined || typeof exp === 'number') &&
+    // Same strictness as `vid`/`exp`: a non-numeric `bv` is a tampered or
+    // corrupt payload, not a choice. An out-of-range NUMBER is a different case
+    // — it parses, and [resolveBasisVersion] simply declines to judge it.
+    (bv === undefined || typeof bv === 'number')
   );
 }

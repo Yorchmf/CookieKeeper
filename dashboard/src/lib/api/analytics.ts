@@ -106,6 +106,21 @@ export interface AnalyticsRange {
   to: string;
 }
 
+/**
+ * A consent re-prompt that landed inside the displayed window (backend `ConsentRepromptNotice`): the site
+ * started using a category its stored consents never covered, so the widget asked visitors again.
+ *
+ * Surfaced because it distorts the numbers next to it — a re-prompt wave re-shows the banner to visitors who
+ * already had a valid choice, so impressions jump and the interaction rate steps for reasons that have
+ * nothing to do with the customer's traffic.
+ */
+export interface ConsentRepromptNotice {
+  /** ISO-8601 instant the basis changed. */
+  changedAt: string;
+  /** Category keys newly in use that triggered it, e.g. `["marketing"]`. */
+  addedCategories: string[];
+}
+
 /** The full analytics summary for one site (backend `SiteAnalyticsResponse`). */
 export interface SiteAnalytics {
   range: AnalyticsRange;
@@ -116,6 +131,8 @@ export interface SiteAnalytics {
   cookies: CookieAnalytics | null;
   /** Absent (null) until the site has a published policy. */
   policy: PolicyAnalytics | null;
+  /** Present only when a consent re-prompt happened inside the displayed window. */
+  reprompt: ConsentRepromptNotice | null;
 }
 
 /**

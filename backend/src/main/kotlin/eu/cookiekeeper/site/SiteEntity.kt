@@ -8,6 +8,7 @@ import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import java.time.Instant
@@ -89,6 +90,19 @@ data class SiteEntity(
     // sites honest. See V21.
     @Column(name = "hide_branding", nullable = false)
     val hideBranding: Boolean = true,
+    // What the site's visitors are consenting TO, versioned (V27, BACKLOG #18). Served on the widget
+    // config and stamped into the consent cookie at the moment of choice; a strictly higher version
+    // re-prompts. Bumped only by [ConsentBasisService] when a consent-decidable category comes newly
+    // into use — never by a banner edit. [consentBasisCategories] is null until the first completed
+    // scan seeds it, which is what stops a deploy from re-prompting every existing site's visitors.
+    @Column(name = "consent_basis_version", nullable = false)
+    val consentBasisVersion: Int = 1,
+    @Column(name = "consent_basis_categories")
+    val consentBasisCategories: String? = null,
+    @Column(name = "consent_basis_changed_at")
+    val consentBasisChangedAt: Instant? = null,
+    @Column(name = "consent_basis_added")
+    val consentBasisAdded: String? = null,
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
     @Column(name = "updated_at", nullable = false)
@@ -169,6 +183,49 @@ interface SiteRepository : JpaRepository<SiteEntity, UUID> {
     fun acquireUserSiteLock(
         @Param("key") key: Long,
     ): Long
+
+    /**
+     * Record a site's FIRST observed consent basis without touching the version — the seeding half of
+     * [ConsentBasisService]. Guarded on `IS NULL` so it is idempotent and so it can never overwrite a
+     * basis a later scan has already grown: an existing site's visitors must not be re-prompted just
+     * because we started tracking this.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(
+        """
+        UPDATE SiteEntity s SET s.consentBasisCategories = :categories
+        WHERE s.id = :siteId AND s.consentBasisCategories IS NULL
+        """,
+    )
+    fun seedConsentBasis(
+        @Param("siteId") siteId: UUID,
+        @Param("categories") categories: String,
+    ): Int
+
+    /**
+     * Bump a site's consent basis because a decidable category came newly into use, which re-prompts
+     * its visitors. Compare-and-set on the basis the caller read ([expectedCategories]) so two scans
+     * completing at once can only bump once — the loser reads the winner's set on its next run and
+     * finds nothing new. Returns the number of rows updated: 0 means someone else got there first.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(
+        """
+        UPDATE SiteEntity s
+        SET s.consentBasisVersion = s.consentBasisVersion + 1,
+            s.consentBasisCategories = :categories,
+            s.consentBasisAdded = :added,
+            s.consentBasisChangedAt = :changedAt
+        WHERE s.id = :siteId AND s.consentBasisCategories = :expectedCategories
+        """,
+    )
+    fun bumpConsentBasis(
+        @Param("siteId") siteId: UUID,
+        @Param("categories") categories: String,
+        @Param("added") added: String,
+        @Param("changedAt") changedAt: Instant,
+        @Param("expectedCategories") expectedCategories: String,
+    ): Int
 
     /**
      * Active sites eligible for a scheduled re-scan ([eu.cookiekeeper.scan.ScheduledRescanJob]): no

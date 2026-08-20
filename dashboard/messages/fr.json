@@ -1096,6 +1096,12 @@
       "languages": "Langues des visiteurs",
       "none": "Aucune"
     },
+    "reprompt": {
+      "title": "Les visiteurs ont été sollicités à nouveau",
+      "titleWithCategories": "Les visiteurs ont été sollicités à nouveau – nouvelle utilisation : {categories}",
+      "body": "Le {when}, ce site a commencé à utiliser des cookies ou traceurs que les consentements précédents ne couvraient pas. La bannière a donc redemandé un choix aux visiteurs. Les consentements déjà donnés sont restés valables pour tout ce qu'ils couvraient.",
+      "caveat": "Attendez-vous à un saut des affichages de la bannière et du taux d'interaction autour de cette date : la bannière a été réaffichée à des visiteurs qui avaient déjà choisi. C'est la nouvelle demande, pas une évolution de votre trafic."
+    },
     "actions": {
       "accept_all": "Tout accepter",
       "reject_all": "Tout refuser",

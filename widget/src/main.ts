@@ -33,6 +33,7 @@ import {
 } from './script-blocking';
 import {
   getOrCreateVid,
+  isBasisStale,
   readConsent,
   writeConsent,
   type ConsentState,
@@ -155,18 +156,43 @@ async function init(): Promise<void> {
   flushPendingEvents();
 
   const stored = readConsent();
-  if (stored) {
-    // Returning visitor: re-signal consent and run the tags they already allowed,
-    // before any banner work — no page render is ever blocked on this.
-    updateConsent(stored.categories);
-    unblockScripts(grantedCategories(stored.categories));
+  if (!stored) {
+    await loadAndShowBanner();
     return;
   }
-  await loadAndShowBanner();
+
+  // Returning visitor: re-signal consent and run the tags they already allowed,
+  // before any banner work — no page render is ever blocked on this.
+  updateConsent(stored.categories);
+  unblockScripts(grantedCategories(stored.categories));
+
+  // Only then ask whether the question itself has changed. Enacting first is
+  // safe because a category the visitor never saw is absent from their decision,
+  // and both `updateConsent` and `grantedCategories` treat absent as denied — so
+  // the new purpose stays blocked for the whole time this check is in flight.
+  await askAgainIfStale(stored);
+}
+
+/**
+ * Re-prompt a visitor whose consent predates a material change in what the site
+ * tracks (BACKLOG #18) — a category newly in use, not a restyled banner.
+ *
+ * Costs a config fetch only for cookies that carry a basis stamp, so the visitors
+ * this can never apply to (pre-v4 cookies, choices made against the fallback
+ * config) pay nothing. The stored choice is deliberately left in place: it is
+ * still valid evidence for the purposes it covered, and it keeps those tags
+ * running while the visitor decides about the new one.
+ */
+async function askAgainIfStale(stored: ConsentState): Promise<void> {
+  if (stored.bv === undefined || !siteKey) return;
+  const config = await fetchConfig(siteKey);
+  if (!isBasisStale(stored, config.consentBasisVersion)) return;
+  // Hand the config over rather than let the banner path fetch it a second time.
+  await loadAndShowBanner({ config });
 }
 
 async function loadAndShowBanner(
-  options: { forced?: boolean } = {},
+  options: { forced?: boolean; config?: WidgetConfig } = {},
 ): Promise<void> {
   if (!siteKey) {
     // Misconfigured embed — do nothing, never break the page.
@@ -196,7 +222,7 @@ async function loadAndShowBanner(
     void fetchOriginToken(siteKey);
   }
 
-  const config = await fetchConfig(siteKey);
+  const config = options.config ?? (await fetchConfig(siteKey));
   const lang = navigator.language || config.defaultLanguage;
   renderBanner(config, resolveTexts(config, lang), {
     onAction: (action) => applyChoice(config, action, lang),
@@ -270,8 +296,13 @@ function commit(
   const vid = getOrCreateVid();
   // The lifetime is read from the config in force right now and stamped into the
   // cookie, so the visitor's choice carries its own deadline and a returning
-  // visit needs no config fetch to know whether it still stands.
-  writeConsent(categories, vid, config.consentLifetimeDays);
+  // visit needs no config fetch to know whether it still stands. The consent
+  // basis rides along for the same reason: it records which list of purposes
+  // this answer was an answer to.
+  writeConsent(categories, vid, {
+    lifetimeDays: config.consentLifetimeDays,
+    basisVersion: config.consentBasisVersion,
+  });
 
   // Audit evidence first — this is the compliance-critical write. eventKey is
   // minted here, once per decision, and rides inside the payload — so every

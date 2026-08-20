@@ -29,6 +29,13 @@ data class WidgetConfigPayload(
      * tags run without fetching this config at all.
      */
     val consentLifetimeDays: Int,
+    /**
+     * Version of what visitors are consenting TO (BACKLOG #18) — bumped only when a consent-decidable
+     * category comes newly into use on the site, never by a banner edit. Stamped into the consent
+     * cookie at the moment of choice; a returning visitor whose stamp is strictly lower than this is
+     * asked again, because their choice was made against a shorter list of purposes.
+     */
+    val consentBasisVersion: Int,
 )
 
 /**

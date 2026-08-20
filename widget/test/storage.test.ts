@@ -2,9 +2,12 @@ import { beforeEach, describe, expect, test } from 'vitest';
 import {
   COOKIE_NAME,
   getOrCreateVid,
+  isBasisStale,
   readConsent,
+  resolveBasisVersion,
   resolveLifetimeDays,
   writeConsent,
+  type ConsentState,
 } from '../src/storage';
 import {
   COOKIE_SCHEMA_VERSION,
@@ -117,7 +120,7 @@ describe('consent lifetime', () => {
 
   test('stamps exp from the configured lifetime', () => {
     const before = Date.now();
-    const written = writeConsent({ necessary: true }, VID, 180);
+    const written = writeConsent({ necessary: true }, VID, { lifetimeDays: 180 });
     const expected = before + 180 * SECONDS_PER_DAY * 1000;
     // Allow for the clock advancing between the reading above and the write.
     expect(written.exp).toBeGreaterThanOrEqual(expected);
@@ -142,7 +145,7 @@ describe('consent lifetime', () => {
       },
     });
     try {
-      writeConsent({ necessary: true }, VID, 90);
+      writeConsent({ necessary: true }, VID, { lifetimeDays: 90 });
     } finally {
       delete (document as unknown as { cookie?: unknown }).cookie;
     }
@@ -217,6 +220,88 @@ describe('resolveLifetimeDays', () => {
 
   test('floors a fractional value to whole days', () => {
     expect(resolveLifetimeDays(90.9)).toBe(90);
+  });
+});
+
+describe('consent basis (BACKLOG #18)', () => {
+  beforeEach(() => {
+    clearCookie();
+  });
+
+  function state(bv?: number): ConsentState {
+    const base: ConsentState = {
+      version: COOKIE_SCHEMA_VERSION,
+      categories: {},
+      ts: Date.now(),
+    };
+    return bv === undefined ? base : { ...base, bv };
+  }
+
+  test('stamps the site basis version into the cookie', () => {
+    const written = writeConsent({ necessary: true }, VID, { basisVersion: 3 });
+    expect(written.bv).toBe(3);
+    expect(readConsent()?.bv).toBe(3);
+  });
+
+  test('omits bv when the site basis is unknown', () => {
+    // A choice made against the fallback config must not look stale later.
+    expect(writeConsent({ necessary: true }, VID).bv).toBeUndefined();
+    expect(readConsent()).not.toHaveProperty('bv');
+  });
+
+  test('rejects a non-numeric bv but tolerates an out-of-range one', () => {
+    setRawCookie({
+      version: COOKIE_SCHEMA_VERSION,
+      categories: { necessary: true },
+      ts: Date.now(),
+      vid: VID,
+      exp: Date.now() + 60_000,
+      bv: 'three',
+    });
+    // Same strictness as a corrupt `vid`/`exp`: not a choice at all.
+    expect(readConsent()).toBeNull();
+
+    setRawCookie({
+      version: COOKIE_SCHEMA_VERSION,
+      categories: { necessary: true },
+      ts: Date.now(),
+      vid: VID,
+      exp: Date.now() + 60_000,
+      bv: 0,
+    });
+    expect(readConsent()?.categories).toEqual({ necessary: true });
+    expect(isBasisStale(readConsent()!, 2)).toBe(false);
+  });
+
+  test('is stale only when the site basis has moved past the stamp', () => {
+    expect(isBasisStale(state(1), 2)).toBe(true);
+    expect(isBasisStale(state(1), 9)).toBe(true);
+    expect(isBasisStale(state(2), 2)).toBe(false);
+    // Never backwards: a basis that somehow regressed must not re-prompt.
+    expect(isBasisStale(state(3), 2)).toBe(false);
+  });
+
+  test('treats an unknown version on either side as not stale', () => {
+    // Pre-v4 cookie: upgrading the widget re-prompts nobody.
+    expect(isBasisStale(state(undefined), 4)).toBe(false);
+    // Config without a basis (fallback, or an older backend): no verdict, no prompt.
+    expect(isBasisStale(state(2), undefined)).toBe(false);
+  });
+});
+
+describe('resolveBasisVersion', () => {
+  test('keeps a whole version of at least 1', () => {
+    expect(resolveBasisVersion(1)).toBe(1);
+    expect(resolveBasisVersion(7)).toBe(7);
+    expect(resolveBasisVersion(2.9)).toBe(2);
+  });
+
+  test('rejects anything that is not a usable version', () => {
+    expect(resolveBasisVersion(undefined)).toBeNull();
+    expect(resolveBasisVersion(0)).toBeNull();
+    expect(resolveBasisVersion(-1)).toBeNull();
+    expect(resolveBasisVersion(Number.NaN)).toBeNull();
+    expect(resolveBasisVersion(Number.POSITIVE_INFINITY)).toBeNull();
   });
 });
 

@@ -59,9 +59,18 @@ class AnalyticsServiceTest {
             ConsentAnalyticsAssembler(),
         )
 
-    private fun stubOwnedSiteWithEmptyCurrentWindow() {
+    private fun stubOwnedSiteWithEmptyCurrentWindow(
+        basisChangedAt: Instant? = null,
+        basisAdded: String? = null,
+    ) {
         every { siteRepository.findByIdAndUserId(siteId, userId) } returns
-            SiteEntity(userId = userId, domain = "d.eu", siteKey = "k")
+            SiteEntity(
+                userId = userId,
+                domain = "d.eu",
+                siteKey = "k",
+                consentBasisChangedAt = basisChangedAt,
+                consentBasisAdded = basisAdded,
+            )
         every { consentRepository.dailyActionCounts(siteId, range.from, range.to) } returns emptyList()
         every { consentRepository.categoryOptInCounts(siteId, range.from, range.to) } returns emptyList()
         every { consentRepository.languageCounts(siteId, range.from, range.to) } returns emptyList()
@@ -106,6 +115,37 @@ class AnalyticsServiceTest {
         assertEquals(12, result.consent.impressions)
         assertEquals(3, result.consent.totalEvents)
         assertEquals(0.25, result.consent.interactionRate)
+    }
+
+    @Test
+    fun `flags a consent re-prompt that landed inside the displayed window`() {
+        // The step in the impression and interaction-rate series is ours, not the customer's traffic —
+        // so it is reported alongside the numbers it distorts (BACKLOG #18).
+        val changedAt = range.from.plusSeconds(86_400)
+        stubOwnedSiteWithEmptyCurrentWindow(basisChangedAt = changedAt, basisAdded = "marketing,statistics")
+
+        val notice = requireNotNull(service.summarize(userId, siteId, AnalyticsFilter()).reprompt)
+
+        assertEquals(changedAt, notice.changedAt)
+        assertEquals(listOf("marketing", "statistics"), notice.addedCategories)
+    }
+
+    @Test
+    fun `does not flag a re-prompt outside the displayed window`() {
+        // A window that does not contain the re-prompt has no step to explain; `to` is exclusive, so a
+        // change stamped exactly at the upper bound belongs to the next window.
+        stubOwnedSiteWithEmptyCurrentWindow(basisChangedAt = range.from.minusSeconds(1), basisAdded = "marketing")
+        assertNull(service.summarize(userId, siteId, AnalyticsFilter()).reprompt)
+
+        stubOwnedSiteWithEmptyCurrentWindow(basisChangedAt = range.to, basisAdded = "marketing")
+        assertNull(service.summarize(userId, siteId, AnalyticsFilter()).reprompt)
+    }
+
+    @Test
+    fun `omits the notice for a site that has never been re-prompted`() {
+        stubOwnedSiteWithEmptyCurrentWindow()
+
+        assertNull(service.summarize(userId, siteId, AnalyticsFilter()).reprompt)
     }
 
     @Test

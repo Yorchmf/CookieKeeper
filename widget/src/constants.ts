@@ -101,11 +101,15 @@ export const API_BASE = bases.api;
  * v2 added `vid`, a stable per-browser id sent with each consent event so a
  * visitor's audit history correlates without storing any reversible identifier.
  * v3 added `exp`, the moment the choice stops counting as current.
+ * v4 added `bv`, the site's consent-basis version at the moment of choice — what
+ * the visitor was actually asked about, so the banner can ask again when the site
+ * starts using a purpose that list never mentioned.
  * Older cookies are still honored on read: a missing `vid` is minted on the next
- * choice, and a missing `exp` is treated as [DEFAULT_CONSENT_LIFETIME_DAYS] from
- * its `ts` — exactly the window those cookies were written with.
+ * choice, a missing `exp` is treated as [DEFAULT_CONSENT_LIFETIME_DAYS] from its
+ * `ts` — exactly the window those cookies were written with — and a missing `bv`
+ * is never treated as stale, so upgrading the widget re-prompts nobody.
  */
-export const COOKIE_SCHEMA_VERSION = 3;
+export const COOKIE_SCHEMA_VERSION = 4;
 
 export const SECONDS_PER_DAY = 60 * 60 * 24;
 

@@ -49,7 +49,7 @@ class ScanQueryService(
         // wasted work. The calculator does the precise cross-page previous-scan comparison.
         val diff =
             if (scan.status == ScanStatus.DONE) {
-                scanDiffCalculator.forScan(scan, cookies.map { it.name }, scan.marketingTrackerCount ?: 0)
+                scanDiffCalculator.forScan(scan, ScanFindings.of(cookies, scan.marketingTrackerCount ?: 0))
             } else {
                 null
             }

@@ -36,9 +36,11 @@ class WidgetConfigMapperTest {
         theme: BannerTheme = BannerTheme(primaryColor = "#2563eb", background = "#ffffff", textColor = "#0f172a"),
         removeBranding: Boolean = false,
         consentLifetimeDays: Int = DEFAULT_CONSENT_LIFETIME_DAYS,
+        consentBasisVersion: Int = 1,
     ) = WidgetConfigResponse(
         siteKey = "pk_test",
         bannerVersion = 7,
+        consentBasisVersion = consentBasisVersion,
         removeBranding = removeBranding,
         config =
             BannerConfigDocument(
@@ -76,6 +78,14 @@ class WidgetConfigMapperTest {
         // re-prompt every visitor at 12 months regardless of what the customer configured.
         assertEquals(DEFAULT_CONSENT_LIFETIME_DAYS, WidgetConfigMapper.toPayload(response()).consentLifetimeDays)
         assertEquals(180, WidgetConfigMapper.toPayload(response(consentLifetimeDays = 180)).consentLifetimeDays)
+    }
+
+    @Test
+    fun `carries the site's consent basis version through to the widget`() {
+        // Comes off the SITE, not the banner document — a banner edit must never move it, or every
+        // colour change would re-prompt the whole site (BACKLOG #18).
+        assertEquals(1, WidgetConfigMapper.toPayload(response()).consentBasisVersion)
+        assertEquals(4, WidgetConfigMapper.toPayload(response(consentBasisVersion = 4)).consentBasisVersion)
     }
 
     @Test

@@ -175,6 +175,7 @@ class BannerConfigService(
             site.siteKey,
             config,
             entitlementService.effectiveRemoveBranding(site.userId, site.hideBranding),
+            site.consentBasisVersion,
         )
     }
 }

@@ -70,6 +70,15 @@ export interface WidgetConfig {
    * — see `writeConsent` — so it is never needed on a returning visit.
    */
   consentLifetimeDays?: number;
+  /**
+   * Version of what visitors are consenting TO: bumped when a consent-decidable
+   * category comes newly into use on the site (a marketing tracker added in
+   * March), never by a colour or copy edit. Stamped into the cookie at the moment
+   * of choice; a returning visitor carrying a lower stamp is asked again.
+   *
+   * Absent from [DEFAULT_CONFIG] on purpose — see `ConsentState.bv`.
+   */
+  consentBasisVersion?: number;
 }
 
 export const DEFAULT_CONFIG: WidgetConfig = {

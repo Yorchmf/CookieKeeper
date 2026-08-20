@@ -14,6 +14,7 @@ import { DownloadEvidencePackButton } from "@/components/analytics/download-evid
 import { ExportAnalyticsButton } from "@/components/analytics/export-analytics-button";
 import { LanguageSplit } from "@/components/analytics/language-split";
 import { parseRange, type RangeDays, RangeSelector } from "@/components/analytics/range-selector";
+import { RepromptNotice } from "@/components/analytics/reprompt-notice";
 import { StatTile } from "@/components/analytics/stat-tile";
 import { useConsentDeltas } from "@/components/analytics/use-consent-deltas";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -138,7 +139,7 @@ export function Analytics({ siteId }: { siteId: string }) {
     );
   }
 
-  const { consent, cookies, policy, previous } = query.data;
+  const { consent, cookies, policy, previous, reprompt } = query.data;
   const acceptShare = acceptSharePct(consent);
   const interactionRate = interactionRatePct(consent);
 
@@ -154,6 +155,10 @@ export function Analytics({ siteId }: { siteId: string }) {
     <main className="flex-1 p-6">
       <section aria-labelledby="analytics-heading" className="flex max-w-6xl flex-col gap-6">
         {header}
+
+        {/* Above the tiles it qualifies: a re-prompt inside this window steps the impression count and the
+            interaction rate below, for reasons that are ours rather than the customer's traffic. */}
+        {reprompt ? <RepromptNotice notice={reprompt} /> : null}
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <StatTile

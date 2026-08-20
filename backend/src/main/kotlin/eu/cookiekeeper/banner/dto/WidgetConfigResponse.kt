@@ -9,10 +9,14 @@ import eu.cookiekeeper.banner.BannerTextDefaults
  * the banner version the visitor is being shown (recorded later on the consent event), the full
  * config document the widget renders from, and whether the site's plan suppresses the "Powered by
  * Complyr" attribution ([removeBranding], a paid-plan entitlement resolved from the site owner).
+ *
+ * [consentBasisVersion] comes off the SITE, not the banner config: it tracks what visitors are
+ * consenting *to* (BACKLOG #18), which changes when the site's tracking does — not when its colours do.
  */
 data class WidgetConfigResponse(
     val siteKey: String,
     val bannerVersion: Int,
+    val consentBasisVersion: Int,
     val config: BannerConfigDocument,
     val removeBranding: Boolean,
 ) {
@@ -21,10 +25,12 @@ data class WidgetConfigResponse(
             siteKey: String,
             entity: BannerConfigEntity,
             removeBranding: Boolean,
+            consentBasisVersion: Int,
         ): WidgetConfigResponse =
             WidgetConfigResponse(
                 siteKey = siteKey,
                 bannerVersion = entity.version,
+                consentBasisVersion = consentBasisVersion,
                 // Every visitor-facing read goes through here, so a config predating ADR-19 Slice 2
                 // still reaches the widget with localized preferences-panel copy.
                 config = BannerTextDefaults.complete(entity.config),

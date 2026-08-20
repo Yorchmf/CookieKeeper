@@ -79,7 +79,7 @@ class ScanCompletionNotifier(
         // completed scan. The same [ScanDiffCalculator] the dashboard reads decides "changed" here, so the
         // email and the on-screen diff can never disagree about what counts as new.
         if (trigger == ScanTrigger.SCHEDULED &&
-            !scanDiffCalculator.forScan(target.scan, cookies.map { it.name }, trackerCount).hasNewFindings
+            !scanDiffCalculator.forScan(target.scan, ScanFindings.of(cookies, trackerCount)).hasNewFindings
         ) {
             log.debug("Scheduled scan {} found nothing new; no email", scanId)
             return

@@ -16,6 +16,9 @@ import kotlin.test.assertTrue
  * scan-complete email gate and the dashboard read from. Compared by cookie NAME (every scan writes its own
  * rows) and by tracker count. The cases that matter are the boundaries: no baseline, added, removed, and a
  * tracker-only change with identical cookies.
+ *
+ * [ScanFindings] is the other half: the same reduction of a scan feeds the consent-basis check (BACKLOG #18),
+ * so its rules about which categories count are asserted here rather than in a parallel test.
  */
 class ScanDiffTest {
     private val scanRepository = mockk<ScanRepository>()
@@ -26,20 +29,51 @@ class ScanDiffTest {
     private val scanId: UUID = UUID.randomUUID()
     private val now: Instant = Instant.parse("2026-08-13T10:00:00Z")
 
+    // ---- ScanFindings (the shared reduction) -------------------------------------------------
+
+    @Test
+    fun `findings collect cookie names and the categories those cookies put in use`() {
+        val findings =
+            ScanFindings.of(
+                listOf(cookie("sid", category = "necessary"), cookie("_ga", category = "statistics")),
+                trackerCount = 0,
+            )
+
+        assertEquals(setOf("sid", "_ga"), findings.cookieNames)
+        assertEquals(setOf("statistics"), findings.categoriesInUse, "necessary can never be rejected, so it is not a basis")
+        assertEquals(0, findings.trackerCount)
+    }
+
+    @Test
+    fun `an unclassified cookie puts no category in use`() {
+        // A signature miss means we do not know what the cookie is for — guessing would re-prompt on noise.
+        val findings = ScanFindings.of(listOf(cookie("wp_x", category = null)), trackerCount = 0)
+
+        assertEquals(setOf("wp_x"), findings.cookieNames)
+        assertTrue(findings.categoriesInUse.isEmpty())
+    }
+
+    @Test
+    fun `a marketing tracker puts marketing in use even with no marketing cookie`() {
+        // Third-party marketing hosts are counted, never stored, so the count is the only evidence.
+        val findings = ScanFindings.of(listOf(cookie("sid", category = "necessary")), trackerCount = 2)
+
+        assertEquals(setOf("marketing"), findings.categoriesInUse)
+        assertEquals(2, findings.trackerCount)
+    }
+
     // ---- ScanDiff (pure model) ---------------------------------------------------------------
 
     @Test
     fun `between reports added and removed cookies as sorted directional sets`() {
         val diff =
             ScanDiff.between(
-                currentCookieNames = listOf("_ga", "_fbp", "sid"),
-                currentTrackerCount = 3,
+                current = findings(listOf("_ga", "_fbp", "sid"), trackerCount = 3),
                 previous =
                     PreviousScan(
                         scanId = UUID.randomUUID(),
                         scanAt = now.minus(Duration.ofDays(7)),
-                        cookieNames = listOf("sid", "_hjid"),
-                        trackerCount = 1,
+                        findings = findings(listOf("sid", "_hjid"), trackerCount = 1),
                     ),
             )
 
@@ -54,7 +88,7 @@ class ScanDiffTest {
 
     @Test
     fun `baseline has no previous and no comparison`() {
-        val diff = ScanDiff.baseline(currentTrackerCount = 2)
+        val diff = ScanDiff.baseline(findings(emptyList(), trackerCount = 2))
 
         assertFalse(diff.hasPrevious)
         assertNull(diff.previousScanId)
@@ -69,14 +103,12 @@ class ScanDiffTest {
     fun `identical cookies and tracker count are not new findings`() {
         val diff =
             ScanDiff.between(
-                currentCookieNames = listOf("_ga", "_fbp"),
-                currentTrackerCount = 2,
+                current = findings(listOf("_ga", "_fbp"), trackerCount = 2),
                 previous =
                     PreviousScan(
                         scanId = UUID.randomUUID(),
                         scanAt = now.minus(Duration.ofDays(7)),
-                        cookieNames = listOf("_fbp", "_ga"),
-                        trackerCount = 2,
+                        findings = findings(listOf("_fbp", "_ga"), trackerCount = 2),
                     ),
             )
 
@@ -90,14 +122,12 @@ class ScanDiffTest {
     fun `a changed tracker count is a new finding even when the cookies are identical`() {
         val diff =
             ScanDiff.between(
-                currentCookieNames = listOf("_ga"),
-                currentTrackerCount = 4,
+                current = findings(listOf("_ga"), trackerCount = 4),
                 previous =
                     PreviousScan(
                         scanId = UUID.randomUUID(),
                         scanAt = now.minus(Duration.ofDays(7)),
-                        cookieNames = listOf("_ga"),
-                        trackerCount = 1,
+                        findings = findings(listOf("_ga"), trackerCount = 1),
                     ),
             )
 
@@ -121,7 +151,11 @@ class ScanDiffTest {
         } returns scan(previousId, trackerCount = 1, createdAt = previousAt)
         every { scanCookieRepository.findByScanId(previousId) } returns listOf(cookie("_ga"))
 
-        val diff = calculator.forScan(scan(scanId, trackerCount = 2, createdAt = now), listOf("_ga", "_fbp"), 2)
+        val diff =
+            calculator.forScan(
+                scan(scanId, trackerCount = 2, createdAt = now),
+                findings(listOf("_ga", "_fbp"), trackerCount = 2),
+            )
 
         assertEquals(previousId, diff.previousScanId)
         assertEquals(previousAt, diff.previousScanAt)
@@ -140,7 +174,11 @@ class ScanDiffTest {
             )
         } returns null
 
-        val diff = calculator.forScan(scan(scanId, trackerCount = 2, createdAt = now), listOf("_ga"), 2)
+        val diff =
+            calculator.forScan(
+                scan(scanId, trackerCount = 2, createdAt = now),
+                findings(listOf("_ga"), trackerCount = 2),
+            )
 
         assertFalse(diff.hasPrevious)
         assertTrue(diff.hasNewFindings)
@@ -162,5 +200,13 @@ class ScanDiffTest {
         updatedAt = createdAt,
     )
 
-    private fun cookie(name: String) = ScanCookieEntity(scanId = UUID.randomUUID(), name = name)
+    private fun cookie(
+        name: String,
+        category: String? = null,
+    ) = ScanCookieEntity(scanId = UUID.randomUUID(), name = name, category = category)
+
+    private fun findings(
+        names: List<String>,
+        trackerCount: Int,
+    ) = ScanFindings.of(names.map { cookie(it) }, trackerCount)
 }

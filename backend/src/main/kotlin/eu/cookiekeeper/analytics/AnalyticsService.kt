@@ -4,6 +4,7 @@ import eu.cookiekeeper.analytics.dto.AnalyticsFilter
 import eu.cookiekeeper.analytics.dto.AnalyticsRange
 import eu.cookiekeeper.analytics.dto.CategoryCount
 import eu.cookiekeeper.analytics.dto.ConsentAnalytics
+import eu.cookiekeeper.analytics.dto.ConsentRepromptNotice
 import eu.cookiekeeper.analytics.dto.ConsentTrendPoint
 import eu.cookiekeeper.analytics.dto.CookieAnalytics
 import eu.cookiekeeper.analytics.dto.PeriodSummary
@@ -15,6 +16,7 @@ import eu.cookiekeeper.scan.ScanCookieRepository
 import eu.cookiekeeper.scan.ScanCookieView
 import eu.cookiekeeper.scan.ScanRepository
 import eu.cookiekeeper.scan.ScanStatus
+import eu.cookiekeeper.site.SiteEntity
 import eu.cookiekeeper.site.SiteNotFoundException
 import eu.cookiekeeper.site.SiteRepository
 import org.springframework.stereotype.Service
@@ -48,7 +50,7 @@ class AnalyticsService(
         siteId: UUID,
         filter: AnalyticsFilter,
     ): SiteAnalyticsResponse {
-        requireOwnedSite(userId, siteId)
+        val site = requireOwnedSite(userId, siteId)
         val floor = rangeResolver.retentionFloor(userId)
         val range = rangeResolver.resolve(filter, floor)
         return SiteAnalyticsResponse(
@@ -57,6 +59,29 @@ class AnalyticsService(
             previous = previousSummary(siteId, range, floor),
             cookies = cookieAnalytics(siteId),
             policy = policyAnalytics(siteId),
+            reprompt = repromptNotice(site, range),
+        )
+    }
+
+    /**
+     * The re-prompt that happened *inside* this window, if any (BACKLOG #18). Scoped to the window on
+     * purpose: a re-prompt is exactly where the impression and interaction-rate series step, and a window
+     * that doesn't contain one has nothing to explain. Without this the customer sees a jump in their own
+     * numbers that we caused.
+     */
+    private fun repromptNotice(
+        site: SiteEntity,
+        range: AnalyticsRange,
+    ): ConsentRepromptNotice? {
+        val changedAt = site.consentBasisChangedAt ?: return null
+        if (changedAt < range.from || changedAt >= range.to) return null
+        return ConsentRepromptNotice(
+            changedAt = changedAt,
+            addedCategories =
+                site.consentBasisAdded
+                    ?.split(",")
+                    ?.filter { it.isNotBlank() }
+                    ?.sorted() ?: emptyList(),
         )
     }
 
@@ -148,9 +173,7 @@ class AnalyticsService(
     private fun requireOwnedSite(
         userId: UUID,
         siteId: UUID,
-    ) {
-        siteRepository.findByIdAndUserId(siteId, userId) ?: throw SiteNotFoundException()
-    }
+    ): SiteEntity = siteRepository.findByIdAndUserId(siteId, userId) ?: throw SiteNotFoundException()
 
     companion object {
         const val ACTION_ACCEPT_ALL = "accept_all"

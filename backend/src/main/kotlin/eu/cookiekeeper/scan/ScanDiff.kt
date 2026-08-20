@@ -1,8 +1,57 @@
 package eu.cookiekeeper.scan
 
+import eu.cookiekeeper.banner.ConsentCategory
 import org.springframework.stereotype.Service
 import java.time.Instant
 import java.util.UUID
+
+/**
+ * What one completed scan found, reduced to the dimensions anything downstream compares on: the cookie
+ * NAMES, the marketing tracker COUNT, and which consent categories those findings put *in use*.
+ *
+ * This is the single description of a scan's findings — [ScanDiff] compares two of them, and the
+ * consent-basis check ([eu.cookiekeeper.site.ConsentBasisService]) reads [categoriesInUse] off one.
+ * Neither derives its own notion of "what this scan found".
+ */
+data class ScanFindings(
+    val cookieNames: Set<String>,
+    val categoriesInUse: Set<String>,
+    val trackerCount: Int,
+) {
+    companion object {
+        /**
+         * Only the categories a visitor can actually decide. `necessary` is excluded on purpose: it is
+         * required, so no consent choice can reject it and its arrival can never invalidate a consent
+         * that was collected earlier.
+         */
+        private val DECIDABLE_KEYS: Set<String> =
+            ConsentCategory.entries
+                .filterNot { it.required }
+                .map { it.key }
+                .toSet()
+
+        /**
+         * Reduce a scan's persisted cookies (plus its tracker count) to the findings. Unclassified
+         * cookies contribute nothing — a signature miss means we do not know what the cookie is for,
+         * and guessing would re-prompt visitors on noise. A non-zero tracker count means marketing is
+         * in use even when no marketing *cookie* was recorded: third-party marketing hosts are counted,
+         * never stored ([ScanEntity.marketingTrackerCount]).
+         */
+        fun of(
+            cookies: Collection<ScanCookieEntity>,
+            trackerCount: Int,
+        ): ScanFindings =
+            ScanFindings(
+                cookieNames = cookies.mapTo(mutableSetOf()) { it.name },
+                categoriesInUse =
+                    buildSet {
+                        cookies.forEach { cookie -> cookie.category?.takeIf { it in DECIDABLE_KEYS }?.let(::add) }
+                        if (trackerCount > 0) add(ConsentCategory.MARKETING.key)
+                    },
+                trackerCount = trackerCount,
+            )
+    }
+}
 
 /**
  * How a completed scan's findings differ from the previous completed scan of the same site — the
@@ -46,46 +95,41 @@ data class ScanDiff(
 
     companion object {
         /** A scan with no earlier completed scan to compare against. */
-        fun baseline(currentTrackerCount: Int): ScanDiff =
+        fun baseline(current: ScanFindings): ScanDiff =
             ScanDiff(
                 previousScanId = null,
                 previousScanAt = null,
                 addedCookieNames = emptyList(),
                 removedCookieNames = emptyList(),
-                currentTrackerCount = currentTrackerCount,
+                currentTrackerCount = current.trackerCount,
                 previousTrackerCount = null,
             )
 
         /** The directional difference between a current and a previous scan, compared by cookie name. */
         fun between(
-            currentCookieNames: Collection<String>,
-            currentTrackerCount: Int,
+            current: ScanFindings,
             previous: PreviousScan,
-        ): ScanDiff {
-            val current = currentCookieNames.toSet()
-            val previousNames = previous.cookieNames.toSet()
-            return ScanDiff(
+        ): ScanDiff =
+            ScanDiff(
                 previousScanId = previous.scanId,
                 previousScanAt = previous.scanAt,
-                addedCookieNames = (current - previousNames).sorted(),
-                removedCookieNames = (previousNames - current).sorted(),
-                currentTrackerCount = currentTrackerCount,
-                previousTrackerCount = previous.trackerCount,
+                addedCookieNames = (current.cookieNames - previous.findings.cookieNames).sorted(),
+                removedCookieNames = (previous.findings.cookieNames - current.cookieNames).sorted(),
+                currentTrackerCount = current.trackerCount,
+                previousTrackerCount = previous.findings.trackerCount,
             )
-        }
     }
 }
 
 /**
- * The previous completed scan's findings, as [ScanDiff.between] needs them: which scan it was, when it
- * ran, and its cookie names + tracker count to diff against. Keeps the diff a pure value type — the
- * calculator maps a [ScanEntity] into this, [ScanDiff] itself never sees an entity.
+ * The previous completed scan, as [ScanDiff.between] needs it: which scan it was, when it ran, and what
+ * it found. Keeps the diff a pure value type — the calculator maps a [ScanEntity] and its cookie rows
+ * into this, [ScanDiff] itself never sees an entity.
  */
 data class PreviousScan(
     val scanId: UUID,
     val scanAt: Instant,
-    val cookieNames: Collection<String>,
-    val trackerCount: Int,
+    val findings: ScanFindings,
 )
 
 /**
@@ -94,9 +138,9 @@ data class PreviousScan(
  * send-gate ([ScanCompletionNotifier]) and the dashboard read path ([ScanQueryService]) can never drift
  * apart on what "changed" means.
  *
- * The caller passes in the current scan's cookie names and tracker count because it already holds them
- * (the notifier from the email payload, the query service from the detail response), so this only issues
- * the extra reads for the *previous* scan.
+ * The caller passes in the current scan's [ScanFindings] because it already holds the cookie rows (the
+ * notifier from the email payload, the query service from the detail response), so this only issues the
+ * extra reads for the *previous* scan.
  */
 @Service
 class ScanDiffCalculator(
@@ -105,8 +149,7 @@ class ScanDiffCalculator(
 ) {
     fun forScan(
         scan: ScanEntity,
-        currentCookieNames: Collection<String>,
-        currentTrackerCount: Int,
+        current: ScanFindings,
     ): ScanDiff {
         // Strictly older than this scan's own created_at: the callers run once the scan is already `done`,
         // so an unbounded "latest done" query would hand back the very scan we are diffing. Rides
@@ -116,17 +159,15 @@ class ScanDiffCalculator(
                 scan.siteId,
                 ScanStatus.DONE,
                 scan.createdAt,
-            ) ?: return ScanDiff.baseline(currentTrackerCount)
-        val previousNames = scanCookieRepository.findByScanId(previous.id).map { it.name }
+            ) ?: return ScanDiff.baseline(current)
+        val previousCookies = scanCookieRepository.findByScanId(previous.id)
         return ScanDiff.between(
-            currentCookieNames = currentCookieNames,
-            currentTrackerCount = currentTrackerCount,
+            current = current,
             previous =
                 PreviousScan(
                     scanId = previous.id,
                     scanAt = previous.createdAt,
-                    cookieNames = previousNames,
-                    trackerCount = previous.marketingTrackerCount ?: 0,
+                    findings = ScanFindings.of(previousCookies, previous.marketingTrackerCount ?: 0),
                 ),
         )
     }
