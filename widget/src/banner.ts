@@ -27,6 +27,7 @@ let previouslyFocused: HTMLElement | null = null;
 export function renderBanner(
   config: WidgetConfig,
   texts: BannerTexts,
+  lang: string,
   handlers: BannerHandlers,
 ): void {
   removeBanner();
@@ -45,6 +46,11 @@ export function renderBanner(
   // Named by its own heading; no aria-live (it would double-announce and
   // contradicts the dialog role).
   dialog.setAttribute('aria-labelledby', 'complyr-banner-title');
+  // The banner speaks the visitor's language, which is often not the host page's
+  // (`lang` is resolved from the browser against the languages this site offers).
+  // Without this, a screen reader reads German consent copy with an English voice
+  // (WCAG 3.1.2). Same attribute, same reason, as the preferences dialog.
+  dialog.setAttribute('lang', lang);
 
   const heading = document.createElement('h2');
   heading.id = 'complyr-banner-title';
@@ -86,8 +92,10 @@ export function renderBanner(
   root.append(style, dialog);
   document.body.appendChild(host);
 
-  // Focus handling stub: move focus to the first action so keyboard users
-  // land in the banner. Full focus trap arrives with the preferences panel.
+  // Move focus to the first action so keyboard users land in the banner rather than
+  // having to tab past it. Deliberately NOT trapped and deliberately not aria-modal:
+  // the banner is a non-modal notice, and holding the whole page hostage behind it
+  // would be a worse barrier than the one it fixes (see docs/ACCESSIBILITY.md).
   acceptButton.focus();
 }
 
@@ -136,11 +144,15 @@ button {
 }
 button.primary { background: ${colors.button}; color: ${colors.buttonText}; }
 button.ghost { background: transparent; color: ${colors.text}; text-decoration: underline; }
+/* line-height, not font-size, sets the box: a standalone link needs a 24x24 CSS px
+   target (WCAG 2.5.8) and the inline-in-a-sentence exception does not cover it.
+   Full-strength color too — dimming it would undo the contrast the backend enforces
+   on this exact pair (1.4.3), and 11px is already enough to subordinate it. */
 .credit {
-  display: inline-block; margin: 12px 0 0; font-size: 11px; opacity: .85;
+  display: inline-block; margin: 12px 0 0; padding: 0 4px;
+  font-size: 11px; line-height: 24px;
   color: ${colors.text}; text-decoration: underline;
 }
-.credit:hover { opacity: 1; }
 .credit:focus-visible { outline: 2px solid ${colors.text}; outline-offset: 2px; }
 /* Ring contrasts with what it rings: colors.text over the panel, but the
    primary buttons' fill is colors.button, so their ring uses colors.buttonText. */

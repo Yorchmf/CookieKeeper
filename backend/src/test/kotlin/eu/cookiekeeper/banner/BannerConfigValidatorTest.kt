@@ -90,6 +90,48 @@ class BannerConfigValidatorTest {
     }
 
     @Test
+    fun `rejects body text that fails WCAG AA contrast against the background`() {
+        // Light grey on white: a real customer choice, and unreadable for a good share of visitors.
+        assertThrows<InvalidBannerConfigException> {
+            BannerConfigValidator.validate(
+                validRequest(theme = BannerThemeRequest("#2563eb", "#ffffff", "#bbbbbb")),
+            )
+        }
+    }
+
+    @Test
+    fun `rejects a primary color that fails the 3 to 1 non-text bar`() {
+        // Text is fine here; the button fill and checkbox outline are what disappear into the page.
+        assertThrows<InvalidBannerConfigException> {
+            BannerConfigValidator.validate(
+                validRequest(theme = BannerThemeRequest("#f2f2f2", "#ffffff", "#0f172a")),
+            )
+        }
+    }
+
+    @Test
+    fun `accepts a dark theme, judging contrast by ratio rather than by lightness`() {
+        val document =
+            BannerConfigValidator.validate(
+                validRequest(theme = BannerThemeRequest("#60a5fa", "#0f172a", "#f8fafc")),
+            )
+
+        assertEquals("#0f172a", document.theme.background)
+    }
+
+    @Test
+    fun `holds the primary color to the non-text bar, not the stricter text one`() {
+        // 3.4:1 against white — below 4.5, above 3. A button fill is a UI component (1.4.11), and
+        // rejecting it would ban most brand colors for no accessibility gain.
+        val document =
+            BannerConfigValidator.validate(
+                validRequest(theme = BannerThemeRequest("#8f8f8f", "#ffffff", "#0f172a")),
+            )
+
+        assertEquals("#8f8f8f", document.theme.primaryColor)
+    }
+
+    @Test
     fun `rejects an unknown category key`() {
         assertThrows<InvalidBannerConfigException> {
             BannerConfigValidator.validate(

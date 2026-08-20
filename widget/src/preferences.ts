@@ -68,8 +68,11 @@ export function renderPreferences(
   dialog.setAttribute('aria-labelledby', 'complyr-prefs-title');
   dialog.setAttribute('aria-describedby', 'complyr-prefs-intro');
   // Declare the language of the panel's own text (WCAG 3.1.2) so AT pronounces
-  // it correctly even when it differs from the host page's lang.
-  dialog.setAttribute('lang', lang.slice(0, 2).toLowerCase());
+  // it correctly even when it differs from the host page's lang. `lang` is the
+  // language resolved against what this site publishes (config.resolveLanguage),
+  // never the raw browser preference — declaring a language we did not render in
+  // is worse than declaring none.
+  dialog.setAttribute('lang', lang);
   // Programmatically focusable (initial focus target) but not a Tab stop.
   dialog.tabIndex = -1;
 
@@ -281,14 +284,21 @@ function trapFocus(event: KeyboardEvent, root: ShadowRoot): void {
   const first = focusable[0]!;
   const last = focusable[focusable.length - 1]!;
   const active = root.activeElement;
+  const index = active instanceof HTMLElement ? focusable.indexOf(active) : -1;
 
-  if (event.shiftKey && active === first) {
+  // `index === -1` is the dialog container itself, which holds initial focus and is
+  // not a Tab stop. Without treating it as "before the first", the very first
+  // Shift+Tab a visitor presses walks out of the shadow root — into a page we just
+  // made `inert`, so there is nothing to land on and no obvious way back (2.1.2).
+  if (event.shiftKey && (index === -1 || index === 0)) {
     event.preventDefault();
     last.focus();
-  } else if (!event.shiftKey && active === last) {
+  } else if (!event.shiftKey && index === focusable.length - 1) {
     event.preventDefault();
     first.focus();
   }
+  // Forward Tab from the container needs no help: the browser's own order already
+  // takes it to `first`, which is inside the dialog.
 }
 
 function button(
@@ -336,11 +346,16 @@ function buildStyles(config: WidgetConfig): string {
 }
 .category input:disabled { cursor: default; }
 .category-label-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
-.category-label { font-weight: 600; cursor: pointer; }
+/* The label toggles the checkbox, so it is a target in its own right and needs the
+   24px minimum (WCAG 2.5.8) — line-height, not padding, so the row stays aligned. */
+.category-label { font-weight: 600; cursor: pointer; line-height: 24px; }
 .category input:disabled + .category-text .category-label { cursor: default; }
+/* Text in colors.text (the pair the backend holds to 4.5:1), outline in colors.button
+   (held to 3:1). Painting the text in colors.button too would let a 3:1 brand color
+   through as body copy. */
 .always-active {
   font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px;
-  border: 1px solid ${colors.button}; color: ${colors.button};
+  border: 1px solid ${colors.button}; color: ${colors.text};
 }
 .category-desc { margin: 2px 0 0; font-size: 13px; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -360,6 +375,8 @@ button:focus-visible, .close:focus-visible, .category input:focus-visible {
 button.primary:focus-visible {
   outline-color: ${colors.buttonText}; outline-offset: -4px;
 }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
 `;
 }

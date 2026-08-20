@@ -130,7 +130,7 @@ class BannerConfigCopyApiIntegrationTest {
                         """
                         {
                           "position": "top",
-                          "theme": { "primaryColor": "#abcdef", "background": "#ffffff", "textColor": "#000000" },
+                          "theme": { "primaryColor": "#ab00ef", "background": "#ffffff", "textColor": "#000000" },
                           "categories": [ { "key": "necessary" }, { "key": "statistics" } ],
                           "languages": ["de"],
                           "defaultLanguage": "de",
@@ -181,7 +181,7 @@ class BannerConfigCopyApiIntegrationTest {
                 .andExpect(jsonPath("$.data.version").value(2))
                 .andExpect(jsonPath("$.data.config.position").value("top"))
                 .andExpect(jsonPath("$.data.config.defaultLanguage").value("de"))
-                .andExpect(jsonPath("$.data.config.theme.primaryColor").value("#abcdef"))
+                .andExpect(jsonPath("$.data.config.theme.primaryColor").value("#ab00ef"))
         }
 
         // The source is read, never re-published — it must not gain a version from being copied.

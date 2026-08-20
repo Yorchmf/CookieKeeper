@@ -906,7 +906,15 @@
       "description": "Match the banner to your brand.",
       "primaryColor": "Buttons",
       "background": "Background",
-      "textColor": "Text"
+      "textColor": "Text",
+      "contrast": {
+        "text": "Text on background",
+        "primary": "Buttons on background",
+        "pass": "{ratio}:1 — meets WCAG 2.2 AA (needs {minimum}:1)",
+        "fail": "{ratio}:1 — below WCAG 2.2 AA (needs {minimum}:1)",
+        "unknown": "Enter a hex colour, e.g. #1f2430",
+        "blocked": "Adjust the colours until both pairs meet WCAG 2.2 AA — an unreadable banner fails the European Accessibility Act."
+      }
     },
     "categories": {
       "label": "Cookie categories",

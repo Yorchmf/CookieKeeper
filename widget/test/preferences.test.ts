@@ -59,7 +59,9 @@ describe('preferences panel', () => {
     });
 
     test('declares its own language for assistive tech', () => {
-      const root = open({}, {}, 'de-DE');
+      // `lang` arrives already resolved against the languages this site publishes
+      // (config.resolveLanguage) — the panel declares what it rendered, nothing else.
+      const root = open({}, {}, 'de');
       expect(root.querySelector('[role="dialog"]')!.getAttribute('lang')).toBe(
         'de',
       );
@@ -123,6 +125,46 @@ describe('preferences panel', () => {
       removePreferences();
       // Still inert: we never set it, so we must not remove it.
       expect(background.hasAttribute('inert')).toBe(true);
+    });
+
+    test('Shift+Tab from the dialog container wraps to the last control', () => {
+      // The regression this guards: initial focus sits on the container, which is not
+      // itself a Tab stop, so a trap that only compares against `first` lets the very
+      // first Shift+Tab walk out of the shadow root into the page we just made inert.
+      const root = open();
+      const dialog = root.querySelector('[role="dialog"]') as HTMLElement;
+      const focusable = Array.from(
+        root.querySelectorAll<HTMLElement>('button, input:not([disabled])'),
+      );
+
+      dialog.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Tab',
+          shiftKey: true,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+
+      expect(root.activeElement).toBe(focusable[focusable.length - 1]);
+    });
+
+    test('Tab from the last control wraps back to the first', () => {
+      const root = open();
+      const focusable = Array.from(
+        root.querySelectorAll<HTMLElement>('button, input:not([disabled])'),
+      );
+      focusable[focusable.length - 1]!.focus();
+
+      root.querySelector('[role="dialog"]')!.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Tab',
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+
+      expect(root.activeElement).toBe(focusable[0]);
     });
 
     test('Escape cancels and tears the panel down', () => {

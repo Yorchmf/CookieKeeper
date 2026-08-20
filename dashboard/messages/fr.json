@@ -906,7 +906,15 @@
       "description": "Adaptez le bandeau à votre marque.",
       "primaryColor": "Boutons",
       "background": "Arrière-plan",
-      "textColor": "Texte"
+      "textColor": "Texte",
+      "contrast": {
+        "text": "Texte sur l'arrière-plan",
+        "primary": "Boutons sur l'arrière-plan",
+        "pass": "{ratio}:1 — conforme WCAG 2.2 AA (minimum {minimum}:1)",
+        "fail": "{ratio}:1 — inférieur à WCAG 2.2 AA (minimum {minimum}:1)",
+        "unknown": "Saisissez une couleur hexadécimale, par ex. #1f2430",
+        "blocked": "Ajustez les couleurs jusqu'à ce que les deux paires respectent WCAG 2.2 AA — une bannière illisible ne respecte pas l'Acte européen sur l'accessibilité."
+      }
     },
     "categories": {
       "label": "Catégories de cookies",

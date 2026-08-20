@@ -201,16 +201,30 @@ export function sanitizeColors(
 }
 
 /**
+ * The language the notice is actually *shown* in — which is not always the one the
+ * browser asked for, since a site only publishes copy for the languages it offers.
+ *
+ * One resolution, three consumers: the texts below, the `lang` attribute on both
+ * dialogs (WCAG 3.1.2 — declaring `fr` while displaying English copy is worse than
+ * declaring nothing), and the language stamped on the consent event, where the
+ * audit question is "what did this visitor read", not "what did they prefer".
+ */
+export function resolveLanguage(config: WidgetConfig, lang: string): string {
+  const short = lang.slice(0, 2).toLowerCase();
+  if (config.texts[short]) return short;
+  if (config.texts[config.defaultLanguage]) return config.defaultLanguage;
+  return 'en';
+}
+
+/**
  * Pick banner texts for the visitor's language, merged over the English default
  * so the returned object is always complete: a per-site config (or an older
  * cached one) that omits the newer panel fields still renders, and the panel
  * never shows an empty label.
  */
 export function resolveTexts(config: WidgetConfig, lang: string): BannerTexts {
-  const short = lang.slice(0, 2).toLowerCase();
   const fallback = DEFAULT_CONFIG.texts['en']!;
-  const chosen =
-    config.texts[short] ?? config.texts[config.defaultLanguage] ?? fallback;
+  const chosen = config.texts[resolveLanguage(config, lang)] ?? fallback;
   return {
     ...fallback,
     ...chosen,

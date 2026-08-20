@@ -31,6 +31,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useUpdateBannerConfig } from "@/hooks/use-banner";
 import {
+  AA_NON_TEXT,
+  AA_NORMAL_TEXT,
+  contrastRatio,
+} from "@/lib/color-contrast";
+import {
   BANNER_POSITIONS,
   CATEGORY_KEYS,
   CONSENT_LIFETIME_DAYS,
@@ -75,14 +80,18 @@ export function BannerEditor({
 
   const dirty = isDirty(state, config);
   const blankLanguages = useMemo(() => offeredBlankLanguages(state), [state]);
-  const canSave = dirty && blankLanguages.length === 0 && !update.isPending;
+  // The backend rejects a theme that fails WCAG 2.2 AA, so hold Save the same way blank copy does
+  // — an unreadable banner is our customer's EAA exposure, and a 400 is a worse way to learn it.
+  const contrastFails = useMemo(() => failsContrast(state.theme), [state.theme]);
+  const canSave =
+    dirty && blankLanguages.length === 0 && !contrastFails && !update.isPending;
 
   const activeLang = state.languages.includes(editingLang)
     ? editingLang
     : state.defaultLanguage;
 
   const handleSave = async () => {
-    if (blankLanguages.length > 0) {
+    if (blankLanguages.length > 0 || contrastFails) {
       return;
     }
     try {
@@ -184,6 +193,10 @@ export function BannerEditor({
             <p role="alert" className="text-sm text-destructive">
               {t("texts.incomplete")}
             </p>
+          ) : contrastFails ? (
+            <p role="alert" className="text-sm text-destructive">
+              {t("theme.contrast.blocked")}
+            </p>
           ) : dirty ? (
             <p className="text-sm text-muted-foreground">{t("unsaved")}</p>
           ) : (
@@ -226,6 +239,18 @@ const REQUIRED_TEXT_FIELDS = [
   "save",
   "preferences",
 ] as const satisfies readonly (keyof BannerTexts)[];
+
+/**
+ * Whether either WCAG pair is below its bar, judged exactly as the backend judges it. A half-typed
+ * hex yields `null` from [contrastRatio] and counts as a failure here, which matches the API: it
+ * would reject the value as malformed anyway, so Save stays held until the field is a real color.
+ */
+function failsContrast(theme: BannerTheme): boolean {
+  return CONTRAST_PAIRS.some((pair) => {
+    const ratio = contrastRatio(theme[pair.foreground], theme.background);
+    return ratio === null || ratio < pair.minimum;
+  });
+}
 
 /** Offered languages whose text bundle has at least one blank required field. */
 function offeredBlankLanguages(state: BannerEditorState): SupportedLanguage[] {
@@ -384,8 +409,70 @@ function ColorsCard({
             </div>
           );
         })}
+        <div className="sm:col-span-3 flex flex-col gap-1.5 rounded-lg border border-border bg-muted/40 p-3">
+          {CONTRAST_PAIRS.map((pair) => (
+            <ContrastRow key={pair.key} theme={theme} pair={pair} />
+          ))}
+        </div>
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * The two pairs the backend holds a theme to (ADR-28): the notice's own text against its background
+ * at the body-text bar, and the button/checkbox/badge fill against it at the looser UI-component
+ * bar. `buttonText` is absent on purpose — the widget derives it as black-or-white, so it always
+ * passes and is never the customer's to get wrong.
+ */
+const CONTRAST_PAIRS = [
+  {
+    key: "text",
+    foreground: "textColor",
+    minimum: AA_NORMAL_TEXT,
+  },
+  {
+    key: "primary",
+    foreground: "primaryColor",
+    minimum: AA_NON_TEXT,
+  },
+] as const satisfies readonly {
+  key: string;
+  foreground: keyof BannerTheme;
+  minimum: number;
+}[];
+
+type ContrastPair = (typeof CONTRAST_PAIRS)[number];
+
+/**
+ * One line of the live readout. This is advisory in the moment and binding at save time: the same
+ * comparison gates the Save button, so a customer never discovers an illegible theme by way of a
+ * 400 from the API.
+ */
+function ContrastRow({
+  theme,
+  pair,
+}: {
+  theme: BannerTheme;
+  pair: ContrastPair;
+}) {
+  const t = useTranslations("banner.theme.contrast");
+  const ratio = contrastRatio(theme[pair.foreground], theme.background);
+  const passes = ratio !== null && ratio >= pair.minimum;
+  return (
+    <p className="flex flex-wrap items-baseline gap-x-2 text-sm">
+      <span className="text-muted-foreground">{t(pair.key)}</span>
+      {ratio === null ? (
+        <span className="text-muted-foreground">{t("unknown")}</span>
+      ) : (
+        <span className={passes ? "text-foreground" : "text-destructive"}>
+          {t(passes ? "pass" : "fail", {
+            ratio: ratio.toFixed(1),
+            minimum: pair.minimum.toFixed(1),
+          })}
+        </span>
+      )}
+    </p>
   );
 }
 

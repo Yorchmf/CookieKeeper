@@ -906,7 +906,15 @@
       "description": "Adatta il banner al tuo marchio.",
       "primaryColor": "Pulsanti",
       "background": "Sfondo",
-      "textColor": "Testo"
+      "textColor": "Testo",
+      "contrast": {
+        "text": "Testo sullo sfondo",
+        "primary": "Pulsanti sullo sfondo",
+        "pass": "{ratio}:1 — conforme a WCAG 2.2 AA (minimo {minimum}:1)",
+        "fail": "{ratio}:1 — sotto WCAG 2.2 AA (minimo {minimum}:1)",
+        "unknown": "Inserisci un colore esadecimale, es. #1f2430",
+        "blocked": "Regola i colori finché entrambe le coppie soddisfano WCAG 2.2 AA: un banner illeggibile viola l'European Accessibility Act."
+      }
     },
     "categories": {
       "label": "Categorie di cookie",

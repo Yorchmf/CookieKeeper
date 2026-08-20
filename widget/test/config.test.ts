@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
   DEFAULT_CONFIG,
   fetchConfig,
+  resolveLanguage,
   resolveTexts,
   sanitizeColors,
   type WidgetConfig,
@@ -103,6 +104,30 @@ describe('config', () => {
         vi.fn(() => Promise.reject(new Error('network'))),
       );
       expect(await fetchConfig('pk_test')).toBe(DEFAULT_CONFIG);
+    });
+  });
+
+  describe('resolveLanguage', () => {
+    // What this returns is what the dialogs declare in `lang` (WCAG 3.1.2) and what
+    // the consent event records — so it must name a language we actually rendered.
+    const multilingual: WidgetConfig = {
+      ...DEFAULT_CONFIG,
+      texts: { ...DEFAULT_CONFIG.texts, de: DEFAULT_CONFIG.texts.en! },
+      defaultLanguage: 'de',
+    };
+
+    test('narrows a BCP-47 tag to the published language', () => {
+      expect(resolveLanguage(multilingual, 'de-AT')).toBe('de');
+      expect(resolveLanguage(multilingual, 'DE')).toBe('de');
+    });
+
+    test("falls back to the site's default when the visitor's is not published", () => {
+      expect(resolveLanguage(multilingual, 'fr-FR')).toBe('de');
+    });
+
+    test('falls back to English when even the default is missing copy', () => {
+      const broken: WidgetConfig = { ...multilingual, defaultLanguage: 'it' };
+      expect(resolveLanguage(broken, 'fr')).toBe('en');
     });
   });
 

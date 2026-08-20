@@ -906,7 +906,15 @@
       "description": "Adapte el banner a su marca.",
       "primaryColor": "Botones",
       "background": "Fondo",
-      "textColor": "Texto"
+      "textColor": "Texto",
+      "contrast": {
+        "text": "Texto sobre el fondo",
+        "primary": "Botones sobre el fondo",
+        "pass": "{ratio}:1 — cumple WCAG 2.2 AA (mínimo {minimum}:1)",
+        "fail": "{ratio}:1 — por debajo de WCAG 2.2 AA (mínimo {minimum}:1)",
+        "unknown": "Introduce un color hexadecimal, p. ej. #1f2430",
+        "blocked": "Ajusta los colores hasta que ambos pares cumplan WCAG 2.2 AA: un banner ilegible incumple el Acta Europea de Accesibilidad."
+      }
     },
     "categories": {
       "label": "Categorías de cookies",

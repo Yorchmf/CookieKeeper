@@ -12,7 +12,9 @@ import eu.cookiekeeper.common.SupportedLocales
  * document is stored in `config_jsonb` and served verbatim to every visitor's browser, so each field
  * is allow-listed, not merely length-checked:
  *  - `position` ∈ a fixed set; colors must be strict `#RGB`/`#RRGGBB` hex (they flow into inline
- *    styles, so an unconstrained value would be a CSS-injection vector);
+ *    styles, so an unconstrained value would be a CSS-injection vector) AND must clear WCAG 2.2 AA
+ *    contrast ([checkContrast]) — a banner nobody can read is an accessibility defect we ship, not a
+ *    preference;
  *  - category keys must be in the canonical taxonomy, `necessary` must be present, and `required`/
  *    `enabledByDefault` are DERIVED from the taxonomy — the client can never pre-enable a tracker (GDPR);
  *  - languages must be supported, and `texts` must fully cover the offered set;
@@ -41,6 +43,7 @@ object BannerConfigValidator {
                 background = color(request.theme.background, "background"),
                 textColor = color(request.theme.textColor, "textColor"),
             )
+        checkContrast(theme)
 
         val languages = normalizeLanguages(request.languages)
         val defaultLanguage =
@@ -160,6 +163,32 @@ object BannerConfigValidator {
                     ),
             )
         }
+
+    /**
+     * WCAG 2.2 AA contrast, enforced server-side (ADR-28). The banner is the one surface a visitor
+     * cannot dismiss without reading, and under the European Accessibility Act an unreadable one is
+     * our customer's legal problem, so an illegible theme is a 400 rather than a rendering choice.
+     *
+     * Two pairs, two thresholds:
+     *  - `textColor` on `background` carries the notice itself → **1.4.3**, 4.5:1;
+     *  - `primaryColor` on `background` is the button fill, the checkbox and the badge outline —
+     *    UI-component boundaries, not text → **1.4.11**, 3:1. The button *label* is not checked
+     *    because it is derived, not chosen: best-of-black/white clears 4.5:1 against every color.
+     *
+     * This runs on save only, so a theme stored before this rule keeps serving; the customer is asked
+     * to fix it the next time they touch the customizer, which the editor's live readout warns about
+     * before they ever submit.
+     */
+    private fun checkContrast(theme: BannerTheme) {
+        val textRatio = ColorContrast.ratio(theme.textColor, theme.background)
+        if (textRatio == null || textRatio < ColorContrast.AA_NORMAL_TEXT) {
+            invalid("textColor must contrast with background by at least 4.5:1 (WCAG 2.2 AA)")
+        }
+        val primaryRatio = ColorContrast.ratio(theme.primaryColor, theme.background)
+        if (primaryRatio == null || primaryRatio < ColorContrast.AA_NON_TEXT) {
+            invalid("primaryColor must contrast with background by at least 3:1 (WCAG 2.2 AA)")
+        }
+    }
 
     private fun color(
         value: String,

@@ -906,7 +906,15 @@
       "description": "Passen Sie das Banner an Ihre Marke an.",
       "primaryColor": "Schaltflächen",
       "background": "Hintergrund",
-      "textColor": "Text"
+      "textColor": "Text",
+      "contrast": {
+        "text": "Text auf Hintergrund",
+        "primary": "Schaltflächen auf Hintergrund",
+        "pass": "{ratio}:1 — erfüllt WCAG 2.2 AA (mindestens {minimum}:1)",
+        "fail": "{ratio}:1 — unter WCAG 2.2 AA (mindestens {minimum}:1)",
+        "unknown": "Hex-Farbe eingeben, z. B. #1f2430",
+        "blocked": "Passen Sie die Farben an, bis beide Paare WCAG 2.2 AA erfüllen — ein unlesbares Banner verstößt gegen den European Accessibility Act."
+      }
     },
     "categories": {
       "label": "Cookie-Kategorien",

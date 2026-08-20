@@ -19,7 +19,12 @@ import {
   updateConsent,
   type ConsentDecision,
 } from './consent-mode';
-import { fetchConfig, resolveTexts, type WidgetConfig } from './config';
+import {
+  fetchConfig,
+  resolveLanguage,
+  resolveTexts,
+  type WidgetConfig,
+} from './config';
 import { fetchOriginToken, visitorRegion } from './origin-token';
 import { mountPolicyTables } from './policy-table';
 import {
@@ -233,8 +238,11 @@ async function loadAndShowBanner(
   }
 
   const config = options.config ?? (await fetchConfig(siteKey));
-  const lang = navigator.language || config.defaultLanguage;
-  renderBanner(config, resolveTexts(config, lang), {
+  // The language the notice is displayed in, not the one the browser asked for — it
+  // is what the `lang` attribute must declare and what the consent event should
+  // record as evidence of what this visitor actually read.
+  const lang = resolveLanguage(config, navigator.language || config.defaultLanguage);
+  renderBanner(config, resolveTexts(config, lang), lang, {
     onAction: (action) => applyChoice(config, action, lang),
     onPreferences: () => openPreferences(config, lang),
   });
