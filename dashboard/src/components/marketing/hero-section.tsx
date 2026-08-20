@@ -1,7 +1,7 @@
 import { useTranslations } from "next-intl";
 import { PublicScanWidget } from "@/components/public-scan/public-scan-widget";
-import { Button } from "@/components/ui/button";
-import { Link } from "@/i18n/navigation";
+import { buttonVariants } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button-link";
 
 export function HeroSection() {
   const t = useTranslations("marketing.hero");
@@ -36,22 +36,13 @@ export function HeroSection() {
         </p>
 
         <div className="flex flex-col items-center gap-3 sm:flex-row">
-          <Button
-            variant="brand"
-            size="lg"
-            nativeButton={false}
-            render={<Link href="/signup" />}
-          >
+          <ButtonLink variant="brand" size="lg" href="/signup">
             {t("cta")}
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            nativeButton={false}
-            render={<a href="#pricing" />}
-          >
+          </ButtonLink>
+          {/* In-page anchor: a plain <a> so next-intl never locale-prefixes the fragment. */}
+          <a href="#pricing" className={buttonVariants({ variant: "outline", size: "lg" })}>
             {t("ctaSecondary")}
-          </Button>
+          </a>
         </div>
 
         <p className="text-sm text-muted-foreground">{t("trust")}</p>

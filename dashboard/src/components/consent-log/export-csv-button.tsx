@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { LockedFeature } from "@/components/ui/locked-feature";
 import { useEntitlement } from "@/hooks/use-billing";
 import { consentExportPath, type ConsentLogFilters } from "@/lib/api/consent";
@@ -37,9 +37,15 @@ export function ExportCsvButton({
     return <LockedFeature label={t("label")} reason={t("businessOnly")} />;
   }
 
+  // A plain `<a>` wearing the button's classes rather than `<Button render={<a/>}>`: a download is a
+  // link, and Base UI's button would stamp `type`/`role="button"` on the anchor (see `ButtonLink`).
   return (
-    <Button variant="outline" render={<a href={consentExportPath(siteId, filters)} download />}>
+    <a
+      href={consentExportPath(siteId, filters)}
+      download
+      className={buttonVariants({ variant: "outline" })}
+    >
       {t("label")}
-    </Button>
+    </a>
   );
 }

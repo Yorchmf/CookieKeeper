@@ -9,6 +9,7 @@ import { z } from "zod";
 import { FormError } from "@/components/forms/form-error";
 import { FormField } from "@/components/forms/form-field";
 import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button-link";
 import {
   Card,
   CardContent,
@@ -17,7 +18,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Link } from "@/i18n/navigation";
 import { getApiErrorCode } from "@/lib/api-error-codes";
 import { resetPassword } from "@/lib/api/auth";
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "@/lib/password";
@@ -80,13 +80,9 @@ export function ResetPasswordForm() {
           </CardDescription>
         </CardHeader>
         <CardFooter>
-          <Button
-            nativeButton={false}
-            render={<Link href="/login" />}
-            className="w-full"
-          >
+          <ButtonLink href="/login" className="w-full">
             {t("resetPassword.goToLogin")}
-          </Button>
+          </ButtonLink>
         </CardFooter>
       </Card>
     );

@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 
 import { useEntitlementGate } from "@/components/analytics/use-entitlement-gate";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { EntitlementGateError } from "@/components/ui/entitlement-gate-error";
 import { LockedFeature } from "@/components/ui/locked-feature";
 import { analyticsExportPath, type AnalyticsFilter } from "@/lib/api/analytics";
@@ -42,9 +42,15 @@ export function ExportAnalyticsButton({
     return <LockedFeature label={t("label")} reason={t("businessOnly")} />;
   }
 
+  // A plain `<a>` wearing the button's classes rather than `<Button render={<a/>}>`: a download is a
+  // link, and Base UI's button would stamp `type`/`role="button"` on the anchor (see `ButtonLink`).
   return (
-    <Button variant="outline" render={<a href={analyticsExportPath(siteId, filter)} download />}>
+    <a
+      href={analyticsExportPath(siteId, filter)}
+      download
+      className={buttonVariants({ variant: "outline" })}
+    >
       {t("label")}
-    </Button>
+    </a>
   );
 }

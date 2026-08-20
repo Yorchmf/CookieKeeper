@@ -9,6 +9,7 @@ import { z } from "zod";
 import { FormError } from "@/components/forms/form-error";
 import { FormField } from "@/components/forms/form-field";
 import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button-link";
 import {
   Card,
   CardContent,
@@ -17,7 +18,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Link } from "@/i18n/navigation";
 import { getApiErrorCode } from "@/lib/api-error-codes";
 import { resendVerification, verifyEmail } from "@/lib/api/auth";
 
@@ -107,13 +107,9 @@ export function VerifyEmailPanel() {
           <CardDescription>{t("verifyEmail.successDescription")}</CardDescription>
         </CardHeader>
         <CardFooter>
-          <Button
-            nativeButton={false}
-            render={<Link href="/login" />}
-            className="w-full"
-          >
+          <ButtonLink href="/login" className="w-full">
             {t("verifyEmail.goToLogin")}
-          </Button>
+          </ButtonLink>
         </CardFooter>
       </Card>
     );

@@ -2,7 +2,7 @@
 
 import { DownloadIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -47,13 +47,12 @@ export function ExportDataCard() {
         </div>
         <p className="text-sm text-muted-foreground">{t("consentNote")}</p>
         <div>
-          <Button
-            nativeButton={false}
-            render={<a href={ACCOUNT_EXPORT_PATH} download />}
-          >
+          {/* A plain `<a>` wearing the button's classes: a download is a link, and the API path must
+              never be locale-prefixed. See `ButtonLink` for why `<Button render={<a/>}>` is wrong. */}
+          <a href={ACCOUNT_EXPORT_PATH} download className={buttonVariants()}>
             <DownloadIcon aria-hidden="true" />
             {t("download")}
-          </Button>
+          </a>
         </div>
       </CardContent>
     </Card>

@@ -1,7 +1,7 @@
 import { useTranslations } from "next-intl";
 import { Reveal } from "@/components/marketing/reveal";
-import { Button } from "@/components/ui/button";
-import { Link } from "@/i18n/navigation";
+import { buttonVariants } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button-link";
 
 export function FinalCtaSection() {
   const t = useTranslations("marketing.finalCta");
@@ -24,22 +24,13 @@ export function FinalCtaSection() {
             {t("subtitle")}
           </p>
           <div className="flex flex-col items-center gap-3 sm:flex-row">
-            <Button
-              variant="brand"
-              size="lg"
-              nativeButton={false}
-              render={<Link href="/signup" />}
-            >
+            <ButtonLink variant="brand" size="lg" href="/signup">
               {t("cta")}
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              nativeButton={false}
-              render={<a href="#hero-heading" />}
-            >
+            </ButtonLink>
+            {/* In-page anchor: a plain <a> so next-intl never locale-prefixes the fragment. */}
+            <a href="#hero-heading" className={buttonVariants({ variant: "outline", size: "lg" })}>
               {t("ctaSecondary")}
-            </Button>
+            </a>
           </div>
         </div>
       </Reveal>

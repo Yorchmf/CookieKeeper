@@ -10,6 +10,7 @@ import { z } from "zod";
 import { FormError } from "@/components/forms/form-error";
 import { FormField } from "@/components/forms/form-field";
 import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button-link";
 import {
   Dialog,
   DialogContent,
@@ -21,7 +22,6 @@ import {
 } from "@/components/ui/dialog";
 import { useEntitlement } from "@/hooks/use-billing";
 import { useCreateSite } from "@/hooks/use-sites";
-import { Link } from "@/i18n/navigation";
 import { getApiErrorCode } from "@/lib/api-error-codes";
 import { resendVerification } from "@/lib/api/auth";
 import { createDomainSchema } from "@/lib/domain";
@@ -143,14 +143,9 @@ export function AddSiteDialog() {
                   : t("capReached", { max: cap.maxSites })}
               </p>
               <div>
-                <Button
-                  nativeButton={false}
-                  variant="outline"
-                  size="sm"
-                  render={<Link href="/billing" />}
-                >
+                <ButtonLink variant="outline" size="sm" href="/billing">
                   {t("capUpgrade")}
-                </Button>
+                </ButtonLink>
               </div>
             </div>
           ) : cap?.remaining === 1 ? (

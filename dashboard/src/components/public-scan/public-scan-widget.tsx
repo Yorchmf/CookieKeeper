@@ -9,12 +9,12 @@ import { ScanReport } from "@/components/public-scan/scan-report";
 import { ScanReportGate } from "@/components/public-scan/scan-report-gate";
 import { ScanVerdict } from "@/components/public-scan/scan-verdict";
 import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button-link";
 import {
   usePublicScanTeaser,
   useRequestPublicScan,
   useUnlockPublicScanReport,
 } from "@/hooks/use-public-scan";
-import { Link } from "@/i18n/navigation";
 import { getApiErrorCode } from "@/lib/api-error-codes";
 import type { PublicScanReport as PublicScanReportData } from "@/lib/api/public-scan";
 
@@ -213,14 +213,9 @@ export function PublicScanWidget() {
                       {t("cta.description")}
                     </p>
                   </div>
-                  <Button
-                    size="lg"
-                    className="w-fit"
-                    nativeButton={false}
-                    render={<Link href="/signup" />}
-                  >
+                  <ButtonLink size="lg" className="w-fit" href="/signup">
                     {t("cta.action")}
-                  </Button>
+                  </ButtonLink>
                 </div>
               </div>
             )

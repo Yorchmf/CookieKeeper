@@ -8,6 +8,7 @@ import { z } from "zod";
 import { FormError } from "@/components/forms/form-error";
 import { FormField } from "@/components/forms/form-field";
 import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button-link";
 import {
   Card,
   CardContent,
@@ -17,7 +18,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useChangePassword } from "@/hooks/use-account";
-import { Link } from "@/i18n/navigation";
 import { getApiErrorCode } from "@/lib/api-error-codes";
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "@/lib/password";
 
@@ -142,9 +142,7 @@ function SignedOutPanel() {
         <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
       <CardFooter>
-        <Button nativeButton={false} render={<Link href="/login" />}>
-          {t("login")}
-        </Button>
+        <ButtonLink href="/login">{t("login")}</ButtonLink>
       </CardFooter>
     </Card>
   );

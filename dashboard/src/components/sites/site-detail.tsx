@@ -11,6 +11,7 @@ import { VerifySiteCard } from "@/components/sites/verify-site-card";
 import { WidgetStatusCard } from "@/components/sites/widget-status-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button-link";
 import {
   Card,
   CardContent,
@@ -29,7 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useArchiveSite, useRestoreSite, useSite } from "@/hooks/use-sites";
-import { Link, useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/navigation";
 import { getApiErrorCode } from "@/lib/api-error-codes";
 
 export function SiteDetail({ siteId }: { siteId: string }) {
@@ -141,12 +142,9 @@ export function SiteDetail({ siteId }: { siteId: string }) {
             <CardDescription>{t("detail.bannerDescription")}</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button
-              variant="outline"
-              render={<Link href={`/sites/${siteId}/banner`} />}
-            >
+            <ButtonLink variant="outline" href={`/sites/${siteId}/banner`}>
               {t("detail.bannerCta")}
-            </Button>
+            </ButtonLink>
           </CardContent>
         </Card>
 
@@ -162,12 +160,9 @@ export function SiteDetail({ siteId }: { siteId: string }) {
             <CardDescription>{t("detail.policyDescription")}</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button
-              variant="outline"
-              render={<Link href={`/sites/${siteId}/policy`} />}
-            >
+            <ButtonLink variant="outline" href={`/sites/${siteId}/policy`}>
               {t("detail.policyCta")}
-            </Button>
+            </ButtonLink>
           </CardContent>
         </Card>
 
@@ -177,12 +172,9 @@ export function SiteDetail({ siteId }: { siteId: string }) {
             <CardDescription>{t("detail.consentLogDescription")}</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button
-              variant="outline"
-              render={<Link href={`/sites/${siteId}/consent-log`} />}
-            >
+            <ButtonLink variant="outline" href={`/sites/${siteId}/consent-log`}>
               {t("detail.consentLogCta")}
-            </Button>
+            </ButtonLink>
           </CardContent>
         </Card>
 
@@ -192,12 +184,9 @@ export function SiteDetail({ siteId }: { siteId: string }) {
             <CardDescription>{t("detail.analyticsDescription")}</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button
-              variant="outline"
-              render={<Link href={`/sites/${siteId}/analytics`} />}
-            >
+            <ButtonLink variant="outline" href={`/sites/${siteId}/analytics`}>
               {t("detail.analyticsCta")}
-            </Button>
+            </ButtonLink>
           </CardContent>
         </Card>
 

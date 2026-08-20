@@ -3,7 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button-link";
 import {
   Card,
   CardContent,
@@ -12,7 +12,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Link } from "@/i18n/navigation";
 import { getApiErrorCode } from "@/lib/api-error-codes";
 import { confirmEmailChange } from "@/lib/api/auth";
 
@@ -85,13 +84,9 @@ export function ConfirmEmailChangePanel() {
           <CardDescription>{t("successDescription")}</CardDescription>
         </CardHeader>
         <CardFooter>
-          <Button
-            nativeButton={false}
-            render={<Link href="/login" />}
-            className="w-full"
-          >
+          <ButtonLink href="/login" className="w-full">
             {t("goToLogin")}
-          </Button>
+          </ButtonLink>
         </CardFooter>
       </Card>
     );
@@ -110,13 +105,9 @@ export function ConfirmEmailChangePanel() {
         <p className="text-sm text-muted-foreground">{t("invalidHelp")}</p>
       </CardContent>
       <CardFooter className="mt-4">
-        <Button
-          nativeButton={false}
-          render={<Link href="/login" />}
-          className="w-full"
-        >
+        <ButtonLink href="/login" className="w-full">
           {t("goToLogin")}
-        </Button>
+        </ButtonLink>
       </CardFooter>
     </Card>
   );

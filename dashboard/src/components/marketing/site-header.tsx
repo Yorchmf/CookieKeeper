@@ -6,6 +6,7 @@ import { useState } from "react";
 import { LanguageSwitcher } from "@/components/marketing/language-switcher";
 import { ThemeToggle } from "@/components/marketing/theme-toggle";
 import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button-link";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
@@ -51,22 +52,12 @@ export function SiteHeader() {
         <div className="hidden items-center gap-1 md:flex">
           <LanguageSwitcher />
           <ThemeToggle />
-          <Button
-            variant="ghost"
-            size="sm"
-            nativeButton={false}
-            render={<Link href="/login" />}
-          >
+          <ButtonLink variant="ghost" size="sm" href="/login">
             {t("signIn")}
-          </Button>
-          <Button
-            variant="brand"
-            size="sm"
-            nativeButton={false}
-            render={<Link href="/signup" />}
-          >
+          </ButtonLink>
+          <ButtonLink variant="brand" size="sm" href="/signup">
             {t("cta")}
-          </Button>
+          </ButtonLink>
         </div>
 
         <div className="flex items-center gap-1 md:hidden">
@@ -105,23 +96,12 @@ export function SiteHeader() {
           ))}
           <div className="mt-2 flex items-center gap-2">
             <LanguageSwitcher />
-            <Button
-              variant="ghost"
-              size="sm"
-              nativeButton={false}
-              render={<Link href="/login" />}
-            >
+            <ButtonLink variant="ghost" size="sm" href="/login">
               {t("signIn")}
-            </Button>
-            <Button
-              variant="brand"
-              size="sm"
-              className="flex-1"
-              nativeButton={false}
-              render={<Link href="/signup" />}
-            >
+            </ButtonLink>
+            <ButtonLink variant="brand" size="sm" className="flex-1" href="/signup">
               {t("cta")}
-            </Button>
+            </ButtonLink>
           </div>
         </nav>
       </div>

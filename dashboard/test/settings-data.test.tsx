@@ -51,9 +51,10 @@ describe("ExportDataCard", () => {
   test("offers the export as a same-origin download rather than a fetch", () => {
     renderCard(<ExportDataCard />);
 
-    // Styled as a button (base-ui gives it role="button"), but it must stay a real anchor:
-    // the download relies on the browser sending the auth cookies with a plain navigation.
-    const link = screen.getByRole("button", { name: /download json/i });
+    // Styled as a button but exposed as a *link* — it navigates, so it must keep the link role
+    // (a `role="button"` here would drop it from a screen reader's links list). The download relies
+    // on the browser sending the auth cookies with a plain navigation, so it stays a real anchor.
+    const link = screen.getByRole("link", { name: /download json/i });
     expect(link.tagName).toBe("A");
     expect(link.getAttribute("href")).toBe("/api/v1/account/export.json");
     // `download` keeps the browser from navigating away from the dashboard.

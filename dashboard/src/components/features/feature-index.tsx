@@ -3,11 +3,11 @@
 import { useTranslations } from "next-intl";
 
 import { useEntitlementGate } from "@/components/analytics/use-entitlement-gate";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button-link";
 import { EntitlementGateError } from "@/components/ui/entitlement-gate-error";
 import { LockedFeature } from "@/components/ui/locked-feature";
 import { useSites } from "@/hooks/use-sites";
-import { Link } from "@/i18n/navigation";
 import {
   FEATURE_GROUPS,
   featureHref,
@@ -113,21 +113,22 @@ function GatedCard({
  * the accessible name, which is what SC 2.5.3 (Label in Name) asks for, and it keeps a screen-reader
  * user's link list meaningful instead of twenty identical entries.
  *
- * A `Link` wearing `buttonVariants` rather than `<Button render={<Link/>}>`: this navigates, so it must
- * keep link semantics. Base UI's button would put `role="button"` on the anchor and cost us the link
- * role on every card — same reasoning as the upgrade link in `LockedFeature`.
+ * A `ButtonLink` rather than `<Button render={<Link/>}>`: this navigates, so it must keep link
+ * semantics. Base UI's button would put `role="button"` on the anchor and cost us the link role on
+ * every card — see `ButtonLink` for the full reasoning.
  */
 function OpenLink({ feature, siteId }: { feature: FeatureEntry; siteId: string | null }) {
   const t = useTranslations("features");
 
   return (
-    <Link
+    <ButtonLink
+      variant="outline"
+      size="sm"
       href={featureHref(feature, siteId)}
       aria-label={t("openNamed", { feature: t(`items.${feature.key}.title`) })}
-      className={buttonVariants({ variant: "outline", size: "sm" })}
     >
       {t("open")}
-    </Link>
+    </ButtonLink>
   );
 }
 

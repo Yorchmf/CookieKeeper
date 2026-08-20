@@ -1,8 +1,7 @@
 import { Check } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Reveal } from "@/components/marketing/reveal";
-import { Button } from "@/components/ui/button";
-import { Link } from "@/i18n/navigation";
+import { ButtonLink } from "@/components/ui/button-link";
 import { cn } from "@/lib/utils";
 
 // Order + `popular` mirror the billing dashboard; facts trace to backend Plan.kt.
@@ -71,15 +70,14 @@ export function PricingSection() {
                   </span>
                 </p>
 
-                <Button
+                <ButtonLink
                   variant={plan.popular ? "brand" : "outline"}
                   size="lg"
                   className="w-full"
-                  nativeButton={false}
-                  render={<Link href="/signup" />}
+                  href="/signup"
                 >
                   {t("cta")}
-                </Button>
+                </ButtonLink>
 
                 <ul className="flex flex-col gap-3">
                   {features.map((feature) => (

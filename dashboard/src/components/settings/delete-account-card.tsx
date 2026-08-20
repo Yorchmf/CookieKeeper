@@ -8,6 +8,7 @@ import { z } from "zod";
 import { FormError } from "@/components/forms/form-error";
 import { FormField } from "@/components/forms/form-field";
 import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button-link";
 import {
   Card,
   CardContent,
@@ -25,7 +26,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useDeleteAccount } from "@/hooks/use-account";
-import { Link } from "@/i18n/navigation";
 import { getApiErrorCode } from "@/lib/api-error-codes";
 import type { AccountDeletionResult } from "@/lib/api/account";
 
@@ -182,13 +182,9 @@ function DeletedPanel({ result }: { result: AccountDeletionResult }) {
           <li>{t("sitesAnonymized", { count: result.sitesAnonymized })}</li>
         </ul>
         <div>
-          <Button
-            variant="outline"
-            nativeButton={false}
-            render={<Link href="/" />}
-          >
+          <ButtonLink variant="outline" href="/">
             {t("home")}
-          </Button>
+          </ButtonLink>
         </div>
       </CardContent>
     </Card>
