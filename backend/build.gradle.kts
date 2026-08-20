@@ -116,47 +116,52 @@ tasks.withType<Test> {
     finalizedBy(tasks.jacocoTestReport)
 }
 
-// 80% line coverage gate scoped to the Week-2 business-logic classes (CLAUDE.md testing
+// 80% line coverage gate scoped to the security- and business-critical classes (CLAUDE.md testing
 // convention: service-layer coverage target — DTOs/entities/config are excluded).
+//
+// These are JVM class-file paths, so they must use the *package* root `eu/cookiekeeper`, not the
+// product name. A stale `com/complyr` prefix here matches nothing, and an empty classDirectories set
+// makes the 80% rule pass vacuously — the gate reports success while verifying nothing. If this list
+// ever needs to be emptied, delete the gate rather than leaving it green over zero classes.
 val coverageClassPatterns =
     listOf(
-        "com/complyr/auth/AuthService*",
-        "com/complyr/auth/TokenService*",
-        "com/complyr/site/SiteService*",
-        "com/complyr/site/DomainValidator*",
-        "com/complyr/scan/ScanQueue*",
-        "com/complyr/scan/ScanQueryService*",
+        "eu/cookiekeeper/auth/AuthService*",
+        "eu/cookiekeeper/auth/TokenService*",
+        "eu/cookiekeeper/site/SiteService*",
+        "eu/cookiekeeper/site/DomainValidator*",
+        "eu/cookiekeeper/scan/ScanQueue*",
+        "eu/cookiekeeper/scan/ScanQueryService*",
         // Security-critical SSRF range logic — must stay well covered. The Playwright crawler itself
         // needs a real browser, so it is exercised via integration/manual runs, not this unit gate.
-        "com/complyr/scan/ScanTargetValidator*",
+        "eu/cookiekeeper/scan/ScanTargetValidator*",
         // Cookie classification (W4 slice 3): pure matcher + the classifier that drives it.
-        "com/complyr/scan/CookieSignatureMatcher*",
-        "com/complyr/scan/CookieClassifier*",
+        "eu/cookiekeeper/scan/CookieSignatureMatcher*",
+        "eu/cookiekeeper/scan/CookieClassifier*",
         // Compliance report: pure scoring/issue logic over a completed scan's classified cookies.
-        "com/complyr/scan/ComplianceAnalyzer*",
+        "eu/cookiekeeper/scan/ComplianceAnalyzer*",
         // Third-party marketing tracker detection: pure host matcher + the classifier that counts distinct
         // marketing signatures from the crawl's observed off-site hosts (drives the third_party_trackers finding).
-        "com/complyr/scan/TrackerSignatureMatcher*",
-        "com/complyr/scan/TrackerClassifier*",
+        "eu/cookiekeeper/scan/TrackerSignatureMatcher*",
+        "eu/cookiekeeper/scan/TrackerClassifier*",
         // Domain verification (ADR-17). The fetcher is the only app-initiated outbound request to a
         // customer-controlled host, and the matcher is what an attacker would try to forge — both are
         // security-critical enough that a coverage regression should fail the build.
-        "com/complyr/site/SiteVerificationFetcher*",
-        "com/complyr/site/SnippetMatcher*",
-        "com/complyr/site/DnsTxtLookup*",
-        "com/complyr/site/SiteVerificationService*",
-        "com/complyr/site/CdnHost*",
+        "eu/cookiekeeper/site/SiteVerificationFetcher*",
+        "eu/cookiekeeper/site/SnippetMatcher*",
+        "eu/cookiekeeper/site/DnsTxtLookup*",
+        "eu/cookiekeeper/site/SiteVerificationService*",
+        "eu/cookiekeeper/site/CdnHost*",
         // On-demand re-scan: the entitlement gate and the one-live-scan-per-site throttle are the whole
         // protection on a customer-triggered crawl, so a coverage regression should fail the build.
-        "com/complyr/scan/ScanRequestService*",
+        "eu/cookiekeeper/scan/ScanRequestService*",
         // The hosted policy page is public and gated only here: this is what stops an unverified
         // customer publishing a Complyr-hosted page for a domain they don't control (ADR-17).
-        "com/complyr/policy/PolicyReadService*",
-        "com/complyr/policy/PolicyVersionSelector*",
+        "eu/cookiekeeper/policy/PolicyReadService*",
+        "eu/cookiekeeper/policy/PolicyVersionSelector*",
         // Scheduled re-scan: the job is what makes every plan's rescanFrequency real, so a Starter site
         // is never stuck with its single signup scan. Its due/skip logic (skip Expired, per-plan cadence)
         // is the whole correctness surface and must stay covered.
-        "com/complyr/scan/ScheduledRescanJob*",
+        "eu/cookiekeeper/scan/ScheduledRescanJob*",
     )
 
 // Both jacoco tasks read `classDirectories`, i.e. the outputs of compileKotlin, compileJava and
@@ -182,6 +187,14 @@ tasks.jacocoTestCoverageVerification {
                 counter = "LINE"
                 minimum = "0.80".toBigDecimal()
             }
+        }
+    }
+    // JaCoCo treats "no classes to analyse" as a pass, so a pattern that stops matching — a renamed
+    // package, a moved class — silently disables the gate instead of failing it. Assert the set is
+    // non-empty so the failure mode is a red build, not a green one that checked nothing.
+    doFirst {
+        require(classDirectories.files.isNotEmpty()) {
+            "Coverage gate matched no class files. Check coverageClassPatterns against the real package layout."
         }
     }
 }
