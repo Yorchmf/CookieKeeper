@@ -62,7 +62,7 @@ let impressionSent = false;
 setDebug(readDebugFlag(ownScript));
 
 // 2. Consent Mode defaults — synchronous, before anything else.
-setConsentDefaults();
+setConsentDefaults({ urlPassthrough: readUrlPassthroughFlag(ownScript) });
 
 // 3. Site key from our own <script data-complyr="pk_…"> tag.
 const siteKey = ownScript?.getAttribute('data-complyr') ?? null;
@@ -96,6 +96,16 @@ function readDebugFlag(script: HTMLScriptElement | null): boolean {
     script?.hasAttribute('data-complyr-debug') === true ||
     (window as { __complyrDebug?: boolean }).__complyrDebug === true
   );
+}
+
+/**
+ * Opt in to Consent Mode's `url_passthrough` via `data-complyr-url-passthrough`
+ * on the embed. Off unless the site owner adds it: it rewrites the host page's
+ * own internal links to carry the ad-click id forward, which is their call to
+ * make — see ConsentModeOptions.
+ */
+function readUrlPassthroughFlag(script: HTMLScriptElement | null): boolean {
+  return script?.hasAttribute('data-complyr-url-passthrough') === true;
 }
 
 async function init(): Promise<void> {
