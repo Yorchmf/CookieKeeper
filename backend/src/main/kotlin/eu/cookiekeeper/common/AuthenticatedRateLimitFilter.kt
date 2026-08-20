@@ -145,6 +145,11 @@ class AuthenticatedRateLimitFilter(
             // method-blind suffix match would drag that read onto this tight write bucket. Gating on POST
             // keeps the read on GENERAL below.
             HttpMethod.POST.matches(method) && uri.endsWith(POLICY_SUFFIX) -> Tier.POLICY
+            // Banner copy: the one authed endpoint that fans out — a single request appends a config
+            // version to every other site the account owns (up to 9 on Business). GENERAL would let one
+            // caller write thousands of config rows a minute, so it gets its own tight bucket. No method
+            // gate needed: nothing else is served on this path.
+            uri.endsWith(BANNER_COPY_SUFFIX) -> Tier.BANNER_COPY
             else -> Tier.GENERAL
         }
 
@@ -156,6 +161,7 @@ class AuthenticatedRateLimitFilter(
             Tier.EXPORT -> properties.rateLimit.authExportPerMinute
             Tier.CONTACT -> properties.rateLimit.authContactPerMinute
             Tier.POLICY -> properties.rateLimit.authPolicyPerMinute
+            Tier.BANNER_COPY -> properties.rateLimit.authBannerCopyPerMinute
             Tier.GENERAL -> properties.rateLimit.authGeneralPerMinute
         }
 
@@ -171,7 +177,7 @@ class AuthenticatedRateLimitFilter(
         )
     }
 
-    private enum class Tier { BILLING, ACCOUNT, VERIFY, EXPORT, CONTACT, POLICY, GENERAL }
+    private enum class Tier { BILLING, ACCOUNT, VERIFY, EXPORT, CONTACT, POLICY, BANNER_COPY, GENERAL }
 
     companion object {
         const val API_PREFIX = "/api/v1/"
@@ -184,6 +190,7 @@ class AuthenticatedRateLimitFilter(
         const val EXPORT_CSV_SUFFIX = "/analytics/export.csv"
         const val EVIDENCE_PACK_SUFFIX = "/analytics/evidence-pack.zip"
         const val POLICY_SUFFIX = "/policy"
+        const val BANNER_COPY_SUFFIX = "/banner-config/copy"
 
         // Buckets refill over a 1-minute window, so a drained caller can retry after at most 60s.
         private const val RETRY_AFTER_SECONDS = "60"

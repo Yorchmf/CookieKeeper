@@ -475,6 +475,24 @@
       "embedDescription": "Fügen Sie dieses Snippet vor dem schließenden '</head>'-Tag auf jeder Seite Ihrer Website ein.",
       "copy": "Kopieren",
       "copied": "Kopiert!",
+      "widgetStatus": {
+        "title": "Widget-Status",
+        "description": "Ob Ihr Banner tatsächlich auf Ihrer Website gesehen wurde.",
+        "badge": {
+          "active": "Aktiv",
+          "idle": "Keine aktuelle Aktivität",
+          "never_seen": "Noch nicht erkannt"
+        },
+        "body": {
+          "active": "Zuletzt gesehen am {day}. {window, plural, one {# Banner-Aufruf} other {# Banner-Aufrufe}} in den letzten {days} Tagen, davon {today} heute.",
+          "idle": "Zuletzt gesehen am {day}, also vor mehr als {days} Tagen. Das ist normal, wenn Ihre wiederkehrenden Besucher bereits entschieden haben — falls aber neue Besucher kommen, prüfen Sie, ob das Snippet noch auf Ihren Seiten steht.",
+          "never_seen": "Es wurde noch kein Banner-Aufruf erfasst. Fügen Sie das Snippet oben auf Ihrer Website ein, öffnen Sie dann eine Ihrer Seiten in einem privaten Fenster und prüfen Sie erneut."
+        },
+        "note": "Das Banner wird nur Besuchern gezeigt, die noch nicht entschieden haben; wiederkehrende Besucher werden also nicht gezählt. Tage werden in UTC gezählt.",
+        "checkAgain": "Erneut prüfen",
+        "checking": "Wird geprüft …",
+        "loadError": "Der Widget-Status konnte nicht geladen werden. Versuchen Sie es gleich noch einmal."
+      },
       "dangerZone": "Gefahrenbereich",
       "archiveHint": "Beim Archivieren wird das Banner deaktiviert und die Website aus Ihrer Liste ausgeblendet.",
       "archive": "Website archivieren",
@@ -811,6 +829,19 @@
     "saved": "Ihr Banner wurde veröffentlicht",
     "saveError": "Ihr Banner konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.",
     "reset": "Änderungen verwerfen",
+    "copy": {
+      "title": "Auf Ihre anderen Websites anwenden",
+      "description": "Verwenden Sie dieses Banner — Farben, Position und Texte in allen Sprachen — auch auf Ihren anderen Websites.",
+      "cta": "Auf andere Websites anwenden",
+      "dialogTitle": "Dieses Banner auf andere Websites anwenden",
+      "dialogDescription": "Jede ausgewählte Website erhält eine neue Banner-Version mit diesem Design und diesen Texten. Ihr bisheriges Banner wird sofort nicht mehr ausgeliefert.",
+      "legend": "Websites, auf die dieses Banner angewendet wird",
+      "cancel": "Abbrechen",
+      "apply": "{count, plural, =0 {Anwenden} one {Auf # Website anwenden} other {Auf # Websites anwenden}}",
+      "applying": "Wird angewendet …",
+      "applied": "{count, plural, one {Banner auf # Website angewendet} other {Banner auf # Websites angewendet}}",
+      "tooMany": "Sie können das Banner auf höchstens {max} Websites gleichzeitig anwenden."
+    },
     "empty": {
       "title": "Noch kein Banner",
       "description": "Für diese Website gibt es keine anpassbare Banner-Konfiguration."

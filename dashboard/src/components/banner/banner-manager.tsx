@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { BannerEditor } from "@/components/banner/banner-editor";
+import { CopyBannerCard } from "@/components/banner/copy-banner-card";
 import {
   Card,
   CardDescription,
@@ -54,13 +55,17 @@ export function BannerManager({ siteId }: { siteId: string }) {
         </header>
 
         {banner.data ? (
-          // Key on the published version so a successful publish (which returns a re-normalized
-          // document) remounts the editor and re-seeds its local state instead of drifting.
-          <BannerEditor
-            key={banner.data.version}
-            siteId={siteId}
-            config={banner.data}
-          />
+          <>
+            {/* Key on the published version so a successful publish (which returns a re-normalized
+                document) remounts the editor and re-seeds its local state instead of drifting. */}
+            <BannerEditor
+              key={banner.data.version}
+              siteId={siteId}
+              config={banner.data}
+            />
+            {/* After the editor: copying is what you reach for once this banner is the way you want it. */}
+            <CopyBannerCard siteId={siteId} />
+          </>
         ) : (
           <Card>
             <CardHeader>

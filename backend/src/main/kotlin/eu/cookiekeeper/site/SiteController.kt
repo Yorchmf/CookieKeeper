@@ -11,6 +11,7 @@ import eu.cookiekeeper.site.dto.SiteDetailResponse
 import eu.cookiekeeper.site.dto.SiteResponse
 import eu.cookiekeeper.site.dto.SiteVerificationResponse
 import eu.cookiekeeper.site.dto.UpdateSiteRequest
+import eu.cookiekeeper.site.dto.WidgetStatusResponse
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -30,6 +31,7 @@ import java.util.UUID
 class SiteController(
     private val siteService: SiteService,
     private val siteVerificationService: SiteVerificationService,
+    private val widgetStatusService: WidgetStatusService,
 ) {
     @GetMapping
     fun list(
@@ -85,6 +87,17 @@ class SiteController(
     fun verify(
         @PathVariable id: UUID,
     ): ApiResponse<SiteVerificationResponse> = ApiResponse.success(siteVerificationService.verify(CurrentUser.id(), id))
+
+    /**
+     * Is the banner actually rendering on this site? Read-only, derived from the impression counter the
+     * widget already feeds — the ongoing counterpart to the one-shot [verify] gate, and the answer to the
+     * "I pasted the snippet, did it work?" question the dashboard previously left unanswered. Cheap enough
+     * for the generous GENERAL rate-limit tier (three aggregates over one site's retained counter rows).
+     */
+    @GetMapping("/{id}/widget-status")
+    fun widgetStatus(
+        @PathVariable id: UUID,
+    ): ApiResponse<WidgetStatusResponse> = ApiResponse.success(widgetStatusService.status(CurrentUser.id(), id))
 
     @DeleteMapping("/{id}")
     fun archive(

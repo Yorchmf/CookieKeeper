@@ -14,6 +14,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 /**
  * Testcontainers coverage for [BannerImpressionRepository] (Track 4 Slice D) — the native-SQL, composite-key
@@ -89,6 +90,41 @@ class BannerImpressionRepositoryTest {
         assertEquals(3L, repository.accountImpressionCounts(listOf(included, excluded), AUG13_START, window))
         // Empty id set is a real state (account with no active sites) — 0, never invalid `IN ()` SQL.
         assertEquals(0L, repository.accountImpressionCounts(emptyList(), AUG13_START, window))
+    }
+
+    @Test
+    fun `widgetActivity reports the last day and the today-slash-window counts`() {
+        val site = persistSite()
+        repeat(3) { repository.increment(site, AUG13_DAY) }
+        repository.increment(site, AUG14_DAY)
+
+        // Reading "today" as Aug 14 over a window opening Aug 13: 1 today, 4 across the window.
+        val onAug14 = repository.widgetActivity(site, today = AUG14_DAY, windowStart = AUG13_DAY)
+        assertEquals(AUG14_DAY, onAug14.lastDay)
+        assertEquals(1L, onAug14.today)
+        assertEquals(4L, onAug14.window)
+
+        // windowStart is inclusive on the low end and the today filter is an exact day match: reading the
+        // same rows as-of Aug 15 gives nothing "today" while the window still spans both days.
+        val onAug15 = repository.widgetActivity(site, today = AUG14_DAY.plusDays(1), windowStart = AUG13_DAY)
+        assertEquals(0L, onAug15.today)
+        assertEquals(4L, onAug15.window)
+
+        // A window that opens after the only rows: last day still reported (that is what makes the state
+        // IDLE rather than NEVER_SEEN), but nothing falls inside it.
+        val narrow = repository.widgetActivity(site, today = AUG14_DAY.plusDays(9), windowStart = AUG14_DAY.plusDays(3))
+        assertEquals(AUG14_DAY, narrow.lastDay)
+        assertEquals(0L, narrow.window)
+    }
+
+    @Test
+    fun `widgetActivity returns a null last day for a site that never recorded an impression`() {
+        val activity = repository.widgetActivity(persistSite(), today = AUG14_DAY, windowStart = AUG13_DAY)
+
+        // The aggregate always yields one row, so "never seen" is a null max(day) — not an empty result.
+        assertNull(activity.lastDay)
+        assertEquals(0L, activity.today)
+        assertEquals(0L, activity.window)
     }
 
     @Test

@@ -7,6 +7,17 @@ import java.time.LocalDate
 import java.util.UUID
 
 /**
+ * One site's banner-impression activity, as read by [BannerImpressionRepository.widgetActivity]: the most
+ * recent day with any impression ([lastDay], null if the site has never recorded one), the count [today],
+ * and the count over the status window. Day-grained because the counter is — see the V26 migration.
+ */
+data class WidgetActivity(
+    val lastDay: LocalDate?,
+    val today: Long,
+    val window: Long,
+)
+
+/**
  * Read/write access to the `banner_impressions` per-site, per-day counter (Track 4 Slice D, migration V26).
  *
  * An `EntityManager`-backed native-SQL repository rather than a Spring Data `Repository<Entity, ID>`: the
@@ -85,6 +96,43 @@ class BannerImpressionRepository(
             "SELECT coalesce(sum(count), 0) FROM banner_impressions " +
                 "WHERE site_id IN (:siteIds) AND day >= (:from AT TIME ZONE 'UTC')::date AND day < (:to AT TIME ZONE 'UTC')",
             mapOf("siteIds" to siteIds, "from" to from, "to" to to),
+        )
+    }
+
+    /**
+     * The three figures behind the site page's widget-status card: the most recent day this site recorded
+     * a banner impression (null if it never has), how many it recorded on [today], and how many over the
+     * window starting at [windowStart] (inclusive of both ends).
+     *
+     * Read-only and derived entirely from the counter this class already maintains — installing the card
+     * added no write, no column and no migration. `max(day)` is served by the primary key's leading
+     * `site_id`; the two filtered sums scan the same site's handful of retained rows.
+     *
+     * `to_char` rather than letting the driver hand back a `date`: a native query's column types are the
+     * JDBC driver's choice (`java.sql.Date` here, `LocalDate` under a different mapping), and a canonical
+     * ISO string parses the same either way. The aggregate always returns exactly one row — a site with
+     * no rows at all yields `(null, 0, 0)` — so callers never handle an empty result.
+     */
+    fun widgetActivity(
+        siteId: UUID,
+        today: LocalDate,
+        windowStart: LocalDate,
+    ): WidgetActivity {
+        val row =
+            entityManager
+                .createNativeQuery(
+                    "SELECT to_char(max(day), 'YYYY-MM-DD'), " +
+                        "coalesce(sum(count) FILTER (WHERE day = :today), 0), " +
+                        "coalesce(sum(count) FILTER (WHERE day >= :windowStart), 0) " +
+                        "FROM banner_impressions WHERE site_id = :siteId",
+                ).setParameter("siteId", siteId)
+                .setParameter("today", today)
+                .setParameter("windowStart", windowStart)
+                .singleResult as Array<*>
+        return WidgetActivity(
+            lastDay = (row[0] as String?)?.let(LocalDate::parse),
+            today = (row[1] as Number).toLong(),
+            window = (row[2] as Number).toLong(),
         )
     }
 

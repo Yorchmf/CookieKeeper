@@ -475,6 +475,24 @@
       "embedDescription": "Pega este fragmento antes de la etiqueta de cierre '</head>' en todas las páginas de tu sitio.",
       "copy": "Copiar",
       "copied": "¡Copiado!",
+      "widgetStatus": {
+        "title": "Estado del widget",
+        "description": "Si tu banner se ha visto realmente en tu sitio.",
+        "badge": {
+          "active": "Activo",
+          "idle": "Sin actividad reciente",
+          "never_seen": "Aún no detectado"
+        },
+        "body": {
+          "active": "Visto por última vez el {day}. {window, plural, one {# visualización del banner} other {# visualizaciones del banner}} en los últimos {days} días, {today} de ellas hoy.",
+          "idle": "Visto por última vez el {day}, hace más de {days} días. Es normal si tus visitantes habituales ya han elegido, pero si están llegando visitantes nuevos, comprueba que el fragmento siga en tus páginas.",
+          "never_seen": "Todavía no se ha registrado ninguna visualización del banner. Pega el fragmento de arriba en tu sitio, abre una de tus páginas en una ventana privada y vuelve a comprobarlo."
+        },
+        "note": "El banner solo se muestra a los visitantes que aún no han elegido, así que los visitantes recurrentes no se cuentan. Los días se cuentan en UTC.",
+        "checkAgain": "Comprobar de nuevo",
+        "checking": "Comprobando…",
+        "loadError": "No se pudo cargar el estado del widget. Inténtalo de nuevo en un momento."
+      },
       "dangerZone": "Zona de peligro",
       "archiveHint": "Al archivar se desactiva el banner y el sitio se oculta de tu lista.",
       "archive": "Archivar sitio",
@@ -811,6 +829,19 @@
     "saved": "Su banner se ha publicado",
     "saveError": "No se pudo guardar su banner. Inténtelo de nuevo.",
     "reset": "Descartar cambios",
+    "copy": {
+      "title": "Aplicar a tus otros sitios",
+      "description": "Reutiliza este banner —colores, posición y textos en todos los idiomas— en tus otros sitios.",
+      "cta": "Aplicar a otros sitios",
+      "dialogTitle": "Aplicar este banner a otros sitios",
+      "dialogDescription": "Cada sitio que elijas recibirá una nueva versión de su banner con este diseño y estos textos. Su banner actual deja de servirse de inmediato.",
+      "legend": "Sitios a los que aplicar este banner",
+      "cancel": "Cancelar",
+      "apply": "{count, plural, =0 {Aplicar} one {Aplicar a # sitio} other {Aplicar a # sitios}}",
+      "applying": "Aplicando…",
+      "applied": "{count, plural, one {Banner aplicado a # sitio} other {Banner aplicado a # sitios}}",
+      "tooMany": "Puedes aplicar el banner a un máximo de {max} sitios a la vez."
+    },
     "empty": {
       "title": "Aún no hay banner",
       "description": "Este sitio no tiene una configuración de banner que personalizar."

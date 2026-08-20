@@ -475,6 +475,24 @@
       "embedDescription": "Collez cet extrait avant la balise fermante '</head>' sur chaque page de votre site.",
       "copy": "Copier",
       "copied": "Copié !",
+      "widgetStatus": {
+        "title": "État du widget",
+        "description": "Indique si votre bannière a réellement été vue sur votre site.",
+        "badge": {
+          "active": "En ligne",
+          "idle": "Aucune activité récente",
+          "never_seen": "Pas encore détecté"
+        },
+        "body": {
+          "active": "Vue pour la dernière fois le {day}. {window, plural, one {# affichage de la bannière} other {# affichages de la bannière}} au cours des {days} derniers jours, dont {today} aujourd’hui.",
+          "idle": "Vue pour la dernière fois le {day}, il y a plus de {days} jours. C’est normal si vos visiteurs habituels ont déjà fait leur choix — mais si de nouveaux visiteurs arrivent, vérifiez que l’extrait est toujours présent sur vos pages.",
+          "never_seen": "Aucun affichage de la bannière n’a encore été enregistré. Collez l’extrait ci-dessus sur votre site, puis ouvrez une de vos pages dans une fenêtre privée et vérifiez à nouveau."
+        },
+        "note": "La bannière n’est montrée qu’aux visiteurs qui n’ont pas encore choisi : les visiteurs de retour ne sont donc pas comptés. Les jours sont comptés en UTC.",
+        "checkAgain": "Vérifier à nouveau",
+        "checking": "Vérification…",
+        "loadError": "Impossible de charger l’état du widget. Réessayez dans un instant."
+      },
       "dangerZone": "Zone de danger",
       "archiveHint": "L'archivage désactive la bannière et masque le site de votre liste.",
       "archive": "Archiver le site",
@@ -811,6 +829,19 @@
     "saved": "Votre bandeau a été publié",
     "saveError": "Votre bandeau n'a pas pu être enregistré. Veuillez réessayer.",
     "reset": "Annuler les modifications",
+    "copy": {
+      "title": "Appliquer à vos autres sites",
+      "description": "Réutilisez cette bannière — couleurs, position et textes dans toutes les langues — sur vos autres sites.",
+      "cta": "Appliquer à d’autres sites",
+      "dialogTitle": "Appliquer cette bannière à d’autres sites",
+      "dialogDescription": "Chaque site sélectionné reçoit une nouvelle version de sa bannière avec ce design et ces textes. Sa bannière actuelle cesse immédiatement d’être diffusée.",
+      "legend": "Sites auxquels appliquer cette bannière",
+      "cancel": "Annuler",
+      "apply": "{count, plural, =0 {Appliquer} one {Appliquer à # site} other {Appliquer à # sites}}",
+      "applying": "Application…",
+      "applied": "{count, plural, one {Bannière appliquée à # site} other {Bannière appliquée à # sites}}",
+      "tooMany": "Vous pouvez appliquer la bannière à {max} sites au maximum à la fois."
+    },
     "empty": {
       "title": "Aucun bandeau pour l'instant",
       "description": "Ce site n'a aucune configuration de bandeau à personnaliser."

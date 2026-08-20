@@ -6,6 +6,7 @@ import eu.cookiekeeper.banner.BannerTextDefaults
 import jakarta.validation.constraints.NotEmpty
 import jakarta.validation.constraints.Size
 import java.time.Instant
+import java.util.UUID
 
 /**
  * Authenticated request to publish a new version of a site's banner configuration (the dashboard
@@ -31,6 +32,32 @@ data class BannerConfigUpdateRequest(
         const val MAX_LANGUAGES = 5
     }
 }
+
+/**
+ * Apply one site's published banner configuration to other sites the same account owns — the "I've styled
+ * this once, don't make me re-enter it per domain" action. Only site *ids* travel: the document itself is
+ * read server-side from the source's current published version, so this request can never smuggle in an
+ * unvalidated banner document through a path that skips [eu.cookiekeeper.banner.BannerConfigValidator].
+ *
+ * [MAX_COPY_TARGETS] is a payload-shape bound, well above the 10-site Business cap (so the real ceiling is
+ * the ownership check, not this) but low enough that the list can't be used to amplify one request into an
+ * unbounded number of version writes.
+ */
+data class BannerConfigCopyRequest(
+    @field:NotEmpty @field:Size(max = MAX_COPY_TARGETS) val targetSiteIds: List<UUID>,
+)
+
+/**
+ * What the copy actually did: the sites that received a new version, and the source version that was
+ * applied. Returned so the dashboard can report "applied to 3 sites" without a second round-trip.
+ */
+data class BannerConfigCopyResponse(
+    val sourceVersion: Int,
+    val copiedToSiteIds: List<UUID>,
+)
+
+/** Payload-shape ceiling on one copy request; see [BannerConfigCopyRequest]. */
+const val MAX_COPY_TARGETS = 20
 
 data class BannerThemeRequest(
     val primaryColor: String,

@@ -8,6 +8,7 @@ import { BrandingCard } from "@/components/sites/branding-card";
 import { EmbedSnippet } from "@/components/sites/embed-snippet";
 import { RenameSiteCard } from "@/components/sites/rename-site-card";
 import { VerifySiteCard } from "@/components/sites/verify-site-card";
+import { WidgetStatusCard } from "@/components/sites/widget-status-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -128,6 +129,9 @@ export function SiteDetail({ siteId }: { siteId: string }) {
             <EmbedSnippet snippet={data.embedSnippet} />
           </CardContent>
         </Card>
+
+        {/* Directly under the snippet: the answer to "did that paste actually work?". */}
+        <WidgetStatusCard siteId={siteId} />
 
         <ScanHistory siteId={siteId} />
 

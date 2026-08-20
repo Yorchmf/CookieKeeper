@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  copyBannerConfig,
   getBannerConfig,
   updateBannerConfig,
   type BannerConfigUpdateInput,
@@ -26,6 +27,26 @@ export function useUpdateBannerConfig(siteId: string) {
     onSuccess: (data) => {
       // Seed the cache with the freshly published version so the editor re-syncs without a refetch.
       queryClient.setQueryData([...BANNER_QUERY_KEY, siteId], data);
+    },
+  });
+}
+
+/**
+ * Apply this site's banner to other sites. Each target gets a brand-new version, so their cached
+ * configs are stale afterwards — invalidated by target id rather than seeded, because the response
+ * carries the id list, not each target's new version number.
+ */
+export function useCopyBannerConfig(siteId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (targetSiteIds: string[]) =>
+      copyBannerConfig(siteId, targetSiteIds),
+    onSuccess: (result) => {
+      for (const targetId of result.copiedToSiteIds) {
+        void queryClient.invalidateQueries({
+          queryKey: [...BANNER_QUERY_KEY, targetId],
+        });
+      }
     },
   });
 }

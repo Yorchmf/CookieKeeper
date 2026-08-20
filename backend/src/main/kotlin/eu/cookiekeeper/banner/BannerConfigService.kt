@@ -1,5 +1,6 @@
 package eu.cookiekeeper.banner
 
+import eu.cookiekeeper.banner.dto.BannerConfigCopyResponse
 import eu.cookiekeeper.banner.dto.BannerConfigResponse
 import eu.cookiekeeper.banner.dto.BannerConfigUpdateRequest
 import eu.cookiekeeper.banner.dto.WidgetConfigResponse
@@ -84,10 +85,75 @@ class BannerConfigService(
         return BannerConfigResponse.from(saved)
     }
 
+    /**
+     * Applies one site's published banner to other sites the same account owns, as a new published
+     * version on each target — the multi-site customer's "style it once" action.
+     *
+     * Deliberate properties:
+     *  - **The document is read server-side**, never taken from the request, so this path cannot be used
+     *    to publish a banner that skipped [BannerConfigValidator]. It is run through
+     *    [BannerTextDefaults.complete] so copying a pre-ADR-19 source seeds complete targets, not stale ones.
+     *  - **Site-agnostic by construction.** [BannerConfigDocument] holds only presentation (position, theme,
+     *    categories, languages, texts). Everything site-specific — the site key, and notably `hideBranding`,
+     *    which is a per-site *entitlement-gated* column and not part of the document — stays untouched, so a
+     *    copy can never carry a paid branding removal onto a site that hasn't earned it.
+     *  - **All-or-nothing.** One transaction: an unowned or archived target aborts the whole copy rather
+     *    than leaving the account half-applied. Archived targets are refused because a site that isn't
+     *    serving shouldn't silently accumulate versions.
+     *  - **Append-only, like [update]** — targets get a *new* version; no existing config row is rewritten,
+     *    so the customer can see exactly what changed and when.
+     *  - Targets are locked **in id order** so two overlapping copies (or a copy racing a publish) take the
+     *    per-site advisory locks in a consistent global order and cannot deadlock against each other.
+     *
+     * The source is silently dropped from the target set (copying a banner onto itself is a no-op, not an
+     * error); a request that names *only* the source is [NoBannerConfigCopyTargetsException].
+     */
+    @Transactional
+    fun copyToSites(
+        userId: UUID,
+        sourceSiteId: UUID,
+        targetSiteIds: List<UUID>,
+    ): BannerConfigCopyResponse {
+        val source = requireOwnedSite(userId, sourceSiteId)
+        val sourceConfig = currentPublished(source.id) ?: throw BannerConfigNotFoundException()
+        val document = BannerTextDefaults.complete(sourceConfig.config)
+
+        val targets = (targetSiteIds.toSet() - source.id).sorted()
+        if (targets.isEmpty()) throw NoBannerConfigCopyTargetsException()
+
+        val publishedAt = clock.instant()
+        targets.forEach { targetId ->
+            val target = requireActiveOwnedSite(userId, targetId)
+            bannerConfigRepository.acquireSitePublishLock(advisoryLockKey(target.id))
+            bannerConfigRepository.save(
+                BannerConfigEntity(
+                    siteId = target.id,
+                    version = nextVersion(target.id),
+                    config = document,
+                    publishedAt = publishedAt,
+                ),
+            )
+        }
+
+        return BannerConfigCopyResponse(sourceVersion = sourceConfig.version, copiedToSiteIds = targets)
+    }
+
     private fun requireOwnedSite(
         userId: UUID,
         siteId: UUID,
     ): SiteEntity = siteRepository.findByIdAndUserId(siteId, userId) ?: throw SiteNotFoundException()
+
+    /**
+     * Ownership alone isn't enough for a copy target: an archived site is not serving, so refuse rather
+     * than quietly version a site the customer can't see in their list. Indistinguishable from "not
+     * yours" on purpose — neither answer should let a caller probe which ids exist.
+     */
+    private fun requireActiveOwnedSite(
+        userId: UUID,
+        siteId: UUID,
+    ): SiteEntity =
+        requireOwnedSite(userId, siteId).takeIf { it.status == SiteStatus.ACTIVE }
+            ?: throw SiteNotFoundException()
 
     private fun nextVersion(siteId: UUID): Int = (bannerConfigRepository.findFirstBySiteIdOrderByVersionDesc(siteId)?.version ?: 0) + 1
 

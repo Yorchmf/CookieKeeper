@@ -475,6 +475,24 @@
       "embedDescription": "Paste this snippet before the closing '</head>' tag on every page of your site.",
       "copy": "Copy",
       "copied": "Copied!",
+      "widgetStatus": {
+        "title": "Widget status",
+        "description": "Whether your banner has actually been seen on your site.",
+        "badge": {
+          "active": "Live",
+          "idle": "No recent activity",
+          "never_seen": "Not detected yet"
+        },
+        "body": {
+          "active": "Last seen on {day}. {window, plural, one {# banner view} other {# banner views}} in the last {days} days, {today} of them today.",
+          "idle": "Last seen on {day}, which is more than {days} days ago. That is normal if your regular visitors have already made their choice — but if new visitors are arriving, check that the snippet is still on your pages.",
+          "never_seen": "No banner view has been recorded yet. Paste the snippet above into your site, then open one of your pages in a private window and check again."
+        },
+        "note": "Only visitors who have not chosen yet are shown the banner, so returning visitors are not counted. Days are counted in UTC.",
+        "checkAgain": "Check again",
+        "checking": "Checking…",
+        "loadError": "Widget status could not be loaded. Try again in a moment."
+      },
       "dangerZone": "Danger zone",
       "archiveHint": "Archiving stops the banner and hides the site from your list.",
       "archive": "Archive site",
@@ -811,6 +829,19 @@
     "saved": "Your banner has been published",
     "saveError": "Your banner could not be saved. Please try again.",
     "reset": "Discard changes",
+    "copy": {
+      "title": "Apply to your other sites",
+      "description": "Reuse this banner — colours, position, and wording in every language — on your other sites.",
+      "cta": "Apply to other sites",
+      "dialogTitle": "Apply this banner to other sites",
+      "dialogDescription": "Each site you choose gets a new version of its banner using this design and wording. Its current banner stops being served straight away.",
+      "legend": "Sites to apply this banner to",
+      "cancel": "Cancel",
+      "apply": "{count, plural, =0 {Apply} one {Apply to # site} other {Apply to # sites}}",
+      "applying": "Applying…",
+      "applied": "{count, plural, one {Banner applied to # site} other {Banner applied to # sites}}",
+      "tooMany": "You can apply the banner to at most {max} sites at a time."
+    },
     "empty": {
       "title": "No banner yet",
       "description": "This site has no banner configuration to customize."

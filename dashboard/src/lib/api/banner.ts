@@ -1,8 +1,8 @@
 /**
  * Typed client for the authenticated banner-config endpoints under
- * `/api/v1/sites/{siteId}/banner-config` (read current + publish a new version).
+ * `/api/v1/sites/{siteId}/banner-config` (read current, publish a new version, copy to other sites).
  *
- * Mirrors the backend DTOs in `com.complyr.banner.dto` (BannerConfigDtos.kt) and the
+ * Mirrors the backend DTOs in `eu.cookiekeeper.banner.dto` (BannerConfigDtos.kt) and the
  * `BannerConfigDocument` served verbatim to the widget. The backend re-validates and normalizes
  * every field before persisting ({@link https} BannerConfigValidator) — the client-side allow-lists
  * below (positions, supported languages, category taxonomy) exist only to shape the editor UI.
@@ -122,6 +122,37 @@ export async function getBannerConfig(
     }
     throw error;
   }
+}
+
+/** Targets accepted in one copy request. Must match backend MAX_COPY_TARGETS (BannerConfigDtos.kt). */
+export const MAX_BANNER_COPY_TARGETS = 20;
+
+/**
+ * What a copy did (BannerConfigCopyResponse): the source version that was applied, and the sites that
+ * received it — the source itself is silently dropped from the target list server-side, so this is the
+ * authoritative list to report back rather than what the caller asked for.
+ */
+export interface BannerConfigCopyResult {
+  sourceVersion: number;
+  copiedToSiteIds: string[];
+}
+
+/**
+ * Apply this site's published banner to other sites, each as a new version of its own.
+ *
+ * Server-side the source document is re-read from the database (never sent up from the browser) and the
+ * whole copy is one all-or-nothing transaction, so a target that is not yours or is archived fails the
+ * request without half-applying it.
+ */
+export async function copyBannerConfig(
+  siteId: string,
+  targetSiteIds: string[],
+): Promise<BannerConfigCopyResult> {
+  const { data } = await apiFetch<BannerConfigCopyResult>(
+    `/api/v1/sites/${encodeURIComponent(siteId)}/banner-config/copy`,
+    { method: "POST", body: JSON.stringify({ targetSiteIds }) },
+  );
+  return data;
 }
 
 /** Validate and publish a new banner version from the customizer's Save. */

@@ -165,6 +165,13 @@ data class CookieKeeperProperties(
         // the cheap `GET` current-policy read the dashboard hits on every policy-page view — that read must
         // stay on the generous GENERAL tier. Real publishing is a handful of generations ever, not per minute.
         val authPolicyPerMinute: Long = DEFAULT_AUTH_POLICY_PER_MINUTE,
+        // Requests per minute per authenticated user on `POST /api/v1/sites/{id}/banner-config/copy` —
+        // applying one site's banner to the account's other sites. Tight because it is the only authed
+        // endpoint that *fans out*: one request appends a config version to every target (up to 9 on
+        // Business, each behind that site's publish advisory lock), so on the GENERAL tier a single caller
+        // could mint thousands of config rows a minute. Copying is a once-per-restyle action for a real
+        // customer, so a cap in the same band as the other write tiers is never felt.
+        val authBannerCopyPerMinute: Long = DEFAULT_AUTH_BANNER_COPY_PER_MINUTE,
         // Requests per minute per authenticated user on all other authed `/api/v1/**` endpoints. A
         // generous backstop a real dashboard session never reaches, bounding amplification abuse
         // (e.g. `POST /api/v1/sites` enqueues a Chromium crawl; consent-log reads fan across monthly
@@ -173,10 +180,10 @@ data class CookieKeeperProperties(
         val authGeneralPerMinute: Long = DEFAULT_AUTH_GENERAL_PER_MINUTE,
         // Hard cap on distinct keys each in-memory bucket registry tracks before it evicts (idle-first)
         // to bound memory — see [eu.cookiekeeper.common.RateLimitBuckets]. Sized with headroom for the
-        // authenticated registry's fan-out: it keys by `tier|userId`, so an active tenant can hold up
-        // to 7 keys (billing + account + verify + export + contact + policy + general). The default covers
-        // well past MVP scale; raise it before the distinct tracked-key count (up to ~7 per fully-active
-        // tenant) approaches half this value, or steady-state traffic keeps the map at cap and turns
+        // authenticated registry's fan-out: it keys by `tier|userId`, so an active tenant can hold up to
+        // 8 keys (billing + account + verify + export + contact + policy + banner-copy + general). The
+        // default covers well past MVP scale; raise it before the distinct tracked-key count (up to ~8 per
+        // fully-active tenant) approaches half this value, or steady-state traffic keeps the map at cap and turns
         // eviction from a rare safety valve into a per-new-key cost.
         val maxTrackedKeys: Int = DEFAULT_MAX_TRACKED_KEYS,
     ) {
@@ -187,6 +194,7 @@ data class CookieKeeperProperties(
             require(authExportPerMinute > 0) { "cookiekeeper.rate-limit.auth-export-per-minute must be > 0" }
             require(authContactPerMinute > 0) { "cookiekeeper.rate-limit.auth-contact-per-minute must be > 0" }
             require(authPolicyPerMinute > 0) { "cookiekeeper.rate-limit.auth-policy-per-minute must be > 0" }
+            require(authBannerCopyPerMinute > 0) { "cookiekeeper.rate-limit.auth-banner-copy-per-minute must be > 0" }
             require(authGeneralPerMinute > 0) { "cookiekeeper.rate-limit.auth-general-per-minute must be > 0" }
             require(maxTrackedKeys > 0) { "cookiekeeper.rate-limit.max-tracked-keys must be > 0" }
         }
@@ -203,6 +211,7 @@ data class CookieKeeperProperties(
             const val DEFAULT_AUTH_EXPORT_PER_MINUTE = 5L
             const val DEFAULT_AUTH_CONTACT_PER_MINUTE = 5L
             const val DEFAULT_AUTH_POLICY_PER_MINUTE = 5L
+            const val DEFAULT_AUTH_BANNER_COPY_PER_MINUTE = 10L
             const val DEFAULT_AUTH_GENERAL_PER_MINUTE = 300L
             const val DEFAULT_MAX_TRACKED_KEYS = 50_000
         }
