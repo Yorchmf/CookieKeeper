@@ -334,6 +334,7 @@
     "signOut": "Sign out",
     "signOutError": "Sign-out failed. Please try again.",
     "analytics": "Analytics",
+    "features": "Features",
     "support": "Contact support"
   },
   "auth": {
@@ -1225,6 +1226,117 @@
       "siteCount": "Active sites",
       "locked": "Cross-site analytics is a Pro and Business feature.",
       "loadError": "We couldn't load cross-site analytics. Please try again."
+    }
+  },
+  "features": {
+    "title": "Everything Complyr does",
+    "subtitle": "Every capability on your account, what it is for, and a link straight to it.",
+    "open": "Open",
+    "openNamed": "Open {feature}",
+    "hint": {
+      "noSites": "Add your first site to start using the site-specific tools below — for now their links open your sites list.",
+      "manySites": "You run several sites, so the site-specific links below open your sites list — pick the site you want there."
+    },
+    "locked": {
+      "pro": "Included in the Pro and Business plans.",
+      "business": "Included in the Business plan."
+    },
+    "groups": {
+      "setup": "Set up and install",
+      "banner": "The consent banner",
+      "policy": "Cookie policy",
+      "proof": "Proof it is working",
+      "account": "Your account"
+    },
+    "items": {
+      "addSite": {
+        "title": "Add a site",
+        "description": "Register a domain, prove you own it, and get the one-line snippet that puts the banner on it."
+      },
+      "cookieScan": {
+        "title": "Cookie scan",
+        "description": "We crawl your site and list every cookie and tracker it sets, classified against our signature database."
+      },
+      "installCheck": {
+        "title": "Install check",
+        "description": "Every scan verifies your snippet is on the page and that known trackers really are blocked before consent — and names the ones that are not."
+      },
+      "onDemandRescan": {
+        "title": "Re-scan on demand",
+        "description": "Run a fresh scan the moment you change something, instead of waiting for the next scheduled one."
+      },
+      "bannerDesign": {
+        "title": "Banner design and wording",
+        "description": "Colours, position, categories and your own copy in all five languages."
+      },
+      "consentLifetime": {
+        "title": "Consent lifetime",
+        "description": "Decide how long a visitor's answer stands — 90, 180 or 365 days — before you ask again."
+      },
+      "accessibility": {
+        "title": "Accessible by default",
+        "description": "The banner is built to WCAG 2.2 AA for the European Accessibility Act, and your colour choices are held to the contrast it requires."
+      },
+      "consentMode": {
+        "title": "Google Consent Mode v2",
+        "description": "All seven consent signals are set to denied before any tag runs, then updated with the visitor's actual choice."
+      },
+      "regionTargeting": {
+        "title": "Show the banner where it is required",
+        "description": "Deny by default for EU and UK visitors and skip the banner elsewhere, from one attribute in your snippet."
+      },
+      "reprompt": {
+        "title": "Re-ask when your tracking changes",
+        "description": "When a scan finds a kind of tracking your visitors never agreed to, they are asked again — a colour change never costs you a re-prompt."
+      },
+      "removeBranding": {
+        "title": "Remove Complyr branding",
+        "description": "Take the “Powered by Complyr” line off your banner."
+      },
+      "cookiePolicy": {
+        "title": "Cookie policy",
+        "description": "A policy generated from your latest scan, versioned, hosted at a public URL and copyable as HTML."
+      },
+      "cookieTable": {
+        "title": "Embeddable cookie table",
+        "description": "Drop one div into your own policy page and it fills with your live cookie table, in the visitor's language."
+      },
+      "siteAnalytics": {
+        "title": "Site analytics",
+        "description": "Consent decisions, opt-in rates, banner impressions and the cookie mix for one site."
+      },
+      "crossSiteAnalytics": {
+        "title": "All-sites analytics",
+        "description": "The same consent picture, aggregated across every site on your account."
+      },
+      "consentLog": {
+        "title": "Consent log",
+        "description": "The append-only record of every consent decision — your evidence if a regulator asks."
+      },
+      "csvExport": {
+        "title": "CSV export",
+        "description": "Download the consent trend and the consent log as CSV for your own reporting."
+      },
+      "evidencePack": {
+        "title": "Compliance evidence pack",
+        "description": "One ZIP with your policy, consent log, latest scan and a manifest — ready to hand to a DPO or a regulator."
+      },
+      "billing": {
+        "title": "Plan and billing",
+        "description": "Your plan and what it includes, invoices, and payment details."
+      },
+      "notifications": {
+        "title": "Email notifications",
+        "description": "Choose which emails we send you about your sites."
+      },
+      "profile": {
+        "title": "Profile and password",
+        "description": "Your display name, the address you sign in with, and your password."
+      },
+      "yourData": {
+        "title": "Your data",
+        "description": "Export everything we hold about your account, or erase it permanently."
+      }
     }
   },
   "settings": {

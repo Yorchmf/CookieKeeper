@@ -334,6 +334,7 @@
     "signOut": "Esci",
     "signOutError": "Disconnessione non riuscita. Riprova.",
     "analytics": "Analisi",
+    "features": "Funzionalità",
     "support": "Contatta l’assistenza"
   },
   "auth": {
@@ -1225,6 +1226,117 @@
       "siteCount": "Siti attivi",
       "locked": "L'analisi cross-site è una funzionalità dei piani Pro e Business.",
       "loadError": "Impossibile caricare l'analisi cross-site. Riprova."
+    }
+  },
+  "features": {
+    "title": "Tutto ciò che fa Complyr",
+    "subtitle": "Ogni funzionalità del tuo account, a cosa serve e un link che porta direttamente a usarla.",
+    "open": "Apri",
+    "openNamed": "Apri {feature}",
+    "hint": {
+      "noSites": "Aggiungi il tuo primo sito per usare gli strumenti per sito qui sotto: fino ad allora i loro link aprono l’elenco dei siti.",
+      "manySites": "Gestisci più siti: i link per sito qui sotto aprono l’elenco dei siti, dove scegli quello che ti interessa."
+    },
+    "locked": {
+      "pro": "Incluso nei piani Pro e Business.",
+      "business": "Incluso nel piano Business."
+    },
+    "groups": {
+      "setup": "Installazione e avvio",
+      "banner": "Il banner di consenso",
+      "policy": "Cookie policy",
+      "proof": "La prova che funziona",
+      "account": "Il tuo account"
+    },
+    "items": {
+      "addSite": {
+        "title": "Aggiungi un sito",
+        "description": "Registra un dominio, dimostra che è tuo e copia lo snippet di una riga che installa il banner."
+      },
+      "cookieScan": {
+        "title": "Scansione dei cookie",
+        "description": "Analizziamo il tuo sito ed elenchiamo ogni cookie e tracker che imposta, classificati con il nostro database di firme."
+      },
+      "installCheck": {
+        "title": "Verifica dell’installazione",
+        "description": "Ogni scansione conferma che lo snippet è presente e che i tracker noti sono davvero bloccati prima del consenso, e nomina quelli che non lo sono."
+      },
+      "onDemandRescan": {
+        "title": "Nuova scansione su richiesta",
+        "description": "Riesegui la scansione appena cambi qualcosa, senza aspettare quella programmata."
+      },
+      "bannerDesign": {
+        "title": "Aspetto e testi del banner",
+        "description": "Colori, posizione, categorie e i tuoi testi in tutte e cinque le lingue."
+      },
+      "consentLifetime": {
+        "title": "Durata del consenso",
+        "description": "Decidi quanto vale la risposta di un visitatore — 90, 180 o 365 giorni — prima di chiedere di nuovo."
+      },
+      "accessibility": {
+        "title": "Accessibile da subito",
+        "description": "Il banner segue le WCAG 2.2 AA per l’European Accessibility Act e verifichiamo che i tuoi colori rispettino il contrasto richiesto."
+      },
+      "consentMode": {
+        "title": "Google Consent Mode v2",
+        "description": "Tutti e sette i segnali di consenso partono da «denied» prima di qualsiasi tag, poi vengono aggiornati con la scelta reale del visitatore."
+      },
+      "regionTargeting": {
+        "title": "Mostra il banner dove è obbligatorio",
+        "description": "Rifiuto predefinito per i visitatori di UE e Regno Unito, nessun banner altrove, tramite un attributo del tuo snippet."
+      },
+      "reprompt": {
+        "title": "Chiedi di nuovo quando cambia il tuo tracciamento",
+        "description": "Se una scansione rileva un tipo di tracciamento che i tuoi visitatori non hanno mai accettato, la domanda viene riproposta; un cambio di colore, mai."
+      },
+      "removeBranding": {
+        "title": "Rimuovi il marchio Complyr",
+        "description": "Togli la riga «Powered by Complyr» dal tuo banner."
+      },
+      "cookiePolicy": {
+        "title": "Cookie policy",
+        "description": "Generata dalla tua ultima scansione, versionata, ospitata a un URL pubblico e copiabile in HTML."
+      },
+      "cookieTable": {
+        "title": "Tabella dei cookie incorporabile",
+        "description": "Un solo div nella tua pagina di policy si riempie con la tua tabella dei cookie aggiornata, nella lingua del visitatore."
+      },
+      "siteAnalytics": {
+        "title": "Analisi del sito",
+        "description": "Decisioni di consenso, tasso di accettazione, impression del banner e ripartizione dei cookie per un sito."
+      },
+      "crossSiteAnalytics": {
+        "title": "Analisi su tutti i siti",
+        "description": "La stessa visione del consenso, aggregata su tutti i siti del tuo account."
+      },
+      "consentLog": {
+        "title": "Registro dei consensi",
+        "description": "La registrazione immodificabile di ogni decisione di consenso: la tua prova se un’autorità la chiede."
+      },
+      "csvExport": {
+        "title": "Esportazione CSV",
+        "description": "Scarica l’andamento e il registro dei consensi in CSV per le tue analisi."
+      },
+      "evidencePack": {
+        "title": "Pacchetto di prove di conformità",
+        "description": "Uno ZIP con la tua policy, il registro dei consensi, l’ultima scansione e un manifesto: pronto per un DPO o un’autorità."
+      },
+      "billing": {
+        "title": "Piano e fatturazione",
+        "description": "Il tuo piano e cosa include, le tue fatture e i tuoi metodi di pagamento."
+      },
+      "notifications": {
+        "title": "Notifiche via email",
+        "description": "Scegli quali email inviarti sui tuoi siti."
+      },
+      "profile": {
+        "title": "Profilo e password",
+        "description": "Il tuo nome visualizzato, l’indirizzo con cui accedi e la tua password."
+      },
+      "yourData": {
+        "title": "I tuoi dati",
+        "description": "Esporta tutto ciò che conserviamo sul tuo account, oppure cancellalo definitivamente."
+      }
     }
   },
   "settings": {

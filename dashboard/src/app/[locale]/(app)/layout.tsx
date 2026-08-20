@@ -13,6 +13,10 @@ const NAV_ITEMS = [
   { key: "analytics", href: "/analytics" },
   { key: "billing", href: "/billing" },
   { key: "settings", href: "/settings/data" },
+  // The index of everything the product does, entitlement-aware. Last on purpose: it is a reference
+  // page rather than a daily destination, but it has to be *in* the nav or it repeats the discovery
+  // problem it exists to solve.
+  { key: "features", href: "/features" },
 ] as const;
 
 export default function AppShellLayout({

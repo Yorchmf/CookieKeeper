@@ -334,6 +334,7 @@
     "signOut": "Se déconnecter",
     "signOutError": "Échec de la déconnexion. Veuillez réessayer.",
     "analytics": "Analytique",
+    "features": "Fonctionnalités",
     "support": "Contacter le support"
   },
   "auth": {
@@ -1225,6 +1226,117 @@
       "siteCount": "Sites actifs",
       "locked": "Les analyses multisites sont une fonctionnalité des offres Pro et Business.",
       "loadError": "Nous n'avons pas pu charger les analyses multisites. Veuillez réessayer."
+    }
+  },
+  "features": {
+    "title": "Tout ce que fait Complyr",
+    "subtitle": "Chaque fonctionnalité de votre compte, à quoi elle sert, et un lien qui y mène directement.",
+    "open": "Ouvrir",
+    "openNamed": "Ouvrir {feature}",
+    "hint": {
+      "noSites": "Ajoutez votre premier site pour utiliser les outils par site ci-dessous — d'ici là, leurs liens ouvrent votre liste de sites.",
+      "manySites": "Vous gérez plusieurs sites : les liens par site ci-dessous ouvrent votre liste de sites — choisissez-y celui qui vous intéresse."
+    },
+    "locked": {
+      "pro": "Inclus dans les forfaits Pro et Business.",
+      "business": "Inclus dans le forfait Business."
+    },
+    "groups": {
+      "setup": "Installation et mise en place",
+      "banner": "La bannière de consentement",
+      "policy": "Politique de cookies",
+      "proof": "La preuve que ça fonctionne",
+      "account": "Votre compte"
+    },
+    "items": {
+      "addSite": {
+        "title": "Ajouter un site",
+        "description": "Enregistrez un domaine, prouvez qu'il vous appartient et récupérez le snippet d'une ligne qui y installe la bannière."
+      },
+      "cookieScan": {
+        "title": "Analyse des cookies",
+        "description": "Nous explorons votre site et listons chaque cookie et traceur qu'il dépose, classés grâce à notre base de signatures."
+      },
+      "installCheck": {
+        "title": "Vérification de l'installation",
+        "description": "Chaque analyse vérifie que votre snippet est bien présent et que les traceurs connus sont réellement bloqués avant le consentement — et nomme ceux qui ne le sont pas."
+      },
+      "onDemandRescan": {
+        "title": "Nouvelle analyse à la demande",
+        "description": "Relancez une analyse dès que vous changez quelque chose, sans attendre la prochaine analyse planifiée."
+      },
+      "bannerDesign": {
+        "title": "Apparence et textes de la bannière",
+        "description": "Couleurs, position, catégories et vos propres textes dans les cinq langues."
+      },
+      "consentLifetime": {
+        "title": "Durée de validité du consentement",
+        "description": "Décidez combien de temps la réponse d'un visiteur reste valable — 90, 180 ou 365 jours — avant de redemander."
+      },
+      "accessibility": {
+        "title": "Accessible par défaut",
+        "description": "La bannière est conçue selon WCAG 2.2 AA pour l'Acte européen sur l'accessibilité, et vos couleurs sont vérifiées au contraste exigé."
+      },
+      "consentMode": {
+        "title": "Google Consent Mode v2",
+        "description": "Les sept signaux de consentement sont sur « denied » avant le moindre tag, puis mis à jour selon le choix réel du visiteur."
+      },
+      "regionTargeting": {
+        "title": "Afficher la bannière là où elle est requise",
+        "description": "Refus par défaut pour les visiteurs de l'UE et du Royaume-Uni, pas de bannière ailleurs — via un attribut de votre snippet."
+      },
+      "reprompt": {
+        "title": "Redemander quand votre traçage change",
+        "description": "Si une analyse détecte un type de traçage que vos visiteurs n'ont jamais accepté, la question leur est reposée — un changement de couleur, jamais."
+      },
+      "removeBranding": {
+        "title": "Retirer la marque Complyr",
+        "description": "Enlevez la ligne « Powered by Complyr » de votre bannière."
+      },
+      "cookiePolicy": {
+        "title": "Politique de cookies",
+        "description": "Générée à partir de votre dernière analyse, versionnée, hébergée à une URL publique et copiable en HTML."
+      },
+      "cookieTable": {
+        "title": "Tableau de cookies intégrable",
+        "description": "Un seul div dans votre propre page de politique se remplit avec votre tableau de cookies à jour, dans la langue du visiteur."
+      },
+      "siteAnalytics": {
+        "title": "Analytique du site",
+        "description": "Décisions de consentement, taux d'acceptation, affichages de la bannière et répartition des cookies pour un site."
+      },
+      "crossSiteAnalytics": {
+        "title": "Analytique tous sites",
+        "description": "La même vision du consentement, agrégée sur tous les sites de votre compte."
+      },
+      "consentLog": {
+        "title": "Journal des consentements",
+        "description": "L'enregistrement inaltérable de chaque décision de consentement — votre preuve si une autorité le demande."
+      },
+      "csvExport": {
+        "title": "Export CSV",
+        "description": "Téléchargez la courbe et le journal des consentements en CSV pour vos propres analyses."
+      },
+      "evidencePack": {
+        "title": "Dossier de preuves de conformité",
+        "description": "Un ZIP avec votre politique, le journal des consentements, la dernière analyse et un manifeste — prêt pour un DPO ou une autorité."
+      },
+      "billing": {
+        "title": "Forfait et facturation",
+        "description": "Votre forfait et ce qu'il comprend, vos factures et vos moyens de paiement."
+      },
+      "notifications": {
+        "title": "Notifications par e-mail",
+        "description": "Choisissez les e-mails que nous vous envoyons à propos de vos sites."
+      },
+      "profile": {
+        "title": "Profil et mot de passe",
+        "description": "Votre nom affiché, l'adresse avec laquelle vous vous connectez et votre mot de passe."
+      },
+      "yourData": {
+        "title": "Vos données",
+        "description": "Exportez tout ce que nous conservons sur votre compte, ou effacez-le définitivement."
+      }
     }
   },
   "settings": {

@@ -334,6 +334,7 @@
     "signOut": "Abmelden",
     "signOutError": "Die Abmeldung ist fehlgeschlagen. Bitte versuchen Sie es erneut.",
     "analytics": "Analysen",
+    "features": "Funktionen",
     "support": "Support kontaktieren"
   },
   "auth": {
@@ -1225,6 +1226,117 @@
       "siteCount": "Aktive Websites",
       "locked": "Website-übergreifende Analysen sind eine Funktion der Tarife Pro und Business.",
       "loadError": "Website-übergreifende Analysen konnten nicht geladen werden. Bitte versuchen Sie es erneut."
+    }
+  },
+  "features": {
+    "title": "Alles, was Complyr kann",
+    "subtitle": "Jede Funktion Ihres Kontos, wofür sie da ist und ein Link direkt dorthin.",
+    "open": "Öffnen",
+    "openNamed": "{feature} öffnen",
+    "hint": {
+      "noSites": "Legen Sie Ihre erste Website an, um die websitebezogenen Funktionen unten zu nutzen – bis dahin führen deren Links zu Ihrer Website-Liste.",
+      "manySites": "Sie betreuen mehrere Websites, deshalb führen die websitebezogenen Links unten zu Ihrer Website-Liste – wählen Sie dort die gewünschte Website."
+    },
+    "locked": {
+      "pro": "Enthalten in den Tarifen Pro und Business.",
+      "business": "Enthalten im Tarif Business."
+    },
+    "groups": {
+      "setup": "Einrichten und einbinden",
+      "banner": "Das Consent-Banner",
+      "policy": "Cookie-Richtlinie",
+      "proof": "Nachweis, dass es funktioniert",
+      "account": "Ihr Konto"
+    },
+    "items": {
+      "addSite": {
+        "title": "Website hinzufügen",
+        "description": "Domain eintragen, Inhaberschaft nachweisen und das einzeilige Snippet erhalten, das das Banner einbindet."
+      },
+      "cookieScan": {
+        "title": "Cookie-Scan",
+        "description": "Wir crawlen Ihre Website und listen jedes gesetzte Cookie und jeden Tracker auf, klassifiziert anhand unserer Signaturdatenbank."
+      },
+      "installCheck": {
+        "title": "Einbau-Prüfung",
+        "description": "Jeder Scan prüft, ob Ihr Snippet auf der Seite ist und bekannte Tracker vor der Einwilligung wirklich blockiert werden – und benennt die, bei denen das nicht der Fall ist."
+      },
+      "onDemandRescan": {
+        "title": "Scan auf Abruf",
+        "description": "Starten Sie sofort einen neuen Scan, wenn Sie etwas geändert haben, statt auf den nächsten geplanten zu warten."
+      },
+      "bannerDesign": {
+        "title": "Gestaltung und Texte des Banners",
+        "description": "Farben, Position, Kategorien und Ihre eigenen Texte in allen fünf Sprachen."
+      },
+      "consentLifetime": {
+        "title": "Gültigkeitsdauer der Einwilligung",
+        "description": "Legen Sie fest, wie lange die Antwort einer Besucherin gilt – 90, 180 oder 365 Tage – bevor Sie erneut fragen."
+      },
+      "accessibility": {
+        "title": "Barrierefrei von Haus aus",
+        "description": "Das Banner ist nach WCAG 2.2 AA für den European Accessibility Act gebaut, und Ihre Farbwahl wird auf den erforderlichen Kontrast geprüft."
+      },
+      "consentMode": {
+        "title": "Google Consent Mode v2",
+        "description": "Alle sieben Consent-Signale stehen auf „denied“, bevor ein Tag lädt, und werden dann mit der tatsächlichen Wahl aktualisiert."
+      },
+      "regionTargeting": {
+        "title": "Banner nur zeigen, wo es sein muss",
+        "description": "Standardmäßig ablehnen für Besucher aus EU und UK, anderswo das Banner überspringen – über ein Attribut in Ihrem Snippet."
+      },
+      "reprompt": {
+        "title": "Erneut fragen, wenn sich Ihr Tracking ändert",
+        "description": "Findet ein Scan eine Art von Tracking, der Ihre Besucher nie zugestimmt haben, werden sie erneut gefragt – eine Farbänderung kostet Sie nie eine erneute Abfrage."
+      },
+      "removeBranding": {
+        "title": "Complyr-Branding entfernen",
+        "description": "Nehmen Sie die Zeile „Powered by Complyr“ aus Ihrem Banner."
+      },
+      "cookiePolicy": {
+        "title": "Cookie-Richtlinie",
+        "description": "Aus Ihrem letzten Scan erzeugt, versioniert, unter einer öffentlichen URL gehostet und als HTML kopierbar."
+      },
+      "cookieTable": {
+        "title": "Einbettbare Cookie-Tabelle",
+        "description": "Ein div auf Ihrer eigenen Richtlinienseite füllt sich mit Ihrer aktuellen Cookie-Tabelle, in der Sprache der Besucherin."
+      },
+      "siteAnalytics": {
+        "title": "Website-Analysen",
+        "description": "Einwilligungen, Zustimmungsquoten, Banner-Einblendungen und die Cookie-Verteilung einer Website."
+      },
+      "crossSiteAnalytics": {
+        "title": "Analysen über alle Websites",
+        "description": "Dasselbe Bild der Einwilligungen, aggregiert über alle Websites Ihres Kontos."
+      },
+      "consentLog": {
+        "title": "Einwilligungsprotokoll",
+        "description": "Die unveränderliche Aufzeichnung jeder Einwilligungsentscheidung – Ihr Nachweis, wenn eine Behörde fragt."
+      },
+      "csvExport": {
+        "title": "CSV-Export",
+        "description": "Laden Sie Einwilligungsverlauf und -protokoll als CSV für Ihre eigene Auswertung herunter."
+      },
+      "evidencePack": {
+        "title": "Nachweispaket",
+        "description": "Ein ZIP mit Richtlinie, Einwilligungsprotokoll, letztem Scan und Manifest – bereit für Datenschutzbeauftragte oder Aufsichtsbehörden."
+      },
+      "billing": {
+        "title": "Tarif und Abrechnung",
+        "description": "Ihr Tarif und was er enthält, Rechnungen und Zahlungsdaten."
+      },
+      "notifications": {
+        "title": "E-Mail-Benachrichtigungen",
+        "description": "Wählen Sie, welche E-Mails wir Ihnen zu Ihren Websites schicken."
+      },
+      "profile": {
+        "title": "Profil und Passwort",
+        "description": "Ihr Anzeigename, die Adresse, mit der Sie sich anmelden, und Ihr Passwort."
+      },
+      "yourData": {
+        "title": "Ihre Daten",
+        "description": "Exportieren Sie alles, was wir zu Ihrem Konto speichern – oder löschen Sie es endgültig."
+      }
     }
   },
   "settings": {
