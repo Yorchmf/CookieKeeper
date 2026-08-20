@@ -1,5 +1,7 @@
 package eu.cookiekeeper.scan
 
+import eu.cookiekeeper.banner.ConsentCategory
+
 /**
  * One entry in the bundled third-party tracker dataset (`resources/trackers/trackers.json`): a request
  * [domain] (the dictionary key) mapped to a human [name] and a [category] (`analytics` | `marketing` |
@@ -10,7 +12,26 @@ data class TrackerSignature(
     val domain: String,
     val name: String,
     val category: String,
-)
+) {
+    /**
+     * The [ConsentCategory] key a visitor's choice would have to grant for this vendor to be allowed to
+     * run — i.e. the value the site owner must put in `data-complyr-category` to block it correctly
+     * (BACKLOG #19). Null for `necessary` and for any category a future dataset revision adds: we only
+     * ever tell a customer to gate something we are sure is consent-decidable, because telling them to
+     * block a strictly necessary request would break their site.
+     */
+    fun consentCategoryKey(): String? =
+        when (category) {
+            ANALYTICS_CATEGORY -> ConsentCategory.STATISTICS.key
+            MARKETING_CATEGORY -> ConsentCategory.MARKETING.key
+            else -> null
+        }
+
+    companion object {
+        const val ANALYTICS_CATEGORY = "analytics"
+        const val MARKETING_CATEGORY = "marketing"
+    }
+}
 
 /**
  * Pure, browser-free host → tracker matching, extracted so the (SSRF-adjacent) normalization and
@@ -30,6 +51,9 @@ class TrackerSignatureMatcher(
 ) {
     private val byDomain: Map<String, TrackerSignature> =
         signatures.associateBy { it.domain.lowercase() }
+
+    /** The dataset entry for an exact [domain] key, or null once a key we stored has left the dataset. */
+    fun byKey(domain: String): TrackerSignature? = byDomain[domain.lowercase()]
 
     /** The matching signature for [host], or null if the host is not a known tracker. */
     fun match(host: String): TrackerSignature? {

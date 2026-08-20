@@ -18,8 +18,10 @@ import io.mockk.slot
 import io.mockk.verify
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.time.Clock
 import java.time.Duration
 import java.time.Instant
+import java.time.ZoneOffset
 import java.util.Optional
 import java.util.UUID
 import kotlin.test.assertEquals
@@ -38,25 +40,26 @@ class ScanCompletionNotifierTest {
     private val siteRepository = mockk<SiteRepository>()
     private val userRepository = mockk<UserRepository>()
     private val notificationPreferences = mockk<NotificationPreferenceService>()
-
-    // A real calculator over the same mocked repositories: the send gate and the dashboard share this
-    // exact type, so the notifier's "changed since last scan" behaviour is exercised end-to-end here.
-    private val notifier =
-        ScanCompletionNotifier(
-            composer,
-            BestEffortEmailDelivery(sender),
-            scanRepository,
-            scanCookieRepository,
-            ScanDiffCalculator(scanRepository, scanCookieRepository),
-            siteRepository,
-            userRepository,
-            notificationPreferences,
-        )
+    private val trackerClassifier = mockk<TrackerClassifier>()
 
     private val siteId: UUID = UUID.randomUUID()
     private val userId: UUID = UUID.randomUUID()
     private val scanId: UUID = UUID.randomUUID()
     private val now: Instant = Instant.parse("2026-08-07T04:20:00Z")
+
+    // A real calculator and a real blocking service over the same mocked repositories: the send gate,
+    // the dashboard and the nudge clock all share these exact types, so "changed since last scan" and
+    // "still not blocking after N days" are exercised end-to-end here rather than stubbed away.
+    private val notifier =
+        ScanCompletionNotifier(
+            composer,
+            BestEffortEmailDelivery(sender),
+            ScanEmailTargetResolver(scanRepository, siteRepository, userRepository),
+            scanCookieRepository,
+            ScanDiffCalculator(scanRepository, scanCookieRepository),
+            BlockingVerificationService(trackerClassifier, siteRepository, Clock.fixed(now, ZoneOffset.UTC)),
+            notificationPreferences,
+        )
 
     @BeforeEach
     fun stubHappyPath() {
@@ -66,6 +69,11 @@ class ScanCompletionNotifierTest {
         every { sender.send(any(), any(), any()) } just runs
         // Default: the owner has not opted out of anything (the all-on default of an untouched account).
         every { notificationPreferences.get(userId) } returns NotificationPreferences.DEFAULT
+        // Streak bookkeeping runs on every completed scan; default to "nothing to change".
+        every { trackerClassifier.describe(any()) } returns emptyList()
+        every { siteRepository.clearBlockingAlert(siteId) } returns 0
+        every { siteRepository.startBlockingAlert(siteId, any()) } returns 1
+        every { siteRepository.markBlockingAlertNotified(siteId, any(), any()) } returns 1
     }
 
     // ---- what gets an email ------------------------------------------------------------------
@@ -81,8 +89,10 @@ class ScanCompletionNotifierTest {
 
     @Test
     fun `a manual re-scan never mails`() {
-        // No repository stubs at all: a manual trigger must short-circuit before touching the DB,
-        // so any lookup here would fail the test with a missing-stub error.
+        // The scan is still read — streak bookkeeping (BACKLOG #19) runs for every completed scan —
+        // but nothing may reach the inbox: the user is watching the row they just clicked.
+        givenScan(ScanTrigger.MANUAL, cookies = listOf("_ga"), trackerCount = 1)
+
         notifier.sendScanCompleted(scanId, siteId, ScanTrigger.MANUAL)
 
         verify(exactly = 0) { sender.send(any(), any(), any()) }
@@ -219,6 +229,151 @@ class ScanCompletionNotifierTest {
         verify(exactly = 1) { sender.send("owner@example.com", "subject", "body") }
     }
 
+    // ---- the post-install blocking nudge (BACKLOG #19) ----------------------------------------
+
+    /**
+     * The point of the whole feature: an unchanged nightly re-scan is normally silent, but a site that
+     * has been *stably* non-compliant for weeks is exactly what that silence hides.
+     */
+    @Test
+    fun `an unchanged re-scan still nudges when the widget has not been blocking since before the grace period`() {
+        givenUnblockedScan()
+        givenPreviousScan(cookies = listOf("_ga"), trackerCount = 1)
+        every { siteRepository.findById(siteId) } returns
+            Optional.of(site(blockingAlertSince = now.minus(Duration.ofDays(9))))
+        val summary = slot<BlockingAlertSummary>()
+        every { composer.blockingAlertEmail(any(), capture(summary)) } returns ComposedEmail("nudge", "body")
+
+        notifier.sendScanCompleted(scanId, siteId, ScanTrigger.SCHEDULED)
+
+        verify(exactly = 1) { sender.send("owner@example.com", "nudge", "body") }
+        assertEquals(9, summary.captured.daysUnresolved)
+        assertEquals(listOf("Google Analytics"), summary.captured.vendorNames, "the vendor is named so the fix is actionable")
+        assertEquals(false, summary.captured.wrongSiteKey)
+        // Claiming the nudge stamps "we told them", so the next unchanged re-scan stays quiet.
+        verify(exactly = 1) { siteRepository.markBlockingAlertNotified(siteId, now, null) }
+    }
+
+    /** A brand-new problem gets a week to be fixed before we say anything. */
+    @Test
+    fun `an unchanged re-scan inside the grace period stays silent and only opens the streak`() {
+        givenUnblockedScan()
+        givenPreviousScan(cookies = listOf("_ga"), trackerCount = 1)
+
+        notifier.sendScanCompleted(scanId, siteId, ScanTrigger.SCHEDULED)
+
+        verify(exactly = 0) { sender.send(any(), any(), any()) }
+        verify(exactly = 1) { siteRepository.startBlockingAlert(siteId, now) }
+        verify(exactly = 0) { siteRepository.markBlockingAlertNotified(any(), any(), any()) }
+    }
+
+    /** Fixing it closes the streak, so the clock always measures how long *this* problem has stood. */
+    @Test
+    fun `a scan that comes back clean clears an open streak`() {
+        givenScan(
+            ScanTrigger.SCHEDULED,
+            cookies = listOf("_ga"),
+            trackerCount = 1,
+            blocking = WidgetProbe(installed = true, siteKeyMatched = true, blockedScriptCount = 3),
+        )
+        givenPreviousScan(cookies = listOf("_ga"), trackerCount = 1)
+        every { siteRepository.findById(siteId) } returns
+            Optional.of(site(blockingAlertSince = now.minus(Duration.ofDays(30))))
+        every { siteRepository.clearBlockingAlert(siteId) } returns 1
+
+        notifier.sendScanCompleted(scanId, siteId, ScanTrigger.SCHEDULED)
+
+        verify(exactly = 1) { siteRepository.clearBlockingAlert(siteId) }
+        verify(exactly = 0) { sender.send(any(), any(), any()) }
+    }
+
+    /**
+     * A manual re-scan mails nothing, but must still update the streak — otherwise a customer who fixes
+     * their blocking and hits "Re-scan now" stays on a streak they already resolved and gets nagged.
+     */
+    @Test
+    fun `a manual re-scan records the streak without mailing`() {
+        givenUnblockedScan(ScanTrigger.MANUAL)
+
+        notifier.sendScanCompleted(scanId, siteId, ScanTrigger.MANUAL)
+
+        verify(exactly = 1) { siteRepository.startBlockingAlert(siteId, now) }
+        verify(exactly = 0) { sender.send(any(), any(), any()) }
+    }
+
+    /** A snippet carrying someone else's key is a different problem, and says so. */
+    @Test
+    fun `a site key mismatch nudges with the site-key variant`() {
+        givenScan(
+            ScanTrigger.SCHEDULED,
+            cookies = listOf("_ga"),
+            trackerCount = 1,
+            blocking = WidgetProbe(installed = true, siteKeyMatched = false, blockedScriptCount = 0),
+        )
+        givenPreviousScan(cookies = listOf("_ga"), trackerCount = 1)
+        every { siteRepository.findById(siteId) } returns
+            Optional.of(site(blockingAlertSince = now.minus(Duration.ofDays(8))))
+        val summary = slot<BlockingAlertSummary>()
+        every { composer.blockingAlertEmail(any(), capture(summary)) } returns ComposedEmail("nudge", "body")
+
+        notifier.sendScanCompleted(scanId, siteId, ScanTrigger.SCHEDULED)
+
+        verify(exactly = 1) { sender.send("owner@example.com", "nudge", "body") }
+        assertEquals(true, summary.captured.wrongSiteKey)
+    }
+
+    /** Never installed is onboarding's problem, not a blocking failure — we do not nag about it. */
+    @Test
+    fun `a site that never installed the widget is never nudged`() {
+        givenScan(
+            ScanTrigger.SCHEDULED,
+            cookies = listOf("_ga"),
+            trackerCount = 1,
+            blocking = WidgetProbe.ABSENT,
+        )
+        givenPreviousScan(cookies = listOf("_ga"), trackerCount = 1)
+        every { siteRepository.findById(siteId) } returns
+            Optional.of(site(blockingAlertSince = now.minus(Duration.ofDays(60))))
+        every { siteRepository.clearBlockingAlert(siteId) } returns 1
+
+        notifier.sendScanCompleted(scanId, siteId, ScanTrigger.SCHEDULED)
+
+        verify(exactly = 0) { sender.send(any(), any(), any()) }
+    }
+
+    /** Two workers finishing a site's scans together must not send the same nudge twice. */
+    @Test
+    fun `a nudge claimed concurrently is not sent twice`() {
+        givenUnblockedScan()
+        givenPreviousScan(cookies = listOf("_ga"), trackerCount = 1)
+        every { siteRepository.findById(siteId) } returns
+            Optional.of(site(blockingAlertSince = now.minus(Duration.ofDays(9))))
+        // The compare-and-set loses: someone else stamped the notification between our read and write.
+        every { siteRepository.markBlockingAlertNotified(siteId, any(), any()) } returns 0
+
+        notifier.sendScanCompleted(scanId, siteId, ScanTrigger.SCHEDULED)
+
+        verify(exactly = 0) { sender.send(any(), any(), any()) }
+    }
+
+    /** Once nudged, the same unbroken streak stays quiet until the repeat window passes. */
+    @Test
+    fun `a streak nudged a few days ago is not nudged again yet`() {
+        givenUnblockedScan()
+        givenPreviousScan(cookies = listOf("_ga"), trackerCount = 1)
+        every { siteRepository.findById(siteId) } returns
+            Optional.of(
+                site(
+                    blockingAlertSince = now.minus(Duration.ofDays(20)),
+                    blockingAlertNotifiedAt = now.minus(Duration.ofDays(3)),
+                ),
+            )
+
+        notifier.sendScanCompleted(scanId, siteId, ScanTrigger.SCHEDULED)
+
+        verify(exactly = 0) { sender.send(any(), any(), any()) }
+    }
+
     // ---- what the email says -----------------------------------------------------------------
 
     @Test
@@ -245,10 +400,28 @@ class ScanCompletionNotifierTest {
         trigger: ScanTrigger,
         cookies: List<String>,
         trackerCount: Int,
+        blocking: WidgetProbe? = null,
+        observedTrackers: String? = null,
     ) {
         every { scanRepository.findById(scanId) } returns
-            Optional.of(scan(scanId, trigger, trackerCount, createdAt = now))
+            Optional.of(scan(scanId, trigger, trackerCount, createdAt = now, blocking = blocking, observedTrackers = observedTrackers))
         every { scanCookieRepository.findByScanId(scanId) } returns cookies.map(::cookie)
+    }
+
+    /**
+     * A completed scan of a site that has our widget installed and is still letting Google Analytics
+     * fire before consent — the exact BACKLOG #19 situation the nudge exists for.
+     */
+    private fun givenUnblockedScan(trigger: ScanTrigger = ScanTrigger.SCHEDULED) {
+        givenScan(
+            trigger,
+            cookies = listOf("_ga"),
+            trackerCount = 1,
+            blocking = WidgetProbe(installed = true, siteKeyMatched = true, blockedScriptCount = 0),
+            observedTrackers = "google-analytics.com",
+        )
+        every { trackerClassifier.describe(listOf("google-analytics.com")) } returns
+            listOf(TrackerSignature(domain = "google-analytics.com", name = "Google Analytics", category = "analytics"))
     }
 
     private fun givenPreviousScan(
@@ -271,26 +444,37 @@ class ScanCompletionNotifierTest {
         trigger: ScanTrigger,
         trackerCount: Int,
         createdAt: Instant,
+        blocking: WidgetProbe? = null,
+        observedTrackers: String? = null,
     ) = ScanEntity(
         id = id,
         siteId = siteId,
         status = ScanStatus.DONE,
         trigger = trigger,
         marketingTrackerCount = trackerCount,
+        widgetDetected = blocking?.installed,
+        widgetSiteKeyMatched = blocking?.siteKeyMatched,
+        blockedScriptCount = blocking?.blockedScriptCount,
+        observedTrackers = observedTrackers,
         createdAt = createdAt,
         updatedAt = createdAt,
     )
 
     private fun cookie(name: String) = ScanCookieEntity(scanId = scanId, name = name)
 
-    private fun site(status: SiteStatus = SiteStatus.ACTIVE) =
-        SiteEntity(
-            id = siteId,
-            userId = userId,
-            domain = "shop.example.com",
-            siteKey = "pk_test",
-            status = status,
-        )
+    private fun site(
+        status: SiteStatus = SiteStatus.ACTIVE,
+        blockingAlertSince: Instant? = null,
+        blockingAlertNotifiedAt: Instant? = null,
+    ) = SiteEntity(
+        id = siteId,
+        userId = userId,
+        domain = "shop.example.com",
+        siteKey = "pk_test",
+        status = status,
+        blockingAlertSince = blockingAlertSince,
+        blockingAlertNotifiedAt = blockingAlertNotifiedAt,
+    )
 
     private fun user() =
         UserEntity(

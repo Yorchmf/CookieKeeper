@@ -101,12 +101,24 @@ class ScanQueueTest {
         assertEquals(ScanStatus.RUNNING, scanRepository.findById(scanId).orElseThrow().status)
         assertEquals(JobStatus.RUNNING, onlyScanJob().status)
 
-        scanQueue.markSucceeded(claim, pagesCrawled = 7, marketingTrackerCount = 4)
+        scanQueue.markSucceeded(
+            claim,
+            ScanCrawlResult(
+                pagesCrawled = 7,
+                marketingTrackerCount = 4,
+                widget = WidgetProbe(installed = true, siteKeyMatched = true, blockedScriptCount = 2),
+                observedTrackers = listOf("google-analytics.com"),
+            ),
+        )
 
         val scan = scanRepository.findById(scanId).orElseThrow()
         assertEquals(ScanStatus.DONE, scan.status)
         assertEquals(7, scan.pagesCrawled)
         assertEquals(4, scan.marketingTrackerCount, "the observed marketing-tracker count lands on the scan row")
+        assertEquals(true, scan.widgetDetected, "the blocking probe lands on the scan row (BACKLOG #19)")
+        assertEquals(true, scan.widgetSiteKeyMatched)
+        assertEquals(2, scan.blockedScriptCount)
+        assertEquals("google-analytics.com", scan.observedTrackers, "dataset keys are stored, never observed hosts")
         assertNotNull(scan.finishedAt)
         assertEquals(JobStatus.DONE, onlyScanJob().status)
     }
@@ -152,13 +164,13 @@ class ScanQueueTest {
         assertEquals(2, live.attempt, "the redelivery is a fresh attempt that now owns the job")
 
         // Worker A finishes late: its completion must be ignored, not clobber B's live claim.
-        scanQueue.markSucceeded(stale, pagesCrawled = 99, marketingTrackerCount = 9)
+        scanQueue.markSucceeded(stale, ScanCrawlResult(pagesCrawled = 99, marketingTrackerCount = 9))
         val afterStale = scanRepository.findById(scanId).orElseThrow()
         assertEquals(ScanStatus.RUNNING, afterStale.status, "a stale success must not mark the scan done")
         assertEquals(JobStatus.RUNNING, onlyScanJob().status)
 
         // Worker B completes normally and its result is the one that lands.
-        scanQueue.markSucceeded(live, pagesCrawled = 3, marketingTrackerCount = 1)
+        scanQueue.markSucceeded(live, ScanCrawlResult(pagesCrawled = 3, marketingTrackerCount = 1))
         val done = scanRepository.findById(scanId).orElseThrow()
         assertEquals(ScanStatus.DONE, done.status)
         assertEquals(3, done.pagesCrawled)

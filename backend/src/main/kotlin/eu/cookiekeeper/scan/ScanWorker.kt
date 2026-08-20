@@ -54,7 +54,7 @@ class ScanWorker(
     private fun runScan(claim: ClaimedScan) {
         try {
             val result = crawler.crawl(claim)
-            scanQueue.markSucceeded(claim, result.pagesCrawled, result.marketingTrackerCount)
+            scanQueue.markSucceeded(claim, result)
             log.info("Scan {} done: {} page(s)", claim.scanId, result.pagesCrawled)
         } catch (ex: ScanTargetException) {
             // The crawler classified this failure into a customer-safe reason code (unverified domain,

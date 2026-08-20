@@ -19,8 +19,12 @@ import java.time.Instant
  *
  * Third-party marketing trackers are scored from [marketingTrackerCount] — the crawl observes off-site
  * request hosts and the caller persists the matched-marketing count on the scan row (count only; the raw
- * hosts are never stored). Missing-consent-banner is still deliberately **not** emitted, to avoid a
- * fabricated score: the scan schema persists no backing signal for it yet.
+ * hosts are never stored).
+ *
+ * [blocking] adds the post-install verification (BACKLOG #19): whether our own widget was found on the
+ * page, and whether it actually stopped the vendors that fired. It is optional and absent for the
+ * anonymous free-scan funnel, which cannot know whose site it is looking at — a report that is not
+ * measured must stay silent rather than fabricate a verdict.
  *
  * Scores any [ScanCookieView] — the same logic grades both the authenticated per-site scan and the
  * anonymous free-scan funnel (whose verdict now carries this report too).
@@ -52,6 +56,7 @@ object ComplianceAnalyzer {
         cookies: List<ScanCookieView>,
         now: Instant,
         marketingTrackerCount: Int = 0,
+        blocking: BlockingVerification? = null,
     ): ComplianceReport {
         val (classified, unclassified) = cookies.partition { it.isKnown && it.category != null }
         val nonNecessary = classified.filter { it.category != ConsentCategory.NECESSARY.key }
@@ -64,9 +69,10 @@ object ComplianceAnalyzer {
         // their own finding, and necessary cookies aren't the concern here) — mirrors the reference scan.
         val insecure = nonNecessary.filter { !it.secure && !it.httpOnly }
 
-        // Ordered most-severe first: the two criticals, then the warnings, then the info.
+        // Ordered most-severe first: the criticals, then the warnings, then the info.
         val issues =
             buildList {
+                addAll(blockingIssues(blocking))
                 if (otherPreConsent.isNotEmpty()) {
                     add(ComplianceIssue("pre_consent_tracking", "critical", otherPreConsent.size))
                 }
@@ -93,6 +99,22 @@ object ComplianceAnalyzer {
                 .coerceIn(WORST_SCORE, PERFECT_SCORE)
         return ComplianceReport(score = score, issues = issues)
     }
+
+    /**
+     * Findings from the post-install blocking verification (BACKLOG #19), or nothing when it was not
+     * measured — which is every anonymous free scan, so that funnel's report is unchanged.
+     *
+     * These lead the list because they are the worst thing this product can find: the site carries a
+     * consent banner, which is a written claim to its visitors, and the crawl proves the site does not
+     * honour it. A missing widget is only `info` — that is an unfinished setup, not a broken promise.
+     */
+    private fun blockingIssues(blocking: BlockingVerification?): List<ComplianceIssue> =
+        when (blocking?.status) {
+            BlockingStatus.UNBLOCKED -> listOf(ComplianceIssue("unblocked_trackers", "critical", blocking.vendors.size))
+            BlockingStatus.WRONG_SITE_KEY -> listOf(ComplianceIssue("widget_site_key_mismatch", "critical", 1))
+            BlockingStatus.NOT_INSTALLED -> listOf(ComplianceIssue("widget_not_detected", "info", 1))
+            else -> emptyList()
+        }
 
     /**
      * True when [expiry] is a persistent expiry more than a year out. [expiry] is either

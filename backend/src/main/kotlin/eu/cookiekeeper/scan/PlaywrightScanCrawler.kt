@@ -49,18 +49,27 @@ class PlaywrightScanCrawler(
         // single-page pass the anonymous funnel runs, verified ones get the paid multi-page crawl.
         val mode = if (site.verifiedAt != null) CrawlMode.FULL else CrawlMode.QUICK
 
-        val outcome = engine.crawl(site.domain, mode)
+        // The site key is handed to the engine only so the crawled page can be asked "are you embedding
+        // *this* site?" in-page; the answer comes back as a boolean (BACKLOG #19, WidgetProbe).
+        val outcome = engine.crawl(site.domain, mode, site.siteKey)
         val recorded = persistCookies(claim.scanId, outcome.cookies)
-        val marketingTrackers = trackerClassifier.countMarketingTrackers(outcome.thirdPartyHosts)
+        val decidable = trackerClassifier.identifyDecidable(outcome.thirdPartyHosts)
+        val marketingTrackers = decidable.count { it.category == TrackerSignature.MARKETING_CATEGORY }
         // Log counts only — never attacker-controlled cookie names or tracker hosts (§4 no-PII/injection).
         log.info(
-            "Scan {} crawled {} page(s), recorded {} cookie(s), {} marketing tracker(s)",
+            "Scan {} crawled {} page(s), recorded {} cookie(s), {} marketing tracker(s), widget installed={}",
             claim.scanId,
             outcome.pagesCrawled,
             recorded,
             marketingTrackers,
+            outcome.widget.installed,
         )
-        return ScanCrawlResult(pagesCrawled = outcome.pagesCrawled, marketingTrackerCount = marketingTrackers)
+        return ScanCrawlResult(
+            pagesCrawled = outcome.pagesCrawled,
+            marketingTrackerCount = marketingTrackers,
+            widget = outcome.widget,
+            observedTrackers = decidable.map { it.domain },
+        )
     }
 
     /** Persists the classified cookie rows and returns how many were recorded (post de-dup/cap). */

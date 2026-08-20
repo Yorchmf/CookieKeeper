@@ -81,17 +81,58 @@ export interface ScanDiff {
 }
 
 /**
+ * What the before-consent crawl could tell about our own embed (BlockingVerificationResponse):
+ *
+ * - `unknown` — not measured (a scan from before the probe existed, or one that never completed)
+ * - `not_installed` — no Complyr embed on any crawled page
+ * - `wrong_site_key` — an embed is there, but carrying another site's key, so it configures nothing
+ * - `unblocked` — the widget is installed and known vendors still fire *before* consent
+ * - `clean` — installed, and nothing consent-decidable fired before a choice was made
+ */
+export type BlockingStatus =
+  | "unknown"
+  | "not_installed"
+  | "wrong_site_key"
+  | "unblocked"
+  | "clean";
+
+/**
+ * One vendor the crawl saw firing before consent (BlockingVendorResponse). `domain` and `name` come
+ * from our own curated tracker dataset, never from the crawled page. `consentCategory` is the exact
+ * token the owner must put in `data-complyr-category` for this vendor to be blocked correctly.
+ */
+export interface BlockingVendor {
+  domain: string;
+  name: string;
+  consentCategory: string;
+}
+
+/**
+ * The post-install blocking verdict for a completed scan (BlockingVerificationResponse). The crawl
+ * runs before any consent is given, so a vendor listed here is provably *not* being blocked.
+ * `blockedScriptCount` is how many `text/plain` placeholders the owner had already tagged (null when
+ * unmeasured). Present only once the scan is `done`.
+ */
+export interface BlockingVerification {
+  status: BlockingStatus;
+  vendors: BlockingVendor[];
+  blockedScriptCount: number | null;
+}
+
+/**
  * A scan plus its cookies (ScanDetailResponse). `cookiesByCategory` is keyed by the backend's
  * canonical consent-category token (necessary/preferences/statistics/marketing) — the UI localizes
  * the key. `needsReview` holds cookies the signature DB did not recognize. `compliance` is the
  * indicative score/issue report, populated only once the scan is `done`. `diff` is how the findings
- * changed since the previous completed scan, also only once `done`.
+ * changed since the previous completed scan, also only once `done`. `blocking` is the post-install
+ * verification — whether the embed is actually stopping anything — likewise only once `done`.
  */
 export interface ScanDetail extends ScanSummary {
   cookiesByCategory: Record<string, ScanCookie[]>;
   needsReview: ScanCookie[];
   compliance: ComplianceReport | null;
   diff: ScanDiff | null;
+  blocking: BlockingVerification | null;
 }
 
 export interface ScansList {

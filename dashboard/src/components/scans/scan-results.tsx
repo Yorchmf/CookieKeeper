@@ -1,6 +1,7 @@
 "use client";
 
 import { useFormatter, useTranslations } from "next-intl";
+import { BlockingVerification } from "@/components/scans/blocking-verification";
 import { ComplianceReport } from "@/components/scans/compliance-report";
 import {
   CookieTable,
@@ -108,6 +109,10 @@ export function ScanResults({
         {data.diff && <ScanDiffSummary diff={data.diff} />}
 
         {data.compliance && <ComplianceReport report={data.compliance} />}
+
+        {data.blocking && (
+          <BlockingVerification verification={data.blocking} siteId={siteId} />
+        )}
 
         {!hasCookies ? (
           <div className="rounded-lg border border-dashed border-border p-10 text-center">

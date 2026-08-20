@@ -21,6 +21,7 @@ class ScanQueryService(
     private val scanRepository: ScanRepository,
     private val scanCookieRepository: ScanCookieRepository,
     private val scanDiffCalculator: ScanDiffCalculator,
+    private val blockingVerificationService: BlockingVerificationService,
     private val clock: Clock,
 ) {
     /** Newest-first scan history for a site the caller owns, bounded to a sane page size. */
@@ -53,7 +54,9 @@ class ScanQueryService(
             } else {
                 null
             }
-        return ScanDetailResponse.from(scan, cookies, clock.instant(), diff)
+        // A pure projection of this scan's own probe columns — never the site's current alert state, or an
+        // old scan's page would report today's problem as if the crawl had found it.
+        return ScanDetailResponse.from(scan, cookies, clock.instant(), diff, blockingVerificationService.verify(scan))
     }
 
     /**

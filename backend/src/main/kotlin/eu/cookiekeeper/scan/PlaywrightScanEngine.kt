@@ -53,6 +53,7 @@ class PlaywrightScanEngine(
     override fun crawl(
         domain: String,
         mode: CrawlMode,
+        expectedSiteKey: String?,
     ): EngineCrawlResult {
         // Fail closed before launching a browser if the domain resolves anywhere non-public.
         validator.validate(domain)
@@ -81,11 +82,13 @@ class PlaywrightScanEngine(
                     // context.route covers HTTP(S) only; a WebSocket handshake needs its own guard, or
                     // ws://<internal-ip>/ opened from page JS would reach a private range unchecked.
                     context.routeWebSocket("**/*") { wsRoute -> guardWebSocket(wsRoute) }
-                    val pages = crawlPages(context, domain, maxPages)
+                    val crawl = Traversal(context, domain, maxPages, expectedSiteKey)
+                    val pages = crawlPages(crawl)
                     return EngineCrawlResult(
                         pagesCrawled = pages,
                         cookies = context.cookies(),
                         thirdPartyHosts = thirdPartyHosts.toSet(),
+                        widget = crawl.probe,
                     )
                 }
             }
@@ -94,16 +97,26 @@ class PlaywrightScanEngine(
 
     /**
      * The state of one breadth-first, same-host crawl: the immutable target ([context], [domain],
-     * [maxPages]) plus the mutable frontier. Bundled so the traversal helpers stay within a sane
-     * parameter count and can't drift out of sync on the visited/queue pair.
+     * [maxPages], [expectedSiteKey]) plus the mutable frontier and the accumulated widget probe.
+     * Bundled so the traversal helpers stay within a sane parameter count and can't drift out of sync
+     * on the visited/queue pair.
      */
     private class Traversal(
         val context: BrowserContext,
         val domain: String,
         val maxPages: Int,
+        val expectedSiteKey: String?,
     ) {
         val visited = LinkedHashSet<String>()
         val queue = ArrayDeque<String>()
+
+        /** Folded across every page actually opened; stays [WidgetProbe.ABSENT] if none were. */
+        var probe: WidgetProbe = WidgetProbe.ABSENT
+            private set
+
+        fun observe(pageProbe: WidgetProbe) {
+            probe = probe.merge(pageProbe)
+        }
     }
 
     /**
@@ -112,25 +125,21 @@ class PlaywrightScanEngine(
      * fails is skipped so one bad link doesn't sink the whole crawl. In QUICK mode maxPages is 1, so the
      * loop never runs and only the homepage is opened.
      */
-    private fun crawlPages(
-        context: BrowserContext,
-        domain: String,
-        maxPages: Int,
-    ): Int {
+    private fun crawlPages(crawl: Traversal): Int {
         val start = clock.instant()
-        val crawl = Traversal(context, domain, maxPages)
-        val root = "https://$domain/"
+        val root = "https://${crawl.domain}/"
 
         val homepage = navigate(crawl.context, root, isHomepage = true) ?: return 0
         var pages = 1
         try {
             crawl.visited.add(root)
+            crawl.observe(probeWidget(homepage, crawl.expectedSiteKey))
             enqueueSameHostLinks(crawl, homepage)
         } finally {
             homepage.close()
         }
 
-        while (crawl.queue.isNotEmpty() && pages < maxPages && withinJobBudget(start)) {
+        while (crawl.queue.isNotEmpty() && pages < crawl.maxPages && withinJobBudget(start)) {
             val url = crawl.queue.removeFirst()
             // Count a page only when it's newly visited AND actually opened.
             if (crawl.visited.add(url) && visitPage(crawl, url)) {
@@ -147,6 +156,7 @@ class PlaywrightScanEngine(
     ): Boolean {
         val page = navigate(crawl.context, url, isHomepage = false) ?: return false
         return try {
+            crawl.observe(probeWidget(page, crawl.expectedSiteKey))
             enqueueSameHostLinks(crawl, page)
             true
         } finally {
@@ -194,6 +204,30 @@ class PlaywrightScanEngine(
             .filter { it !in crawl.visited && it !in crawl.queue }
             .takeWhile { crawl.visited.size + crawl.queue.size < crawl.maxPages }
             .forEach { crawl.queue.add(it) }
+    }
+
+    /**
+     * Ask one loaded page about our own embed (BACKLOG #19). Everything is decided *in the page* and only
+     * two booleans and a count come back — in particular the site-key comparison happens against the key
+     * we pass in, so no attacker-influenced attribute value ever crosses into the JVM (§4).
+     *
+     * A page that refuses to evaluate (hostile CSP, detached frame, timeout) yields [WidgetProbe.ABSENT]
+     * rather than throwing: the probe is a diagnostic, and a page we could not question must never fail
+     * a scan that otherwise crawled fine. That failure mode is indistinguishable from "not installed",
+     * which is why the verdict is only ever shown alongside the actual tracker findings.
+     */
+    private fun probeWidget(
+        page: Page,
+        expectedSiteKey: String?,
+    ): WidgetProbe {
+        val evaluated = runCatching { page.evaluate(WIDGET_PROBE_JS, expectedSiteKey) }.getOrNull()
+        val fields = evaluated as? Map<*, *> ?: return WidgetProbe.ABSENT
+        return WidgetProbe(
+            installed = fields["installed"] as? Boolean ?: false,
+            siteKeyMatched = fields["keyMatched"] as? Boolean ?: false,
+            // JS numbers arrive as Integer or Double depending on the value; Number covers both.
+            blockedScriptCount = (fields["blocked"] as? Number)?.toInt()?.coerceAtLeast(0) ?: 0,
+        )
     }
 
     private fun extractHrefs(page: Page): List<String> {
@@ -277,6 +311,35 @@ class PlaywrightScanEngine(
     private fun withinJobBudget(start: Instant): Boolean = Duration.between(start, clock.instant()) < properties.scan.jobTimeout
 
     private companion object {
+        /**
+         * The in-page widget probe (see [probeWidget]). Mirrors the widget's own conventions exactly:
+         * the embed is `<script src=".../v1.js" data-complyr="pk_…">` (widget `main.ts`), a tag-manager
+         * install is visible only as the `window.Complyr` global, and a correctly blocked third-party
+         * tag is `<script type="text/plain" data-complyr-category="…">` (widget `script-blocking.ts`).
+         *
+         * Written as a defensive one-liner per fact: it runs inside a page that may have redefined half
+         * the DOM, so every step is wrapped and the whole thing can only ever return the three fields.
+         */
+        const val WIDGET_PROBE_JS = """
+            (expectedKey) => {
+              var embeds = [];
+              try { embeds = Array.prototype.slice.call(document.querySelectorAll('script[data-complyr]')); } catch (e) {}
+              var hasGlobal = false;
+              try { hasGlobal = !!window.Complyr; } catch (e) {}
+              var keyMatched = false;
+              if (expectedKey) {
+                for (var i = 0; i < embeds.length; i++) {
+                  if (embeds[i].getAttribute('data-complyr') === expectedKey) { keyMatched = true; break; }
+                }
+              }
+              var blocked = 0;
+              try {
+                blocked = document.querySelectorAll('script[type="text/plain"][data-complyr-category]').length;
+              } catch (e) {}
+              return { installed: embeds.length > 0 || hasGlobal, keyMatched: keyMatched, blocked: blocked };
+            }
+        """
+
         // Bounds the transient third-party host set: a legitimate page touches a handful of trackers,
         // so this only trips for a pathological/hostile fan-out. A soft cap — a benign race on the
         // size check can overshoot by a few, which is harmless for telemetry.

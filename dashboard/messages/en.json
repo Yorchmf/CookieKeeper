@@ -747,8 +747,38 @@
         "long_lived_cookies": "{count, plural, one {# non-essential cookie lasts longer than a year} other {# non-essential cookies last longer than a year}}",
         "insecure_cookies": "{count, plural, one {# non-essential cookie is set without the Secure and HttpOnly flags} other {# non-essential cookies are set without the Secure and HttpOnly flags}}",
         "third_party_trackers": "{count, plural, one {# third-party marketing tracker loads before consent} other {# third-party marketing trackers load before consent}}",
-        "unclassified_cookies": "{count, plural, one {# cookie could not be classified and needs review} other {# cookies could not be classified and need review}}"
+        "unclassified_cookies": "{count, plural, one {# cookie could not be classified and needs review} other {# cookies could not be classified and need review}}",
+        "unblocked_trackers": "{count, plural, one {# known tracker fires before consent despite the banner} other {# known trackers fire before consent despite the banner}}",
+        "widget_site_key_mismatch": "The Complyr snippet on this site is using another site's key",
+        "widget_not_detected": "The Complyr snippet was not found on the pages we crawled"
       }
+    },
+    "blocking": {
+      "title": "Blocking check",
+      "status": {
+        "not_installed": {
+          "headline": "We could not find the Complyr snippet",
+          "description": "Nothing is being blocked on this site yet, because the banner is not on the pages we crawled. Add the snippet and re-scan."
+        },
+        "wrong_site_key": {
+          "headline": "The snippet is using another site's key",
+          "description": "The banner loads, but it is configured for a different site, so this site's categories and blocking rules never apply. Replace the snippet with the one for this site."
+        },
+        "unblocked": {
+          "headline": "{count, plural, one {Complyr is installed, but # tracker still runs before consent} other {Complyr is installed, but # trackers still run before consent}}",
+          "description": "We loaded your site the way a first-time visitor does — before anyone accepts anything — and these vendors ran anyway. Your banner promises something the site does not do yet."
+        },
+        "clean": {
+          "headline": "Nothing runs before consent",
+          "description": "We loaded your site the way a first-time visitor does and saw no tracker we recognise fire before a choice was made."
+        }
+      },
+      "howToFix": "Find the tag that loads each vendor, change its <code>src</code> to <code>data-src</code>, and add <code>type=\"text/plain\"</code> plus the category below. Complyr restores the script the moment a visitor accepts that category.",
+      "categoryBadge": "Needs: {category}",
+      "copy": "Copy tag for {vendor}",
+      "copied": "Copied",
+      "embedLink": "View this site's snippet",
+      "blockedScripts": "{count, plural, =0 {No tagged scripts found — nothing on this site needs blocking yet.} one {# script is tagged and waiting for consent.} other {# scripts are tagged and waiting for consent.}}"
     },
     "diff": {
       "title": "Since your last scan",

@@ -63,7 +63,7 @@ class ScanWorkerTest {
         worker(maxJobsPerPoll = 10).poll()
 
         assertEquals(listOf("paid", "free"), order, "the paid scan must run before the free one is even claimed")
-        verify(exactly = 1) { scanQueue.markSucceeded(paid, 3, 4) }
+        verify(exactly = 1) { scanQueue.markSucceeded(paid, ScanCrawlResult(pagesCrawled = 3, marketingTrackerCount = 4)) }
         verify(exactly = 1) { publicScanQueue.markSucceeded(free, 2) }
     }
 

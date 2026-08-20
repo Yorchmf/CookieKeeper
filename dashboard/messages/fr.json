@@ -747,8 +747,38 @@
         "long_lived_cookies": "{count, plural, one {# cookie non essentiel dure plus d'un an} other {# cookies non essentiels durent plus d'un an}}",
         "insecure_cookies": "{count, plural, one {# cookie non essentiel est déposé sans les attributs Secure et HttpOnly} other {# cookies non essentiels sont déposés sans les attributs Secure et HttpOnly}}",
         "third_party_trackers": "{count, plural, one {# traceur marketing tiers se charge avant le consentement} other {# traceurs marketing tiers se chargent avant le consentement}}",
-        "unclassified_cookies": "{count, plural, one {# cookie n'a pas pu être classé et doit être examiné} other {# cookies n'ont pas pu être classés et doivent être examinés}}"
+        "unclassified_cookies": "{count, plural, one {# cookie n'a pas pu être classé et doit être examiné} other {# cookies n'ont pas pu être classés et doivent être examinés}}",
+        "unblocked_trackers": "{count, plural, one {# traceur connu se charge avant le consentement malgré la bannière} other {# traceurs connus se chargent avant le consentement malgré la bannière}}",
+        "widget_site_key_mismatch": "Le snippet Complyr de ce site utilise la clé d'un autre site",
+        "widget_not_detected": "Le snippet Complyr est introuvable sur les pages analysées"
       }
+    },
+    "blocking": {
+      "title": "Vérification du blocage",
+      "status": {
+        "not_installed": {
+          "headline": "Nous n'avons pas trouvé le snippet Complyr",
+          "description": "Rien n'est encore bloqué sur ce site, car la bannière est absente des pages analysées. Ajoutez le snippet puis relancez une analyse."
+        },
+        "wrong_site_key": {
+          "headline": "Le snippet utilise la clé d'un autre site",
+          "description": "La bannière se charge, mais elle est configurée pour un autre site : les catégories et règles de blocage de ce site ne s'appliquent jamais. Remplacez le snippet par celui de ce site."
+        },
+        "unblocked": {
+          "headline": "{count, plural, one {Complyr est installé, mais # traceur se charge encore avant le consentement} other {Complyr est installé, mais # traceurs se chargent encore avant le consentement}}",
+          "description": "Nous avons chargé votre site comme un nouveau visiteur — avant toute acceptation — et ces fournisseurs se sont exécutés quand même. Votre bannière promet ce que le site ne fait pas encore."
+        },
+        "clean": {
+          "headline": "Rien ne se charge avant le consentement",
+          "description": "Nous avons chargé votre site comme un nouveau visiteur et n'avons vu aucun traceur connu s'exécuter avant qu'un choix soit fait."
+        }
+      },
+      "howToFix": "Trouvez la balise qui charge chaque fournisseur, remplacez son <code>src</code> par <code>data-src</code>, et ajoutez <code>type=\"text/plain\"</code> ainsi que la catégorie ci-dessous. Complyr rétablit le script dès qu'un visiteur accepte cette catégorie.",
+      "categoryBadge": "Nécessite : {category}",
+      "copy": "Copier la balise pour {vendor}",
+      "copied": "Copié",
+      "embedLink": "Voir le snippet de ce site",
+      "blockedScripts": "{count, plural, =0 {Aucun script balisé — rien à bloquer sur ce site pour l'instant.} one {# script est balisé et attend le consentement.} other {# scripts sont balisés et attendent le consentement.}}"
     },
     "diff": {
       "title": "Depuis votre dernier scan",

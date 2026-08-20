@@ -144,7 +144,13 @@ class ScanQueue(
     }
 
     /**
-     * Terminal success: mark the job done and the scan done with its page and marketing-tracker counts.
+     * Terminal success: mark the job done and the scan done with everything the crawl measured — page and
+     * marketing-tracker counts, plus the post-install blocking probe (BACKLOG #19).
+     *
+     * The whole [ScanCrawlResult] is taken rather than loose parameters so a new measurement never has to
+     * thread another argument through the worker. The probe fields are written together and only here: a
+     * `done` scan therefore either has all four (measured) or all four null (predates the probe), which is
+     * what lets the read layer tell "clean" from "not measured".
      *
      * Publishes [ScanCompleted] for the scan-complete email. The event is raised inside this transaction
      * but only *delivered* after it commits ([ScanEmailListener]), so a mail failure can never roll the
@@ -155,8 +161,7 @@ class ScanQueue(
     @Transactional
     fun markSucceeded(
         claim: ClaimedScan,
-        pagesCrawled: Int,
-        marketingTrackerCount: Int,
+        result: ScanCrawlResult,
     ) {
         val job = jobRepository.findById(claim.jobId).orElse(null) ?: return
         if (!ownsClaim(job, claim)) return
@@ -168,8 +173,12 @@ class ScanQueue(
                     it.copy(
                         status = ScanStatus.DONE,
                         finishedAt = now,
-                        pagesCrawled = pagesCrawled,
-                        marketingTrackerCount = marketingTrackerCount,
+                        pagesCrawled = result.pagesCrawled,
+                        marketingTrackerCount = result.marketingTrackerCount,
+                        widgetDetected = result.widget.installed,
+                        widgetSiteKeyMatched = result.widget.siteKeyMatched,
+                        blockedScriptCount = result.widget.blockedScriptCount,
+                        observedTrackers = ObservedTrackers.format(result.observedTrackers),
                         error = null,
                         updatedAt = now,
                     ),

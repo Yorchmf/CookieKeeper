@@ -92,6 +92,18 @@ data class ScanEntity(
     // stored). Null until a scan completes; read as 0 by [ComplianceAnalyzer] on historical/in-flight rows.
     @Column(name = "marketing_tracker_count")
     val marketingTrackerCount: Int? = null,
+    // Post-install blocking verification (V28, BACKLOG #19). All four are null for a scan that predates
+    // the probe or never completed, which the read layer renders as *unknown* — never as a pass or a
+    // fail, because we did not measure it. [observedTrackers] holds comma-joined keys from our own
+    // tracker dataset, never an observed request host (§4).
+    @Column(name = "widget_detected")
+    val widgetDetected: Boolean? = null,
+    @Column(name = "widget_site_key_matched")
+    val widgetSiteKeyMatched: Boolean? = null,
+    @Column(name = "blocked_script_count")
+    val blockedScriptCount: Int? = null,
+    @Column(name = "observed_trackers")
+    val observedTrackers: String? = null,
     @Column(name = "error")
     val error: String? = null,
     @Column(name = "created_at", nullable = false, updatable = false)

@@ -28,7 +28,9 @@ class ScanQueryServiceTest {
     private val scanRepository = mockk<ScanRepository>()
     private val scanCookieRepository = mockk<ScanCookieRepository>()
     private val scanDiffCalculator = ScanDiffCalculator(scanRepository, scanCookieRepository)
+    private val trackerClassifier = mockk<TrackerClassifier>()
     private val now: Instant = Instant.parse("2026-08-14T10:00:00Z")
+    private val clock: Clock = Clock.fixed(now, ZoneOffset.UTC)
 
     private val service =
         ScanQueryService(
@@ -36,7 +38,8 @@ class ScanQueryServiceTest {
             scanRepository,
             scanCookieRepository,
             scanDiffCalculator,
-            Clock.fixed(now, ZoneOffset.UTC),
+            BlockingVerificationService(trackerClassifier, siteRepository, clock),
+            clock,
         )
 
     private val userId: UUID = UUID.randomUUID()

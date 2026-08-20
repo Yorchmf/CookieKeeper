@@ -5,17 +5,18 @@ import org.springframework.stereotype.Component
 import tools.jackson.databind.ObjectMapper
 
 /**
- * Counts the distinct **marketing** third-party trackers a crawl observed, against the bundled
- * signature dataset (`resources/trackers/trackers.json`). This is the backing signal for the
+ * Matches the third-party hosts a crawl observed against the bundled signature dataset
+ * (`resources/trackers/trackers.json`), and answers the two questions built on it: how many distinct
+ * **marketing** trackers fired, and **which** consent-decidable vendors did (BACKLOG #19). The first is the backing signal for the
  * `third_party_trackers` compliance finding: our before-consent crawl already sees every request a page
  * fires, so a request to an ad network (with no consent given) is a pre-consent tracking violation the
  * cookie-only checks would miss entirely.
  *
- * **Count only** (product decision): the observed hosts are attacker-influenced and never persisted —
- * only the resulting integer is stored on the scan row — so the raw request domains cannot pollute our
- * storage or logs (§4). Distinctness is by matched *signature*, not by observed host, so a network
- * sharded across `a.doubleclick.net` / `b.doubleclick.net` counts once (one marketing vendor), which is
- * the honest, non-inflatable number to show a visitor.
+ * **Nothing observed is persisted** (§4): the hosts are attacker-influenced, so only the resulting
+ * integer and the matched dataset KEYS — curated values we shipped ourselves — leave this class.
+ * Distinctness is by matched *signature*, not by observed host, so a network sharded across
+ * `a.doubleclick.net` / `b.doubleclick.net` counts once (one vendor), which is the honest,
+ * non-inflatable number to show a visitor.
  *
  * The dataset is loaded once at construction (like [CookieClassifier]'s per-scan read, but this set is
  * static so a single load suffices); a missing/malformed resource fails fast at startup rather than
@@ -31,13 +32,33 @@ class TrackerClassifier(
      * How many distinct marketing trackers [hosts] contains. [hosts] are the crawl's observed
      * third-party request hosts; unmatched or non-marketing hosts are ignored.
      */
-    fun countMarketingTrackers(hosts: Set<String>): Int =
+    fun countMarketingTrackers(hosts: Set<String>): Int = identify(hosts).count { it.category == TrackerSignature.MARKETING_CATEGORY }
+
+    /**
+     * The distinct **consent-decidable** vendors [hosts] contains, sorted by dataset key — the backing
+     * signal for the post-install blocking verification (BACKLOG #19). Analytics is included here where
+     * [countMarketingTrackers] excludes it: Google Analytics firing before consent is the single most
+     * common way a site with a banner is still non-compliant, and it is exactly what the customer needs
+     * named. Vendors we classify as `necessary` are left out — we never tell someone to block those.
+     *
+     * The returned values are dataset rows, not observed hosts: the caller may persist their [domain]
+     * keys and show their [name]s (§4 — nothing attacker-controlled leaves the crawl).
+     */
+    fun identifyDecidable(hosts: Set<String>): List<TrackerSignature> = identify(hosts).filter { it.consentCategoryKey() != null }
+
+    /** Resolve stored dataset keys back to rows, dropping any key a later dataset revision removed. */
+    fun describe(domains: List<String>): List<TrackerSignature> = domains.mapNotNull(matcher::byKey)
+
+    /**
+     * The distinct dataset rows [hosts] matched, sorted by key. Distinctness is by matched *signature*,
+     * never by observed host, so a network sharded across `a.doubleclick.net` / `b.doubleclick.net`
+     * counts once.
+     */
+    private fun identify(hosts: Set<String>): List<TrackerSignature> =
         hosts
             .mapNotNull(matcher::match)
-            .filter { it.category == MARKETING_CATEGORY }
-            .map { it.domain }
-            .toSet()
-            .size
+            .distinctBy { it.domain }
+            .sortedBy { it.domain }
 
     private fun load(objectMapper: ObjectMapper): List<TrackerSignature> {
         val mapType =
@@ -63,6 +84,5 @@ class TrackerClassifier(
 
     private companion object {
         const val DATASET_PATH = "trackers/trackers.json"
-        const val MARKETING_CATEGORY = "marketing"
     }
 }

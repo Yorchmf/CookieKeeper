@@ -56,14 +56,17 @@ class PlaywrightPublicScanCrawlerTest {
         var callCount = 0
         var lastDomain: String? = null
         var lastMode: CrawlMode? = null
+        var lastExpectedSiteKey: String? = null
 
         override fun crawl(
             domain: String,
             mode: CrawlMode,
+            expectedSiteKey: String?,
         ): EngineCrawlResult {
             callCount++
             lastDomain = domain
             lastMode = mode
+            lastExpectedSiteKey = expectedSiteKey
             return result
         }
     }

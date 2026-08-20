@@ -60,14 +60,17 @@ class PlaywrightScanCrawlerTest {
         var callCount = 0
         var lastDomain: String? = null
         var lastMode: CrawlMode? = null
+        var lastExpectedSiteKey: String? = null
 
         override fun crawl(
             domain: String,
             mode: CrawlMode,
+            expectedSiteKey: String?,
         ): EngineCrawlResult {
             callCount++
             lastDomain = domain
             lastMode = mode
+            lastExpectedSiteKey = expectedSiteKey
             return result
         }
     }
@@ -115,6 +118,7 @@ class PlaywrightScanCrawlerTest {
         every { siteRepository.findById(siteId) } returns Optional.of(site(verifiedAt = null))
         every { classifier.classify(any()) } answers { firstArg() }
         every { trackerClassifier.countMarketingTrackers(any()) } returns 0
+        every { trackerClassifier.identifyDecidable(any()) } returns emptyList()
         val engine = FakeScanEngine(EngineCrawlResult(pagesCrawled = 1, cookies = emptyList(), thirdPartyHosts = emptySet()))
 
         val result = crawlerWith(engine).crawl(claim)
@@ -130,21 +134,40 @@ class PlaywrightScanCrawlerTest {
         every { siteRepository.findById(siteId) } returns Optional.of(site())
         // Classifier is identity here — we assert wiring, not signature matching (covered elsewhere).
         every { classifier.classify(any()) } answers { firstArg() }
-        every { trackerClassifier.countMarketingTrackers(setOf("ad.doubleclick.net")) } returns 5
+        val hosts = setOf("ad.doubleclick.net", "www.google-analytics.com")
+        // One classifier pass yields both numbers: the marketing count the report shows and the full
+        // consent-decidable set the blocking verification names (BACKLOG #19).
+        every { trackerClassifier.identifyDecidable(hosts) } returns
+            listOf(
+                TrackerSignature(domain = "doubleclick.net", name = "Google Ads", category = "marketing"),
+                TrackerSignature(domain = "google-analytics.com", name = "Google Analytics", category = "analytics"),
+            )
         val cookies = listOf(Cookie("_ga", "GA1.2").setDomain(".example.com"))
         val engine =
             FakeScanEngine(
-                EngineCrawlResult(pagesCrawled = 3, cookies = cookies, thirdPartyHosts = setOf("ad.doubleclick.net")),
+                EngineCrawlResult(
+                    pagesCrawled = 3,
+                    cookies = cookies,
+                    thirdPartyHosts = hosts,
+                    widget = WidgetProbe(installed = true, siteKeyMatched = true, blockedScriptCount = 1),
+                ),
             )
 
         val result = crawlerWith(engine).crawl(claim)
 
         assertEquals(3, result.pagesCrawled, "the engine's page count flows through to the scan result")
-        assertEquals(5, result.marketingTrackerCount, "the tracker classifier's count of the observed hosts flows through")
+        assertEquals(1, result.marketingTrackerCount, "only the marketing rows count as marketing trackers")
         assertEquals("example.com", engine.lastDomain, "the crawler must use the site's own domain")
         assertEquals(CrawlMode.FULL, engine.lastMode, "the authenticated path is a full multi-page crawl")
+        assertEquals("pk_key", engine.lastExpectedSiteKey, "the in-page probe compares against this site's own key")
+        assertEquals(
+            listOf("doubleclick.net", "google-analytics.com"),
+            result.observedTrackers,
+            "every consent-decidable vendor is carried as a dataset key, never as the observed host (§4)",
+        )
+        assertEquals(WidgetProbe(installed = true, siteKeyMatched = true, blockedScriptCount = 1), result.widget)
         verify(exactly = 1) { classifier.classify(any()) }
-        verify(exactly = 1) { trackerClassifier.countMarketingTrackers(setOf("ad.doubleclick.net")) }
+        verify(exactly = 1) { trackerClassifier.identifyDecidable(hosts) }
         verify(exactly = 1) { cookieWriter.replace(claim.scanId, any()) }
     }
 }

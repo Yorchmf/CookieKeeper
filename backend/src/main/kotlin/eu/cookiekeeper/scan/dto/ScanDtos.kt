@@ -1,6 +1,7 @@
 package eu.cookiekeeper.scan.dto
 
 import eu.cookiekeeper.billing.RescanFrequency
+import eu.cookiekeeper.scan.BlockingVerification
 import eu.cookiekeeper.scan.ComplianceAnalyzer
 import eu.cookiekeeper.scan.ScanCookieEntity
 import eu.cookiekeeper.scan.ScanDiff
@@ -112,6 +113,41 @@ data class ScanDiffResponse(
 }
 
 /**
+ * The post-install blocking verification for a completed scan (BACKLOG #19), as the dashboard renders it.
+ *
+ * [status] is a stable machine token from [eu.cookiekeeper.scan.BlockingStatus] — all wording, including
+ * the per-vendor remediation copy, is localized in the dashboard. [vendors] names the vendors that fired
+ * before consent and the consent category whose tag each one needs, so the UI can print the exact line
+ * the customer has to change rather than a generic "something is wrong".
+ *
+ * [blockedScriptCount] is how many scripts on the page WERE correctly tagged (null when unmeasured) —
+ * it is what turns an accusation into a diagnosis: "you tagged 3 scripts, you missed these two".
+ */
+data class BlockingVendorResponse(
+    val domain: String,
+    val name: String,
+    val consentCategory: String,
+)
+
+data class BlockingVerificationResponse(
+    val status: String,
+    val vendors: List<BlockingVendorResponse>,
+    val blockedScriptCount: Int?,
+) {
+    companion object {
+        fun from(verification: BlockingVerification): BlockingVerificationResponse =
+            BlockingVerificationResponse(
+                status = verification.status.token,
+                vendors =
+                    verification.vendors.map {
+                        BlockingVendorResponse(domain = it.domain, name = it.name, consentCategory = it.consentCategory)
+                    },
+                blockedScriptCount = verification.blockedScriptCount,
+            )
+    }
+}
+
+/**
  * A scan plus its cookies, split for the results UI: [cookiesByCategory] holds classified cookies keyed
  * by their canonical [eu.cookiekeeper.banner.ConsentCategory] key (the dashboard localizes the key), and
  * [needsReview] holds cookies the signature DB did not recognize (isKnown = false) for the customer to
@@ -123,6 +159,10 @@ data class ScanDiffResponse(
  * [diff] is how this scan's findings changed since the previous completed scan of the same site; like
  * [compliance] it is only present for a `done` scan, and is `null` otherwise (an in-flight/failed scan has
  * nothing to compare).
+ *
+ * [blocking] is the post-install verification, computed by the caller from the scan's probe columns. It is
+ * always present for a `done` scan — with status `unknown` when the scan predates the probe, because "we
+ * did not measure this" is an answer the customer is owed rather than a blank.
  */
 data class ScanDetailResponse(
     val id: UUID,
@@ -137,6 +177,7 @@ data class ScanDetailResponse(
     val needsReview: List<ScanCookieResponse>,
     val compliance: ComplianceReport?,
     val diff: ScanDiffResponse?,
+    val blocking: BlockingVerificationResponse?,
 ) {
     companion object {
         fun from(
@@ -144,6 +185,7 @@ data class ScanDetailResponse(
             cookies: List<ScanCookieEntity>,
             now: Instant,
             diff: ScanDiff? = null,
+            blocking: BlockingVerification? = null,
         ): ScanDetailResponse {
             // A classified cookie always carries a category (classifier invariant: isKnown ⇒ category
             // set); anything else — unknown, or the defensive known-but-uncategorized case — is a
@@ -168,13 +210,19 @@ data class ScanDetailResponse(
                 // A null persisted count (historical/in-flight row) scores as 0 trackers.
                 compliance =
                     if (scan.status == ScanStatus.DONE) {
-                        ComplianceAnalyzer.analyze(cookies, now, scan.marketingTrackerCount ?: 0)
+                        ComplianceAnalyzer.analyze(cookies, now, scan.marketingTrackerCount ?: 0, blocking)
                     } else {
                         null
                     },
                 // The caller computes the diff only for a `done` scan (nothing to compare otherwise) and
                 // passes null for the rest; mirror the compliance gate so a stray diff can't leak through.
                 diff = if (scan.status == ScanStatus.DONE) diff?.let(ScanDiffResponse::from) else null,
+                blocking =
+                    if (scan.status == ScanStatus.DONE) {
+                        BlockingVerificationResponse.from(blocking ?: BlockingVerification.UNKNOWN)
+                    } else {
+                        null
+                    },
             )
         }
     }

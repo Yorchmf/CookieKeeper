@@ -4,10 +4,17 @@ package eu.cookiekeeper.scan
  * Outcome of crawling one site: what the queue needs to record a successful scan. [marketingTrackerCount]
  * is the number of distinct marketing third-party trackers the crawl observed (count only — the raw
  * hosts are never persisted), which the compliance report turns into a `third_party_trackers` finding.
+ *
+ * [widget] and [observedTrackers] are the post-install blocking verification (BACKLOG #19): what the
+ * crawled pages said about our own embed, and which consent-decidable vendors fired anyway. The latter
+ * holds curated dataset KEYS, never observed hosts. Both default to "nothing seen" for the anonymous
+ * funnel, which shares this type but records neither.
  */
 data class ScanCrawlResult(
     val pagesCrawled: Int,
     val marketingTrackerCount: Int,
+    val widget: WidgetProbe = WidgetProbe.ABSENT,
+    val observedTrackers: List<String> = emptyList(),
 )
 
 /**

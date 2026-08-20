@@ -747,8 +747,38 @@
         "long_lived_cookies": "{count, plural, one {# cookie non essenziale dura più di un anno} other {# cookie non essenziali durano più di un anno}}",
         "insecure_cookies": "{count, plural, one {# cookie non essenziale è impostato senza gli attributi Secure e HttpOnly} other {# cookie non essenziali sono impostati senza gli attributi Secure e HttpOnly}}",
         "third_party_trackers": "{count, plural, one {# tracker di marketing di terze parti viene caricato prima del consenso} other {# tracker di marketing di terze parti vengono caricati prima del consenso}}",
-        "unclassified_cookies": "{count, plural, one {# cookie non è stato classificato e deve essere esaminato} other {# cookie non sono stati classificati e devono essere esaminati}}"
+        "unclassified_cookies": "{count, plural, one {# cookie non è stato classificato e deve essere esaminato} other {# cookie non sono stati classificati e devono essere esaminati}}",
+        "unblocked_trackers": "{count, plural, one {# tracker noto viene caricato prima del consenso nonostante il banner} other {# tracker noti vengono caricati prima del consenso nonostante il banner}}",
+        "widget_site_key_mismatch": "Lo snippet Complyr di questo sito usa la chiave di un altro sito",
+        "widget_not_detected": "Lo snippet Complyr non è stato trovato nelle pagine analizzate"
       }
+    },
+    "blocking": {
+      "title": "Verifica del blocco",
+      "status": {
+        "not_installed": {
+          "headline": "Non abbiamo trovato lo snippet Complyr",
+          "description": "Su questo sito non viene ancora bloccato nulla, perché il banner non è presente nelle pagine analizzate. Aggiungi lo snippet e riesegui la scansione."
+        },
+        "wrong_site_key": {
+          "headline": "Lo snippet usa la chiave di un altro sito",
+          "description": "Il banner si carica, ma è configurato per un altro sito: le categorie e le regole di blocco di questo sito non si applicano mai. Sostituisci lo snippet con quello di questo sito."
+        },
+        "unblocked": {
+          "headline": "{count, plural, one {Complyr è installato, ma # tracker viene ancora caricato prima del consenso} other {Complyr è installato, ma # tracker vengono ancora caricati prima del consenso}}",
+          "description": "Abbiamo caricato il tuo sito come farebbe un nuovo visitatore — prima di qualsiasi accettazione — e questi fornitori sono partiti lo stesso. Il tuo banner promette qualcosa che il sito non fa ancora."
+        },
+        "clean": {
+          "headline": "Prima del consenso non parte nulla",
+          "description": "Abbiamo caricato il tuo sito come farebbe un nuovo visitatore e non abbiamo visto alcun tracker noto partire prima che venisse fatta una scelta."
+        }
+      },
+      "howToFix": "Individua il tag che carica ciascun fornitore, cambia il suo <code>src</code> in <code>data-src</code> e aggiungi <code>type=\"text/plain\"</code> più la categoria qui sotto. Complyr ripristina lo script non appena un visitatore accetta quella categoria.",
+      "categoryBadge": "Richiede: {category}",
+      "copy": "Copia il tag per {vendor}",
+      "copied": "Copiato",
+      "embedLink": "Vedi lo snippet di questo sito",
+      "blockedScripts": "{count, plural, =0 {Nessuno script contrassegnato: per ora su questo sito non c'è nulla da bloccare.} one {# script è contrassegnato e in attesa del consenso.} other {# script sono contrassegnati e in attesa del consenso.}}"
     },
     "diff": {
       "title": "Dal tuo ultimo scan",

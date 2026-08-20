@@ -103,6 +103,14 @@ data class SiteEntity(
     val consentBasisChangedAt: Instant? = null,
     @Column(name = "consent_basis_added")
     val consentBasisAdded: String? = null,
+    // The site's CURRENT unresolved-blocking streak (V28, BACKLOG #19): when we first saw the widget
+    // installed but still not blocking, and when we last said so. [blockingAlertSince] is cleared the
+    // moment a scan comes back clean, so the "still unfixed after N days" nudge measures the streak
+    // rather than the first problem we ever saw. Both owned by [eu.cookiekeeper.scan.BlockingVerificationService].
+    @Column(name = "blocking_alert_since")
+    val blockingAlertSince: Instant? = null,
+    @Column(name = "blocking_alert_notified_at")
+    val blockingAlertNotifiedAt: Instant? = null,
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
     @Column(name = "updated_at", nullable = false)
@@ -225,6 +233,60 @@ interface SiteRepository : JpaRepository<SiteEntity, UUID> {
         @Param("added") added: String,
         @Param("changedAt") changedAt: Instant,
         @Param("expectedCategories") expectedCategories: String,
+    ): Int
+
+    /**
+     * Open the site's unresolved-blocking streak at [since] — the widget is installed but a
+     * consent-decidable vendor still fires before consent (BACKLOG #19). Guarded on `IS NULL` so
+     * repeated failing scans do not keep resetting the clock: the nudge must measure how long the
+     * problem has been unfixed, not how recently we re-observed it.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(
+        """
+        UPDATE SiteEntity s SET s.blockingAlertSince = :since
+        WHERE s.id = :siteId AND s.blockingAlertSince IS NULL
+        """,
+    )
+    fun startBlockingAlert(
+        @Param("siteId") siteId: UUID,
+        @Param("since") since: Instant,
+    ): Int
+
+    /**
+     * Close the streak because a scan came back clean (or unmeasurable). Clears the notified stamp
+     * with it, so a site that regresses months later is nudged on its own merits rather than being
+     * silenced by an ancient email.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(
+        """
+        UPDATE SiteEntity s SET s.blockingAlertSince = null, s.blockingAlertNotifiedAt = null
+        WHERE s.id = :siteId AND s.blockingAlertSince IS NOT NULL
+        """,
+    )
+    fun clearBlockingAlert(
+        @Param("siteId") siteId: UUID,
+    ): Int
+
+    /**
+     * Stamp that the nudge went out. Compare-and-set on the value the caller read so two scans
+     * completing at once can only send once — the loser's update matches no row. Returns rows
+     * updated; the caller sends the mail only on 1.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(
+        """
+        UPDATE SiteEntity s SET s.blockingAlertNotifiedAt = :at
+        WHERE s.id = :siteId AND s.blockingAlertSince IS NOT NULL
+          AND (:expectedNotifiedAt IS NULL AND s.blockingAlertNotifiedAt IS NULL
+               OR s.blockingAlertNotifiedAt = :expectedNotifiedAt)
+        """,
+    )
+    fun markBlockingAlertNotified(
+        @Param("siteId") siteId: UUID,
+        @Param("at") at: Instant,
+        @Param("expectedNotifiedAt") expectedNotifiedAt: Instant?,
     ): Int
 
     /**

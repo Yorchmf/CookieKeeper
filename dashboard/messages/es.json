@@ -747,8 +747,38 @@
         "long_lived_cookies": "{count, plural, one {# cookie no esencial dura más de un año} other {# cookies no esenciales duran más de un año}}",
         "insecure_cookies": "{count, plural, one {# cookie no esencial se establece sin los atributos Secure y HttpOnly} other {# cookies no esenciales se establecen sin los atributos Secure y HttpOnly}}",
         "third_party_trackers": "{count, plural, one {# rastreador de marketing de terceros se carga antes del consentimiento} other {# rastreadores de marketing de terceros se cargan antes del consentimiento}}",
-        "unclassified_cookies": "{count, plural, one {# cookie no se pudo clasificar y necesita revisión} other {# cookies no se pudieron clasificar y necesitan revisión}}"
+        "unclassified_cookies": "{count, plural, one {# cookie no se pudo clasificar y necesita revisión} other {# cookies no se pudieron clasificar y necesitan revisión}}",
+        "unblocked_trackers": "{count, plural, one {# rastreador conocido se carga antes del consentimiento pese al banner} other {# rastreadores conocidos se cargan antes del consentimiento pese al banner}}",
+        "widget_site_key_mismatch": "El fragmento de Complyr de este sitio usa la clave de otro sitio",
+        "widget_not_detected": "No se encontró el fragmento de Complyr en las páginas analizadas"
       }
+    },
+    "blocking": {
+      "title": "Comprobación de bloqueo",
+      "status": {
+        "not_installed": {
+          "headline": "No encontramos el fragmento de Complyr",
+          "description": "Todavía no se bloquea nada en este sitio, porque el banner no está en las páginas analizadas. Añade el fragmento y vuelve a analizar."
+        },
+        "wrong_site_key": {
+          "headline": "El fragmento usa la clave de otro sitio",
+          "description": "El banner carga, pero está configurado para otro sitio, así que las categorías y reglas de bloqueo de este sitio nunca se aplican. Sustituye el fragmento por el de este sitio."
+        },
+        "unblocked": {
+          "headline": "{count, plural, one {Complyr está instalado, pero # rastreador sigue cargándose antes del consentimiento} other {Complyr está instalado, pero # rastreadores siguen cargándose antes del consentimiento}}",
+          "description": "Cargamos tu sitio como lo haría un visitante nuevo —antes de aceptar nada— y estos proveedores se ejecutaron igualmente. Tu banner promete algo que el sitio aún no cumple."
+        },
+        "clean": {
+          "headline": "Nada se carga antes del consentimiento",
+          "description": "Cargamos tu sitio como lo haría un visitante nuevo y no vimos ningún rastreador conocido ejecutarse antes de que se tomara una decisión."
+        }
+      },
+      "howToFix": "Busca la etiqueta que carga cada proveedor, cambia su <code>src</code> por <code>data-src</code> y añade <code>type=\"text/plain\"</code> junto con la categoría de abajo. Complyr restaura el script en cuanto un visitante acepta esa categoría.",
+      "categoryBadge": "Requiere: {category}",
+      "copy": "Copiar etiqueta de {vendor}",
+      "copied": "Copiado",
+      "embedLink": "Ver el fragmento de este sitio",
+      "blockedScripts": "{count, plural, =0 {No hay scripts etiquetados: por ahora no hay nada que bloquear en este sitio.} one {# script está etiquetado y esperando el consentimiento.} other {# scripts están etiquetados y esperando el consentimiento.}}"
     },
     "diff": {
       "title": "Desde tu último escaneo",
