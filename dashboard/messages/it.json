@@ -835,6 +835,13 @@
       "embedDescription": "Incolla questo HTML dove vuoi che l'informativa appaia sulle tue pagine.",
       "copyHtml": "Copia HTML"
     },
+    "liveTable": {
+      "title": "Tabella cookie in tempo reale",
+      "description": "Hai già la tua pagina di informativa cookie? Indica il punto in cui va l'elenco dei cookie e il widget lo manterrà allineato all'ultima scansione.",
+      "requirement": "Funziona su qualsiasi pagina che carica già il tuo script Complyr. I tuoi testi restano invariati: viene sostituito solo l'elenco dei cookie.",
+      "copySnippet": "Copia lo snippet",
+      "copied": "Copiato!"
+    },
     "unverifiedNotice": {
       "title": "La tua pagina ospitata non è ancora attiva",
       "description": "Questo link mostra \"Informativa non trovata\" finché non verifichi di controllare {domain}. L'anteprima qui sotto mostra già la pagina finale.",

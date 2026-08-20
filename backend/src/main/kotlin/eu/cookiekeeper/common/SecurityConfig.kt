@@ -89,6 +89,11 @@ class SecurityConfig(
                     // read-only, cacheable (Cloudflare), rate-limited on the PUBLIC_POLICY tier.
                     .requestMatchers(HttpMethod.GET, "/api/v1/public/policy/*")
                     .permitAll()
+                    // Embeddable cookie table (ADR-27): the same cookie list, addressed by the public
+                    // site key already present in the embed snippet, fetched by the widget from the
+                    // customer's own policy page. Read-only, cacheable, PUBLIC_POLICY tier.
+                    .requestMatchers(HttpMethod.GET, "/api/v1/public/cookie-table/*")
+                    .permitAll()
                     // Stripe webhook: unauthenticated by construction (Stripe cannot send a JWT). Its
                     // gate is the per-request Stripe signature verified in StripeApiGateway, plus a body-
                     // size cap — no session/JWT applies. Everything else under /billing stays authed.

@@ -68,7 +68,10 @@ class RateLimitFilter(
             // Hosted cookie-policy read (`/api/v1/public/policy/{publicId}`): a cacheable, read-only GET
             // fronted by Cloudflare. Throttled generously as a per-IP backstop against a single id being
             // hammered past the edge cache; the tail-segment wildcard match ignores the id value.
-            uri.startsWith("$PUBLIC_POLICY_PATH/") -> Tier.PUBLIC_POLICY
+            // The embeddable cookie table (`/api/v1/public/cookie-table/{siteKey}`, ADR-27) shares that
+            // tier: same shape of read — public, cacheable, keyed by an identifier the caller already
+            // has — so one public-document budget per IP covers both.
+            uri.startsWith("$PUBLIC_POLICY_PATH/") || uri.startsWith("$PUBLIC_COOKIE_TABLE_PATH/") -> Tier.PUBLIC_POLICY
             else -> null
         }
 
@@ -117,6 +120,7 @@ class RateLimitFilter(
         const val CONSENT_TOKEN_PATH = "/api/v1/consent-token"
         const val PUBLIC_SCAN_PATH = "/api/v1/public-scan"
         const val PUBLIC_POLICY_PATH = "/api/v1/public/policy"
+        const val PUBLIC_COOKIE_TABLE_PATH = "/api/v1/public/cookie-table"
 
         // Buckets refill over a 1-minute window, so a drained caller can retry after at most 60s.
         private const val RETRY_AFTER_SECONDS = "60"

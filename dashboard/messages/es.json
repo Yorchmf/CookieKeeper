@@ -835,6 +835,13 @@
       "embedDescription": "Pega este HTML donde quieras que aparezca la política en tus propias páginas.",
       "copyHtml": "Copiar HTML"
     },
+    "liveTable": {
+      "title": "Tabla de cookies en vivo",
+      "description": "¿Ya tienes tu propia página de política de cookies? Marca el lugar donde va la lista de cookies y el widget la mantendrá al día con tu último análisis.",
+      "requirement": "Funciona en cualquier página que ya cargue tu script de Complyr. Tus propios textos no cambian: solo se sustituye la lista de cookies.",
+      "copySnippet": "Copiar fragmento",
+      "copied": "¡Copiado!"
+    },
     "unverifiedNotice": {
       "title": "Tu página alojada aún no está activa",
       "description": "Este enlace muestra \"Política no encontrada\" hasta que verifiques que controlas {domain}. La vista previa de abajo ya muestra la página final.",

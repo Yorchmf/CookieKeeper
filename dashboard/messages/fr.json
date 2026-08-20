@@ -835,6 +835,13 @@
       "embedDescription": "Collez ce code HTML là où vous souhaitez afficher la politique sur vos propres pages.",
       "copyHtml": "Copier le HTML"
     },
+    "liveTable": {
+      "title": "Tableau de cookies en direct",
+      "description": "Vous avez déjà votre propre page de politique cookies ? Indiquez l'emplacement de la liste des cookies et le widget la garde synchronisée avec votre dernier scan.",
+      "requirement": "Fonctionne sur toute page qui charge déjà votre script Complyr. Vos propres textes restent inchangés — seule la liste des cookies est remplacée.",
+      "copySnippet": "Copier l'extrait",
+      "copied": "Copié !"
+    },
     "unverifiedNotice": {
       "title": "Votre page hébergée n'est pas encore en ligne",
       "description": "Ce lien affiche \"Politique introuvable\" tant que vous n'avez pas vérifié que vous contrôlez {domain}. L'aperçu ci-dessous montre déjà la page finale.",

@@ -21,6 +21,7 @@ import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import tools.jackson.databind.ObjectMapper
@@ -346,6 +347,60 @@ class PolicyApiIntegrationTest {
 
         mockMvc
             .perform(get("/api/v1/sites/$siteId/policy/preview").cookie(alice))
+            .andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.error.code").value("POLICY_NOT_FOUND"))
+    }
+
+    /**
+     * The embeddable cookie table (ADR-27): the same cookie list the hosted document carries, addressed
+     * by the public site key already in the embed snippet, served unauthenticated and cacheable to a
+     * widget running on the customer's own policy page. Deliberately needs neither a published policy
+     * nor a verified domain — a site with a lawyer-approved page and no Complyr document is exactly the
+     * case this exists for.
+     */
+    @Test
+    fun `the embeddable cookie table is public, cacheable, and needs no published policy`() {
+        val alice = registeredUser()
+        val siteId = createSite(alice, "table-${UUID.randomUUID().toString().take(8)}.example.com")
+        seedCompletedScan(siteId)
+        val siteKey = siteRepository.findById(siteId).orElseThrow().siteKey
+
+        mockMvc
+            .perform(get("/api/v1/public/cookie-table/$siteKey").param("lang", "de"))
+            .andExpect(status().isOk)
+            .andExpect(header().string("Cache-Control", "max-age=300, public"))
+            .andExpect(jsonPath("$.data.language").value("de"))
+            .andExpect(jsonPath("$.data.labels.provider").value("Anbieter"))
+            // Classified first, then the unclassified bucket — the hosted document's order.
+            .andExpect(jsonPath("$.data.sections.length()").value(2))
+            .andExpect(jsonPath("$.data.sections[0].cookies[0].name").value("_ga"))
+            .andExpect(jsonPath("$.data.sections[0].cookies[0].provider").value("Google Analytics"))
+            // No expiry stored → the session fallback is resolved here, not in the widget.
+            .andExpect(jsonPath("$.data.sections[0].cookies[0].expiry").value("Sitzung"))
+            // Metacharacters travel as data: this is JSON the widget paints with textContent, not HTML.
+            .andExpect(jsonPath("$.data.sections[1].cookies[0].name").value("<script>evil()</script>"))
+    }
+
+    @Test
+    fun `an unsupported table language falls back to the default rather than failing the page`() {
+        val alice = registeredUser()
+        val siteId = createSite(alice, "tablelang-${UUID.randomUUID().toString().take(8)}.example.com")
+        val siteKey = siteRepository.findById(siteId).orElseThrow().siteKey
+
+        // A never-scanned site still answers: the widget shows the "no cookies" sentence, not a gap.
+        mockMvc
+            .perform(get("/api/v1/public/cookie-table/$siteKey").param("lang", "xx"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.language").value("en"))
+            .andExpect(jsonPath("$.data.scannedOn").doesNotExist())
+            .andExpect(jsonPath("$.data.sections.length()").value(0))
+            .andExpect(jsonPath("$.data.labels.noCookies").isNotEmpty)
+    }
+
+    @Test
+    fun `an unknown site key returns the generic 404 for the cookie table`() {
+        mockMvc
+            .perform(get("/api/v1/public/cookie-table/pk_does_not_exist"))
             .andExpect(status().isNotFound)
             .andExpect(jsonPath("$.error.code").value("POLICY_NOT_FOUND"))
     }

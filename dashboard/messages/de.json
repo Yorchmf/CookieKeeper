@@ -835,6 +835,13 @@
       "embedDescription": "Fügen Sie dieses HTML dort ein, wo die Richtlinie auf Ihren eigenen Seiten erscheinen soll.",
       "copyHtml": "HTML kopieren"
     },
+    "liveTable": {
+      "title": "Live-Cookie-Tabelle",
+      "description": "Sie haben bereits eine eigene Cookie-Richtlinien-Seite? Markieren Sie die Stelle für die Cookie-Liste, und das Widget hält sie mit Ihrem letzten Scan aktuell.",
+      "requirement": "Funktioniert auf jeder Seite, die Ihr Complyr-Skript bereits lädt. Ihre eigenen Texte bleiben unverändert — nur die Cookie-Liste wird ersetzt.",
+      "copySnippet": "Snippet kopieren",
+      "copied": "Kopiert!"
+    },
     "unverifiedNotice": {
       "title": "Ihre gehostete Seite ist noch nicht online",
       "description": "Dieser Link zeigt \"Richtlinie nicht gefunden\", bis Sie bestätigt haben, dass Sie {domain} kontrollieren. Die Vorschau unten zeigt die fertige Seite bereits.",

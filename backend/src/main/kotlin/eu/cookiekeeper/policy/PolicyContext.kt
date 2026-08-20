@@ -23,6 +23,23 @@ data class PolicyContext(
     fun hasNoCookies(): Boolean = cookiesByCategory.values.all { it.isEmpty() } && unclassified.isEmpty()
 }
 
+/**
+ * The cookie half of a policy on its own: what a site's latest completed scan found, already split
+ * the way a policy displays it. [PolicyContext] is this plus the customer's business details, and the
+ * embeddable cookie table (docs §4.5) is this alone — one definition of "which cookies does this site
+ * declare", so the customer's own page and the hosted page can never list different cookies.
+ *
+ * [scannedOn] is the date of the scan these came from (UTC), or null when the site has never completed
+ * one — in which case both lists are empty.
+ */
+data class PolicyCookies(
+    val byCategory: Map<String, List<PolicyCookie>>,
+    val unclassified: List<PolicyCookie>,
+    val scannedOn: LocalDate?,
+) {
+    fun isEmpty(): Boolean = byCategory.values.all { it.isEmpty() } && unclassified.isEmpty()
+}
+
 /** One cookie as the policy lists it. All fields are display-only and escaped at render time. */
 data class PolicyCookie(
     val name: String,

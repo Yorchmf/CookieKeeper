@@ -70,3 +70,49 @@ data class PublicPolicyResponse(
     val publishedAt: Instant?,
     val removeBranding: Boolean,
 )
+
+/**
+ * Payload for the embeddable cookie table (docs §4.5, ADR-27): everything the widget needs to paint
+ * the current cookie list into a `<div data-complyr-policy>` on the customer's *own* policy page.
+ *
+ * Deliberately data, not HTML. The widget builds every node with `createElement`/`textContent` and has
+ * no HTML sink anywhere; shipping markup for it to inject would put one on every visitor's page for no
+ * gain, since the rendered result is identical either way.
+ *
+ * Every display fallback is already resolved server-side (provider → domain → "—", no expiry →
+ * "Session"), the sections arrive in the canonical order the hosted policy uses, and all wording comes
+ * from the same [eu.cookiekeeper.policy.PolicyStrings] bundle the generated document uses — so the
+ * embed and the hosted page can never word or order the same cookies differently.
+ *
+ * [scannedOn] is the ISO date of the scan behind this list (null when the site has never completed
+ * one, which is also the only case where [sections] is empty *and* the site is live).
+ */
+data class PublicCookieTableResponse(
+    val language: String,
+    val scannedOn: String?,
+    val labels: CookieTableLabels,
+    val sections: List<CookieTableSection>,
+)
+
+/** Column headers plus the two standalone strings the table needs, in the resolved language. */
+data class CookieTableLabels(
+    val name: String,
+    val provider: String,
+    val expiry: String,
+    val updated: String,
+    val noCookies: String,
+)
+
+/** One category section: its heading, its explanatory blurb, and its rows. Never empty. */
+data class CookieTableSection(
+    val heading: String,
+    val description: String,
+    val cookies: List<CookieTableRow>,
+)
+
+/** One row. All three values are display-ready strings — the widget adds no fallbacks of its own. */
+data class CookieTableRow(
+    val name: String,
+    val provider: String,
+    val expiry: String,
+)

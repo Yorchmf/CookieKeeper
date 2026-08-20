@@ -248,6 +248,9 @@ data class CookieKeeperProperties(
                     // fetched from the customer's page. CORS is owned here, not in Caddy, so the
                     // proxied response carries exactly one Access-Control-Allow-Origin header.
                     "/cfg/**",
+                    // The embeddable cookie table (ADR-27) — read by the widget from the customer's own
+                    // policy page, so cross-origin like everything else the widget fetches.
+                    "/api/v1/public/cookie-table/**",
                 )
         }
     }

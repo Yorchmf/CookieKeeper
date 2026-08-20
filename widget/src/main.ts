@@ -21,6 +21,7 @@ import {
 } from './consent-mode';
 import { fetchConfig, resolveTexts, type WidgetConfig } from './config';
 import { fetchOriginToken, visitorRegion } from './origin-token';
+import { mountPolicyTables } from './policy-table';
 import {
   isPreferencesOpen,
   removePreferences,
@@ -102,6 +103,15 @@ window.Complyr = {
 void init().catch((error: unknown) => {
   warn('init failed', error);
 });
+
+// 7. Fill an embedded cookie table (ADR-27), if the page has one. Deliberately
+// off the banner's path: it renders the customer's own content, depends on no
+// consent state, and nothing — here or on the host page — waits for it.
+if (siteKey) {
+  void mountPolicyTables(siteKey).catch((error: unknown) => {
+    warn('cookie table failed', error);
+  });
+}
 
 function readOwnScript(): HTMLScriptElement | null {
   const own = document.currentScript;

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { CopyButton } from "@/components/policy/copy-button";
 import { LanguageSwitcher } from "@/components/policy/language-switcher";
+import { LiveTableCard } from "@/components/policy/live-table-card";
 import { PolicyForm } from "@/components/policy/policy-form";
 import { PolicyHtml } from "@/components/policy/policy-html";
 import { Badge } from "@/components/ui/badge";
@@ -128,6 +129,9 @@ export function PolicyManager({ siteId }: { siteId: string }) {
             </CardHeader>
           </Card>
         )}
+
+        {/* Outside the published/empty branch on purpose: the live table needs no generated policy. */}
+        <LiveTableCard />
       </section>
     </main>
   );

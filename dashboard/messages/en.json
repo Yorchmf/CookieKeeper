@@ -835,6 +835,13 @@
       "embedDescription": "Paste this HTML where you want the policy to appear on your own pages.",
       "copyHtml": "Copy HTML"
     },
+    "liveTable": {
+      "title": "Live cookie table",
+      "description": "Already have your own cookie policy page? Mark the spot where the cookie list belongs and the widget keeps it in sync with your latest scan.",
+      "requirement": "Works on any page that already loads your Complyr script. Your own wording stays exactly as it is — only the cookie list is replaced.",
+      "copySnippet": "Copy snippet",
+      "copied": "Copied!"
+    },
     "unverifiedNotice": {
       "title": "Your hosted page is not live yet",
       "description": "This link shows \"Policy not found\" until you verify that you control {domain}. The preview below already shows the finished page.",
