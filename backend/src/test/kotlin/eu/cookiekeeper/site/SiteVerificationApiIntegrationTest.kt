@@ -157,7 +157,7 @@ class SiteVerificationApiIntegrationTest {
     }
 
     private fun snippetFor(siteKey: String): String =
-        """<!doctype html><html><head><script async src="http://localhost:8081/v1.js" data-cookiekeeper="$siteKey">""" +
+        """<!doctype html><html><head><script async src="http://localhost:8081/v1.js" data-complyr="$siteKey">""" +
             """</script></head><body>hi</body></html>"""
 
     @Test

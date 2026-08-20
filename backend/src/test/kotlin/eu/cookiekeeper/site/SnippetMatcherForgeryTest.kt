@@ -18,7 +18,7 @@ class SnippetMatcherForgeryTest {
     private fun matches(html: String): Boolean = SnippetMatcher.matches(html, siteKey, cdnHost)
 
     /** The snippet as raw text, carrying no quotes — what an attacker submits as user content. */
-    private val payload = """<script src=https://cdn.cookiekeeper.eu/v1.js data-cookiekeeper=pk_AbC123>"""
+    private val payload = """<script src=https://cdn.cookiekeeper.eu/v1.js data-complyr=pk_AbC123>"""
 
     @Test
     fun `rejects the snippet inside an HTML comment`() {
@@ -93,10 +93,10 @@ class SnippetMatcherForgeryTest {
         // A browser sees an unknown element, or an attribute whose name simply is not `src`.
         listOf('\u0001', '\u000B', '\u001F').forEach { pad ->
             val why = "must not be trimmed away (U+%04X)".format(pad.code)
-            assertFalse(matches("<script$pad src=https://cdn.cookiekeeper.eu/v1.js data-cookiekeeper=$siteKey>"), why)
-            assertFalse(matches("<script$pad/src=https://cdn.cookiekeeper.eu/v1.js data-cookiekeeper=$siteKey>"), why)
-            assertFalse(matches("<script src$pad=https://cdn.cookiekeeper.eu/v1.js data-cookiekeeper=$siteKey>"), why)
-            assertFalse(matches("<script ${pad}src=https://cdn.cookiekeeper.eu/v1.js ${pad}data-cookiekeeper=$siteKey>"), why)
+            assertFalse(matches("<script$pad src=https://cdn.cookiekeeper.eu/v1.js data-complyr=$siteKey>"), why)
+            assertFalse(matches("<script$pad/src=https://cdn.cookiekeeper.eu/v1.js data-complyr=$siteKey>"), why)
+            assertFalse(matches("<script src$pad=https://cdn.cookiekeeper.eu/v1.js data-complyr=$siteKey>"), why)
+            assertFalse(matches("<script ${pad}src=https://cdn.cookiekeeper.eu/v1.js ${pad}data-complyr=$siteKey>"), why)
         }
     }
 
@@ -106,7 +106,7 @@ class SnippetMatcherForgeryTest {
         // ahead of the site's real `src=/app.js` wins the dedupe. The browser sees an unknown attribute
         // and loads /app.js — nothing of ours.
         assertFalse(
-            matches("<script src\u000B=https://cdn.cookiekeeper.eu/v1.js src=/app.js data-cookiekeeper=$siteKey>"),
+            matches("<script src\u000B=https://cdn.cookiekeeper.eu/v1.js src=/app.js data-complyr=$siteKey>"),
         )
     }
 
@@ -117,22 +117,22 @@ class SnippetMatcherForgeryTest {
 
     @Test
     fun `rejects attributes smuggled inside a sibling attribute's quoted value`() {
-        // Browser: one script with data-user and src=/app.js. No data-cookiekeeper, nothing from our CDN.
+        // Browser: one script with data-user and src=/app.js. No data-complyr, nothing from our CDN.
         assertFalse(
             matches(
-                """<script data-user="hi src=https://cdn.cookiekeeper.eu/v1.js data-cookiekeeper=pk_AbC123 " src="/app.js"></script>""",
+                """<script data-user="hi src=https://cdn.cookiekeeper.eu/v1.js data-complyr=pk_AbC123 " src="/app.js"></script>""",
             ),
         )
     }
 
     @Test
     fun `rejects another customer's key smuggled ahead of the real one`() {
-        // Browser duplicate-attribute rule keeps the FIRST data-cookiekeeper — the victim's real key.
+        // Browser duplicate-attribute rule keeps the FIRST data-complyr — the victim's real key.
         // A first-textual-occurrence scan must not report the attacker's injected one.
         assertFalse(
             matches(
-                """<script src="https://cdn.cookiekeeper.eu/v1.js" data-bio="hello data-cookiekeeper=pk_AbC123 " """ +
-                    """data-cookiekeeper="pk_VICTIMKEY"></script>""",
+                """<script src="https://cdn.cookiekeeper.eu/v1.js" data-bio="hello data-complyr=pk_AbC123 " """ +
+                    """data-complyr="pk_VICTIMKEY"></script>""",
             ),
         )
     }
@@ -140,36 +140,36 @@ class SnippetMatcherForgeryTest {
     @Test
     fun `rejects a src that only mentions the CDN host in its query or fragment`() {
         // The browser loads the victim's own /track.js; nothing comes from our CDN.
-        assertFalse(matches("""<script src="/track.js?u=https://cdn.cookiekeeper.eu/v1.js" data-cookiekeeper="pk_AbC123"></script>"""))
-        assertFalse(matches("""<script src="/app.js#https://cdn.cookiekeeper.eu/" data-cookiekeeper="pk_AbC123"></script>"""))
+        assertFalse(matches("""<script src="/track.js?u=https://cdn.cookiekeeper.eu/v1.js" data-complyr="pk_AbC123"></script>"""))
+        assertFalse(matches("""<script src="/app.js#https://cdn.cookiekeeper.eu/" data-complyr="pk_AbC123"></script>"""))
     }
 
     @Test
     fun `rejects a non-http scheme that happens to contain the CDN authority`() {
-        assertFalse(matches("""<script src="javascript://cdn.cookiekeeper.eu/" data-cookiekeeper="pk_AbC123"></script>"""))
-        assertFalse(matches("""<script src="data:text/javascript,//x://cdn.cookiekeeper.eu/" data-cookiekeeper="pk_AbC123"></script>"""))
+        assertFalse(matches("""<script src="javascript://cdn.cookiekeeper.eu/" data-complyr="pk_AbC123"></script>"""))
+        assertFalse(matches("""<script src="data:text/javascript,//x://cdn.cookiekeeper.eu/" data-complyr="pk_AbC123"></script>"""))
     }
 
     @Test
     fun `rejects a tag name separated by non-HTML whitespace`() {
         // Java's isWhitespace is wider than HTML's (TAB LF FF CR SPACE). A browser sees an unknown
         // element named `script\u000Bsrc=...`, not a script.
-        assertFalse(matches("<script\u000Bsrc=https://cdn.cookiekeeper.eu/v1.js data-cookiekeeper=pk_AbC123>"))
-        assertFalse(matches("<script\u2028src=https://cdn.cookiekeeper.eu/v1.js data-cookiekeeper=pk_AbC123>"))
+        assertFalse(matches("<script\u000Bsrc=https://cdn.cookiekeeper.eu/v1.js data-complyr=pk_AbC123>"))
+        assertFalse(matches("<script\u2028src=https://cdn.cookiekeeper.eu/v1.js data-complyr=pk_AbC123>"))
     }
 
     @Test
     fun `rejects unicode case-folding lookalikes of the tag and attribute names`() {
         // Kotlin's ignoreCase folds U+017F to s and U+212A to k; HTML does not.
-        assertFalse(matches("<\u017Fcript src=https://cdn.cookiekeeper.eu/v1.js data-cookiekeeper=pk_AbC123>"))
-        assertFalse(matches("<script \u017Frc=https://cdn.cookiekeeper.eu/v1.js data-cookiekeeper=pk_AbC123>"))
+        assertFalse(matches("<\u017Fcript src=https://cdn.cookiekeeper.eu/v1.js data-complyr=pk_AbC123>"))
+        assertFalse(matches("<script \u017Frc=https://cdn.cookiekeeper.eu/v1.js data-complyr=pk_AbC123>"))
     }
 
     @Test
     fun `rejects the two required attributes split across two separate script tags`() {
         assertFalse(
             matches(
-                """<script src="https://cdn.cookiekeeper.eu/v1.js"></script><script data-cookiekeeper="pk_AbC123"></script>""",
+                """<script src="https://cdn.cookiekeeper.eu/v1.js"></script><script data-complyr="pk_AbC123"></script>""",
             ),
         )
     }

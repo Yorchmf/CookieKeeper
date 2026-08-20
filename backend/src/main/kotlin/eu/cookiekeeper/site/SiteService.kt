@@ -206,7 +206,7 @@ class SiteService(
         )
 
     private fun embedSnippet(siteKey: String): String =
-        """<script async src="${properties.cdnBaseUrl}/v1.js" data-cookiekeeper="$siteKey"></script>"""
+        """<script async src="${properties.cdnBaseUrl}/v1.js" data-complyr="$siteKey"></script>"""
 
     private fun generateSiteKey(): String =
         buildString(SITE_KEY_PREFIX.length + SITE_KEY_LENGTH) {

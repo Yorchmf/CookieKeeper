@@ -847,7 +847,7 @@ Caching is split on purpose:
 The customer's embed is a single tag:
 
 ```html
-<script src="https://cdn.cookiekeeper.eu/v1.js" data-cookiekeeper="pk_live_123" async></script>
+<script src="https://cdn.cookiekeeper.eu/v1.js" data-complyr="pk_live_123" async></script>
 ```
 
 ### 12.3 Per-site config — `/cfg/{siteKey}.json`

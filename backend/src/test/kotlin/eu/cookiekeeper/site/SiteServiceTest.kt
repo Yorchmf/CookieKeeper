@@ -351,7 +351,7 @@ class SiteServiceTest {
         val detail = service.get(userId, existing.id)
 
         assertEquals(
-            """<script async src="https://cdn.cookiekeeper.eu/v1.js" data-cookiekeeper="pk_key"></script>""",
+            """<script async src="https://cdn.cookiekeeper.eu/v1.js" data-complyr="pk_key"></script>""",
             detail.embedSnippet,
         )
     }

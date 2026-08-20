@@ -144,7 +144,7 @@ class SiteApiIntegrationTest {
         val snippet = data.path("embedSnippet").asString()
         val siteKey = data.path("siteKey").asString()
         assertTrue(siteKey.startsWith("pk_"))
-        assertTrue(snippet.contains("data-cookiekeeper=\"$siteKey\""), "snippet must carry the site key: $snippet")
+        assertTrue(snippet.contains("data-complyr=\"$siteKey\""), "snippet must carry the site key: $snippet")
         assertTrue(snippet.contains("/v1.js"), "snippet must load the versioned widget: $snippet")
 
         // PATCH: rename the domain.

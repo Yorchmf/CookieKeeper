@@ -11,7 +11,7 @@ import java.net.URISyntaxException
  * one [SiteService] hands the customer:
  *
  * ```html
- * <script async src="https://cdn.cookiekeeper.eu/v1.js" data-cookiekeeper="pk_…"></script>
+ * <script async src="https://cdn.cookiekeeper.eu/v1.js" data-complyr="pk_…"></script>
  * ```
  *
  * **Why this is not a substring search for the site key.** A bare `html.contains(siteKey)` is forgeable
@@ -61,7 +61,7 @@ import java.net.URISyntaxException
  * resolves every doubt that way.
  */
 object SnippetMatcher {
-    private const val SITE_KEY_ATTRIBUTE = "data-cookiekeeper"
+    private const val SITE_KEY_ATTRIBUTE = "data-complyr"
     private const val SRC_ATTRIBUTE = "src"
 
     /**
