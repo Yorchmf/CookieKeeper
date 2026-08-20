@@ -882,6 +882,17 @@
         "marketing": "Marketing"
       }
     },
+    "lifetime": {
+      "label": "Durée de validité du consentement",
+      "description": "Combien de temps la réponse d'un visiteur reste valable avant que votre bandeau ne redemande.",
+      "selectLabel": "Redemander après",
+      "options": {
+        "90": "3 mois",
+        "180": "6 mois (recommandation CNIL)",
+        "365": "12 mois"
+      },
+      "hint": "S'applique aux choix effectués à partir de maintenant : les visiteurs ayant déjà répondu conservent la durée en vigueur à ce moment-là."
+    },
     "languages": {
       "label": "Langues",
       "description": "Les langues dans lesquelles votre bandeau est proposé. Les visiteurs voient la langue de leur navigateur lorsqu'elle est disponible.",

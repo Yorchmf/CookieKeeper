@@ -15,7 +15,9 @@ import eu.cookiekeeper.common.SupportedLocales
  *    styles, so an unconstrained value would be a CSS-injection vector);
  *  - category keys must be in the canonical taxonomy, `necessary` must be present, and `required`/
  *    `enabledByDefault` are DERIVED from the taxonomy — the client can never pre-enable a tracker (GDPR);
- *  - languages must be supported, and `texts` must fully cover the offered set.
+ *  - languages must be supported, and `texts` must fully cover the offered set;
+ *  - `consentLifetimeDays` ∈ [CONSENT_LIFETIME_DAY_OPTIONS] — it becomes a cookie `Max-Age` in
+ *    every visitor's browser, so it is a choice from a menu, not a number the client picks.
  *
  * Error messages are static and never echo the offending value (no reflected-input surface).
  */
@@ -49,6 +51,11 @@ object BannerConfigValidator {
         val categories = normalizeCategories(request.categories)
         val texts = normalizeTexts(request.texts, languages, categories.map { it.key })
 
+        val consentLifetimeDays = request.consentLifetimeDays
+        if (consentLifetimeDays !in CONSENT_LIFETIME_DAY_OPTIONS) {
+            invalid("consentLifetimeDays must be one of: ${CONSENT_LIFETIME_DAY_OPTIONS.joinToString(", ")}")
+        }
+
         return BannerConfigDocument(
             position = position,
             theme = theme,
@@ -56,6 +63,7 @@ object BannerConfigValidator {
             languages = languages,
             defaultLanguage = defaultLanguage,
             texts = texts,
+            consentLifetimeDays = consentLifetimeDays,
         )
     }
 

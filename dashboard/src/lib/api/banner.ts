@@ -73,6 +73,17 @@ export interface BannerTexts {
   categoryLabels: Record<string, BannerCategoryText>;
 }
 
+/**
+ * How long a visitor's consent choice stays valid before the banner asks again, in days. Must match
+ * backend CONSENT_LIFETIME_DAY_OPTIONS — the backend rejects anything else, so this list is the
+ * editor's menu, not the rule.
+ */
+export const CONSENT_LIFETIME_DAYS = [90, 180, 365] as const;
+export type ConsentLifetimeDays = (typeof CONSENT_LIFETIME_DAYS)[number];
+
+/** What a site gets unless it chooses otherwise, and the fallback for configs predating the field. */
+export const DEFAULT_CONSENT_LIFETIME_DAYS: ConsentLifetimeDays = 365;
+
 /** The versioned per-site widget configuration (BannerConfigDocument). */
 export interface BannerConfigDocument {
   position: string;
@@ -81,6 +92,8 @@ export interface BannerConfigDocument {
   languages: string[];
   defaultLanguage: string;
   texts: Record<string, BannerTexts>;
+  /** Optional on the wire: configs published before this field existed carry the 12-month default. */
+  consentLifetimeDays?: number;
 }
 
 /** The current (or freshly published) banner configuration (BannerConfigResponse). */
@@ -102,6 +115,7 @@ export interface BannerConfigUpdateInput {
   languages: SupportedLanguage[];
   defaultLanguage: SupportedLanguage;
   texts: Record<string, BannerTexts>;
+  consentLifetimeDays: ConsentLifetimeDays;
 }
 
 /**

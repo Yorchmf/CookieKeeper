@@ -30,5 +30,6 @@ object DefaultBannerConfig {
             languages = DefaultBannerTexts.BY_LANGUAGE.keys.toList(),
             defaultLanguage = "en",
             texts = DefaultBannerTexts.BY_LANGUAGE,
+            consentLifetimeDays = DEFAULT_CONSENT_LIFETIME_DAYS,
         )
 }

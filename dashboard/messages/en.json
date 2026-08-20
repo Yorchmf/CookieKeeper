@@ -882,6 +882,17 @@
         "marketing": "Marketing"
       }
     },
+    "lifetime": {
+      "label": "Consent lifetime",
+      "description": "How long a visitor's answer stands before your banner asks again.",
+      "selectLabel": "Ask again after",
+      "options": {
+        "90": "3 months",
+        "180": "6 months (CNIL guidance)",
+        "365": "12 months"
+      },
+      "hint": "Applies to choices made from now on — visitors who already answered keep the period they were asked under."
+    },
     "languages": {
       "label": "Languages",
       "description": "The languages your banner is offered in. Visitors see their browser language when it's available.",

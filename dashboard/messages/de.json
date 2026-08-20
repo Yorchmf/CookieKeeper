@@ -882,6 +882,17 @@
         "marketing": "Marketing"
       }
     },
+    "lifetime": {
+      "label": "Gültigkeit der Einwilligung",
+      "description": "Wie lange die Antwort eines Besuchers gilt, bevor Ihr Banner erneut fragt.",
+      "selectLabel": "Erneut fragen nach",
+      "options": {
+        "90": "3 Monate",
+        "180": "6 Monate (CNIL-Empfehlung)",
+        "365": "12 Monate"
+      },
+      "hint": "Gilt für Entscheidungen ab jetzt – wer bereits geantwortet hat, behält den damals geltenden Zeitraum."
+    },
     "languages": {
       "label": "Sprachen",
       "description": "Die Sprachen, in denen Ihr Banner angeboten wird. Besucher sehen ihre Browsersprache, sofern verfügbar.",

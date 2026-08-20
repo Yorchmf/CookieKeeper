@@ -1,5 +1,30 @@
 package eu.cookiekeeper.banner
 
+/** Three months — the shortest lifetime offered, for customers who re-ask aggressively. */
+const val QUARTERLY_CONSENT_LIFETIME_DAYS = 90
+
+/** Six months — CNIL guidance, and the option a French customer's DPO is most likely to ask for. */
+const val CNIL_CONSENT_LIFETIME_DAYS = 180
+
+/** The lifetime a site gets unless it chooses otherwise, and the fallback for configs predating it. */
+const val DEFAULT_CONSENT_LIFETIME_DAYS = 365
+
+/**
+ * How long a visitor's consent choice stays valid before the banner asks again.
+ *
+ * 12 months is the default and what every site had before this was configurable; the shorter
+ * options exist because CNIL guidance is 6 months and a customer's own DPO may require it. The set
+ * is closed rather than free-form: this value ends up as a cookie `Max-Age` in every visitor's
+ * browser, and an arbitrary number there is a support burden with no upside. Only ADD to it —
+ * removing a value would make an already-published config fail its own validator.
+ */
+val CONSENT_LIFETIME_DAY_OPTIONS: Set<Int> =
+    setOf(
+        QUARTERLY_CONSENT_LIFETIME_DAYS,
+        CNIL_CONSENT_LIFETIME_DAYS,
+        DEFAULT_CONSENT_LIFETIME_DAYS,
+    )
+
 /**
  * The versioned per-site widget configuration serialized into `banner_configs.config_jsonb`
  * and served verbatim to the widget via `GET /api/v1/widget-config/{siteKey}`.
@@ -21,6 +46,13 @@ data class BannerConfigDocument(
     val defaultLanguage: String,
     /** Per-language text bundle, keyed by language code. Must cover every entry in [languages]. */
     val texts: Map<String, BannerTexts>,
+    /**
+     * Days a consent choice stays valid, one of [CONSENT_LIFETIME_DAY_OPTIONS]. Defaulted so a
+     * document stored before this field existed still deserializes with the 12 months it was
+     * written under. The widget stamps it into the consent cookie at the moment of choice, so
+     * lowering it re-prompts visitors as they next decide, not retroactively.
+     */
+    val consentLifetimeDays: Int = DEFAULT_CONSENT_LIFETIME_DAYS,
 ) {
     /** The set of category keys this config declares — the allow-list for consent validation. */
     fun categoryKeys(): Set<String> = categories.map { it.key }.toSet()

@@ -882,6 +882,17 @@
         "marketing": "Marketing"
       }
     },
+    "lifetime": {
+      "label": "Durata del consenso",
+      "description": "Per quanto tempo la risposta di chi visita il sito resta valida prima che il banner chieda di nuovo.",
+      "selectLabel": "Chiedi di nuovo dopo",
+      "options": {
+        "90": "3 mesi",
+        "180": "6 mesi (linee guida CNIL)",
+        "365": "12 mesi"
+      },
+      "hint": "Vale per le scelte fatte da ora in poi: chi ha già risposto mantiene il periodo in vigore in quel momento."
+    },
     "languages": {
       "label": "Lingue",
       "description": "Le lingue in cui è offerto il tuo banner. I visitatori vedono la lingua del proprio browser quando disponibile.",

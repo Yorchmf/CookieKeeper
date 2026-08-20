@@ -882,6 +882,17 @@
         "marketing": "Marketing"
       }
     },
+    "lifetime": {
+      "label": "Vigencia del consentimiento",
+      "description": "Cuánto tiempo sigue siendo válida la respuesta de un visitante antes de que su banner vuelva a preguntar.",
+      "selectLabel": "Volver a preguntar después de",
+      "options": {
+        "90": "3 meses",
+        "180": "6 meses (recomendación de la CNIL)",
+        "365": "12 meses"
+      },
+      "hint": "Se aplica a las decisiones tomadas a partir de ahora: quienes ya respondieron conservan el periodo vigente entonces."
+    },
     "languages": {
       "label": "Idiomas",
       "description": "Los idiomas en los que se ofrece su banner. Los visitantes ven el idioma de su navegador cuando está disponible.",

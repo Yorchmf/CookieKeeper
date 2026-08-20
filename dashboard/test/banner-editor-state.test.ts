@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import {
+  asConsentLifetime,
   asLanguage,
   asPosition,
   isDirty,
@@ -63,6 +64,24 @@ describe("asLanguage", () => {
     expect(asLanguage("de")).toBe("de");
     expect(asLanguage("pt")).toBe("en");
     expect(asLanguage("")).toBe("en");
+  });
+});
+
+describe("asConsentLifetime", () => {
+  test("passes through an offered lifetime", () => {
+    expect(asConsentLifetime(90)).toBe(90);
+    expect(asConsentLifetime(180)).toBe(180);
+  });
+
+  test("falls back to 12 months for a config that predates the field", () => {
+    expect(asConsentLifetime(undefined)).toBe(365);
+  });
+
+  test("falls back to 12 months for a value the editor no longer offers", () => {
+    // No matching <option> would leave the select blank and publish something the customer
+    // never picked — the default is the honest thing to show.
+    expect(asConsentLifetime(400)).toBe(365);
+    expect(asConsentLifetime(0)).toBe(365);
   });
 });
 
@@ -158,6 +177,13 @@ describe("toUpdateInput", () => {
     expect(input.categories).toEqual([{ key: "necessary" }, { key: "statistics" }]);
     expect(input.defaultLanguage).toBe("en");
   });
+
+  test("publishes the consent lifetime the editor holds", () => {
+    const base = config();
+    const edited = { ...toEditorState(base), consentLifetimeDays: 180 as const };
+    expect(toUpdateInput(edited).consentLifetimeDays).toBe(180);
+    expect(toUpdateInput(toEditorState(base)).consentLifetimeDays).toBe(365);
+  });
 });
 
 describe("isDirty", () => {
@@ -186,6 +212,12 @@ describe("isDirty", () => {
     const base = config();
     const state = toEditorState(base);
     const edited = { ...state, languages: ["en" as const] };
+    expect(isDirty(edited, base)).toBe(true);
+  });
+
+  test("is true after shortening the consent lifetime", () => {
+    const base = config();
+    const edited = { ...toEditorState(base), consentLifetimeDays: 180 as const };
     expect(isDirty(edited, base)).toBe(true);
   });
 

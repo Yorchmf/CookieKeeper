@@ -23,6 +23,12 @@ data class WidgetConfigPayload(
     val defaultLanguage: String,
     val categories: List<WidgetCategory>,
     val removeBranding: Boolean,
+    /**
+     * Days a consent choice stays valid. The widget stamps it into the consent cookie at the moment
+     * of choice (both `Max-Age` and the payload's own `exp`), which is what lets a returning visitor's
+     * tags run without fetching this config at all.
+     */
+    val consentLifetimeDays: Int,
 )
 
 /**

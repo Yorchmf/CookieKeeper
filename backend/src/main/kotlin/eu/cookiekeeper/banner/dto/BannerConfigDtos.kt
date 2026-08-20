@@ -3,6 +3,7 @@ package eu.cookiekeeper.banner.dto
 import eu.cookiekeeper.banner.BannerConfigDocument
 import eu.cookiekeeper.banner.BannerConfigEntity
 import eu.cookiekeeper.banner.BannerTextDefaults
+import eu.cookiekeeper.banner.DEFAULT_CONSENT_LIFETIME_DAYS
 import jakarta.validation.constraints.NotEmpty
 import jakarta.validation.constraints.Size
 import java.time.Instant
@@ -25,6 +26,11 @@ data class BannerConfigUpdateRequest(
     >,
     @field:Size(max = MAX_SHORT) val defaultLanguage: String,
     @field:NotEmpty @field:Size(max = MAX_LANGUAGES) val texts: Map<String, BannerTextsRequest>,
+    /**
+     * Days a consent choice stays valid. Optional: a client that doesn't send it keeps the default
+     * 12 months rather than being rejected. The allow-list lives in the validator, not here.
+     */
+    val consentLifetimeDays: Int = DEFAULT_CONSENT_LIFETIME_DAYS,
 ) {
     companion object {
         const val MAX_SHORT = 16

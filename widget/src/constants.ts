@@ -100,10 +100,26 @@ export const API_BASE = bases.api;
  * Consent cookie schema version — bump when the cookie payload shape changes.
  * v2 added `vid`, a stable per-browser id sent with each consent event so a
  * visitor's audit history correlates without storing any reversible identifier.
- * v1 cookies (no `vid`) are still honored on read; the vid is minted on the
- * next choice.
+ * v3 added `exp`, the moment the choice stops counting as current.
+ * Older cookies are still honored on read: a missing `vid` is minted on the next
+ * choice, and a missing `exp` is treated as [DEFAULT_CONSENT_LIFETIME_DAYS] from
+ * its `ts` — exactly the window those cookies were written with.
  */
-export const COOKIE_SCHEMA_VERSION = 2;
+export const COOKIE_SCHEMA_VERSION = 3;
 
-/** 12-month consent expiry, per GDPR guidance and ARCHITECTURE.md §4.3. */
-export const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
+export const SECONDS_PER_DAY = 60 * 60 * 24;
+
+/**
+ * 12-month consent expiry — the default, and what every site had before the
+ * lifetime became configurable. Per-site values come from the banner config
+ * (`consentLifetimeDays`); CNIL guidance is 6 months, which is why this is a
+ * knob rather than a constant, but shortening it is the customer's call.
+ */
+export const DEFAULT_CONSENT_LIFETIME_DAYS = 365;
+
+/**
+ * Ceiling on a configured lifetime. Chrome and Firefox silently clamp cookie
+ * `Max-Age` to 400 days, so accepting more would make the cookie's real expiry
+ * and the `exp` we stamp inside it disagree.
+ */
+export const MAX_CONSENT_LIFETIME_DAYS = 400;

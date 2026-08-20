@@ -231,7 +231,7 @@ function releaseScriptsWithoutConsent(): void {
 function openPreferences(config: WidgetConfig, lang: string): void {
   const current = readConsent()?.categories ?? {};
   renderPreferences(config, resolveTexts(config, lang), lang, current, {
-    onSave: (categories) => commit(categories, 'custom', lang),
+    onSave: (categories) => commit(config, categories, 'custom', lang),
     onCancel: () => removePreferences(),
   });
 }
@@ -247,7 +247,7 @@ function applyChoice(
   for (const category of config.categories) {
     categories[category.id] = category.required || granted;
   }
-  commit(categories, action, lang);
+  commit(config, categories, action, lang);
 }
 
 /**
@@ -262,12 +262,16 @@ function applyChoice(
  * malformed placeholder blew up while we were applying it.
  */
 function commit(
+  config: WidgetConfig,
   categories: ConsentDecision,
   action: ConsentEventPayload['action'],
   lang: string,
 ): void {
   const vid = getOrCreateVid();
-  writeConsent(categories, vid);
+  // The lifetime is read from the config in force right now and stamped into the
+  // cookie, so the visitor's choice carries its own deadline and a returning
+  // visit needs no config fetch to know whether it still stands.
+  writeConsent(categories, vid, config.consentLifetimeDays);
 
   // Audit evidence first — this is the compliance-critical write. eventKey is
   // minted here, once per decision, and rides inside the payload — so every

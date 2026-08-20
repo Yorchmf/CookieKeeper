@@ -20,7 +20,7 @@ class SnippetMatcherTest {
 
     @Test
     fun `is tolerant of quote style, attribute order, casing and extra attributes`() {
-        assertTrue(matches("""<SCRIPT DATA-COOKIEKEEPER='pk_AbC123' defer SRC='//cdn.cookiekeeper.eu/v1.js'></SCRIPT>"""))
+        assertTrue(matches("""<SCRIPT DATA-COMPLYR='pk_AbC123' defer SRC='//cdn.cookiekeeper.eu/v1.js'></SCRIPT>"""))
         assertTrue(matches("""<script data-complyr=pk_AbC123 src=https://CDN.CookieKeeper.EU/v1.js></script>"""))
         val html3 =
             """<script crossorigin="anonymous"  src="https://cdn.cookiekeeper.eu/v1.js"  """ +

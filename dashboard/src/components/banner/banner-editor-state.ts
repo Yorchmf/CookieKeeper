@@ -8,6 +8,8 @@
 import {
   BANNER_POSITIONS,
   CATEGORY_KEYS,
+  CONSENT_LIFETIME_DAYS,
+  DEFAULT_CONSENT_LIFETIME_DAYS,
   SUPPORTED_LANGUAGES,
   type BannerConfig,
   type BannerConfigUpdateInput,
@@ -15,6 +17,7 @@ import {
   type BannerTexts,
   type BannerTheme,
   type CategoryKey,
+  type ConsentLifetimeDays,
   type SupportedLanguage,
 } from "@/lib/api/banner";
 
@@ -28,6 +31,8 @@ export interface BannerEditorState {
   defaultLanguage: SupportedLanguage;
   /** Text bundle per supported language (kept for all languages so toggling is non-destructive). */
   texts: Record<string, BannerTexts>;
+  /** Days a consent choice stays valid before the banner asks again. */
+  consentLifetimeDays: ConsentLifetimeDays;
 }
 
 /** Narrows an untrusted position code to the allow-list, falling back to the default slot. */
@@ -38,6 +43,18 @@ export function asPosition(value: string): BannerPosition {
 /** Narrows an untrusted language code to a supported locale, falling back to English. */
 export function asLanguage(value: string): SupportedLanguage {
   return SUPPORTED_LANGUAGES.find((l) => l === value) ?? "en";
+}
+
+/**
+ * Narrows a stored lifetime to one the editor offers. A config published before the field existed
+ * has none, and one published against a value we later stopped offering would have no matching
+ * option to select — both land on the 12-month default rather than an empty select.
+ */
+export function asConsentLifetime(value: number | undefined): ConsentLifetimeDays {
+  return (
+    CONSENT_LIFETIME_DAYS.find((days) => days === value) ??
+    DEFAULT_CONSENT_LIFETIME_DAYS
+  );
 }
 
 const BLANK_TEXTS: BannerTexts = {
@@ -89,6 +106,7 @@ export function toEditorState(config: BannerConfig): BannerEditorState {
     languages: orderByTaxonomy(doc.languages, SUPPORTED_LANGUAGES),
     defaultLanguage: asLanguage(doc.defaultLanguage),
     texts,
+    consentLifetimeDays: asConsentLifetime(doc.consentLifetimeDays),
   };
 }
 
@@ -103,6 +121,7 @@ export function toUpdateInput(state: BannerEditorState): BannerConfigUpdateInput
     texts: Object.fromEntries(
       state.languages.map((lang) => [lang, state.texts[lang]]),
     ),
+    consentLifetimeDays: state.consentLifetimeDays,
   };
 }
 

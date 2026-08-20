@@ -10,6 +10,7 @@ import {
 } from "react";
 import { toast } from "sonner";
 import {
+  asConsentLifetime,
   asLanguage,
   isDirty,
   toEditorState,
@@ -32,12 +33,14 @@ import { useUpdateBannerConfig } from "@/hooks/use-banner";
 import {
   BANNER_POSITIONS,
   CATEGORY_KEYS,
+  CONSENT_LIFETIME_DAYS,
   SUPPORTED_LANGUAGES,
   type BannerConfig,
   type BannerPosition,
   type BannerTexts,
   type BannerTheme,
   type CategoryKey,
+  type ConsentLifetimeDays,
   type SupportedLanguage,
 } from "@/lib/api/banner";
 
@@ -108,6 +111,12 @@ export function BannerEditor({
               ...s,
               offeredCategories: toggleCategory(s.offeredCategories, key),
             }))
+          }
+        />
+        <ConsentLifetimeCard
+          value={state.consentLifetimeDays}
+          onChange={(consentLifetimeDays) =>
+            setState((s) => ({ ...s, consentLifetimeDays }))
           }
         />
         <LanguagesCard
@@ -421,6 +430,48 @@ function CategoriesCard({
             </label>
           );
         })}
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * How long a visitor's answer stands before the banner asks again. Presented as a plain select
+ * rather than a free number: the value becomes a cookie `Max-Age` in every visitor's browser and
+ * the backend only accepts the listed options.
+ */
+function ConsentLifetimeCard({
+  value,
+  onChange,
+}: {
+  value: ConsentLifetimeDays;
+  onChange: (value: ConsentLifetimeDays) => void;
+}) {
+  const t = useTranslations("banner.lifetime");
+  const selectId = useId();
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("label")}</CardTitle>
+        <CardDescription>{t("description")}</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-2">
+        <Label htmlFor={selectId}>{t("selectLabel")}</Label>
+        <select
+          id={selectId}
+          value={value}
+          onChange={(event) =>
+            onChange(asConsentLifetime(Number(event.target.value)))
+          }
+          className="h-8 w-full max-w-48 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+        >
+          {CONSENT_LIFETIME_DAYS.map((days) => (
+            <option key={days} value={days}>
+              {t(`options.${days}`)}
+            </option>
+          ))}
+        </select>
+        <p className="text-sm text-muted-foreground">{t("hint")}</p>
       </CardContent>
     </Card>
   );

@@ -34,6 +34,7 @@ class BannerConfigValidatorTest {
         languages: List<String> = listOf("en", "de"),
         defaultLanguage: String = "en",
         textsByLang: Map<String, BannerTextsRequest> = mapOf("en" to texts(), "de" to texts("Ihre Privatsphäre")),
+        consentLifetimeDays: Int = DEFAULT_CONSENT_LIFETIME_DAYS,
     ): BannerConfigUpdateRequest =
         BannerConfigUpdateRequest(
             position = position,
@@ -42,6 +43,7 @@ class BannerConfigValidatorTest {
             languages = languages,
             defaultLanguage = defaultLanguage,
             texts = textsByLang,
+            consentLifetimeDays = consentLifetimeDays,
         )
 
     @Test
@@ -207,6 +209,28 @@ class BannerConfigValidatorTest {
 
         assertThrows<InvalidBannerConfigException> {
             BannerConfigValidator.validate(validRequest(textsByLang = mapOf("en" to tooLong, "de" to texts())))
+        }
+    }
+
+    @Test
+    fun `accepts every offered consent lifetime`() {
+        CONSENT_LIFETIME_DAY_OPTIONS.forEach { days ->
+            assertEquals(days, BannerConfigValidator.validate(validRequest(consentLifetimeDays = days)).consentLifetimeDays)
+        }
+    }
+
+    @Test
+    fun `defaults the consent lifetime to 12 months when the client omits it`() {
+        assertEquals(DEFAULT_CONSENT_LIFETIME_DAYS, BannerConfigValidator.validate(validRequest()).consentLifetimeDays)
+    }
+
+    @Test
+    fun `rejects a consent lifetime outside the offered set`() {
+        // The value becomes a cookie Max-Age in every visitor's browser — it is a menu, not a number.
+        listOf(0, -1, 30, 366, 4000).forEach { days ->
+            assertThrows<InvalidBannerConfigException> {
+                BannerConfigValidator.validate(validRequest(consentLifetimeDays = days))
+            }
         }
     }
 

@@ -4,7 +4,7 @@
  * config fetch fails — the widget must never break the host page.
  */
 
-import { CDN_BASE } from './constants';
+import { CDN_BASE, DEFAULT_CONSENT_LIFETIME_DAYS } from './constants';
 import { warn } from './debug';
 
 /** Abort a stalled config fetch so a hung CDN never delays the banner. */
@@ -64,6 +64,12 @@ export interface WidgetConfig {
    * tier, where the attribution shows.
    */
   removeBranding?: boolean;
+  /**
+   * How long a consent choice stays valid before the banner asks again, in days
+   * (12 months by default; CNIL guidance is 6). Applied when a choice is stored
+   * — see `writeConsent` — so it is never needed on a returning visit.
+   */
+  consentLifetimeDays?: number;
 }
 
 export const DEFAULT_CONFIG: WidgetConfig = {
@@ -118,6 +124,7 @@ export const DEFAULT_CONFIG: WidgetConfig = {
     { id: 'statistics', required: false },
     { id: 'marketing', required: false },
   ],
+  consentLifetimeDays: DEFAULT_CONSENT_LIFETIME_DAYS,
 };
 
 /** Fetch site config from `${CDN_BASE}/cfg/{siteKey}.json`; fall back on any failure. */

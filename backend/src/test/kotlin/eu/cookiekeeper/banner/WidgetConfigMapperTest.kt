@@ -35,6 +35,7 @@ class WidgetConfigMapperTest {
         position: String = "bottom",
         theme: BannerTheme = BannerTheme(primaryColor = "#2563eb", background = "#ffffff", textColor = "#0f172a"),
         removeBranding: Boolean = false,
+        consentLifetimeDays: Int = DEFAULT_CONSENT_LIFETIME_DAYS,
     ) = WidgetConfigResponse(
         siteKey = "pk_test",
         bannerVersion = 7,
@@ -51,6 +52,7 @@ class WidgetConfigMapperTest {
                 languages = listOf("en", "de"),
                 defaultLanguage = "en",
                 texts = mapOf("en" to texts(), "de" to texts("Ihre Privatsphäre")),
+                consentLifetimeDays = consentLifetimeDays,
             ),
     )
 
@@ -66,6 +68,14 @@ class WidgetConfigMapperTest {
         assertEquals("#ffffff", payload.colors.background)
         assertEquals("#0f172a", payload.colors.text)
         assertEquals("#2563eb", payload.colors.button)
+    }
+
+    @Test
+    fun `carries the site's consent lifetime through to the widget`() {
+        // The widget stamps this into the consent cookie, so a dropped field would silently
+        // re-prompt every visitor at 12 months regardless of what the customer configured.
+        assertEquals(DEFAULT_CONSENT_LIFETIME_DAYS, WidgetConfigMapper.toPayload(response()).consentLifetimeDays)
+        assertEquals(180, WidgetConfigMapper.toPayload(response(consentLifetimeDays = 180)).consentLifetimeDays)
     }
 
     @Test
