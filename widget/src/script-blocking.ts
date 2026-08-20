@@ -56,6 +56,23 @@ export function blockedScripts(): HTMLScriptElement[] {
   return Array.from(document.querySelectorAll<HTMLScriptElement>(selector));
 }
 
+/**
+ * Every category id that appears on a placeholder still awaiting consent, read
+ * straight off the page. Used only by the region gate in main.ts: a visitor we
+ * deliberately show no banner to has no decision to derive categories from, and
+ * leaving their tags inert forever would silently break the site owner's
+ * analytics outside the EEA — the opposite of what opting into region targeting
+ * asks for.
+ */
+export function allBlockedCategories(): Set<string> {
+  const categories = new Set<string>();
+  for (const placeholder of blockedScripts()) {
+    const category = placeholder.getAttribute(CATEGORY_ATTR);
+    if (category) categories.add(category);
+  }
+  return categories;
+}
+
 /** The category ids a decision grants (value === true). */
 export function grantedCategories(
   categories: Record<string, boolean>,

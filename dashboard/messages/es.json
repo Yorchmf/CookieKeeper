@@ -475,6 +475,18 @@
       "embedDescription": "Pega este fragmento antes de la etiqueta de cierre '</head>' en todas las páginas de tu sitio.",
       "copy": "Copiar",
       "copied": "¡Copiado!",
+      "embedOptions": {
+        "title": "Ajustes opcionales",
+        "regionGating": {
+          "label": "Mostrar el aviso solo en Europa",
+          "description": "Pide el consentimiento en la UE/EEE, el Reino Unido y Suiza, y deja que los rastreadores se ejecuten por defecto en el resto del mundo. Si tienes dudas, déjalo desactivado: preguntar a todo el mundo siempre está permitido."
+        },
+        "urlPassthrough": {
+          "label": "Mantener medibles los clics en anuncios",
+          "description": "Pasa los identificadores de clic de anuncios de Google por tus propios enlaces internos mientras las cookies publicitarias están rechazadas, para que las conversiones sigan siendo atribuibles sin guardar nada en el dispositivo del visitante."
+        },
+        "recopyHint": "Al cambiarlos se reescribe el fragmento de arriba: cópialo de nuevo y sustituye el de tu sitio."
+      },
       "widgetStatus": {
         "title": "Estado del widget",
         "description": "Si tu banner se ha visto realmente en tu sitio.",

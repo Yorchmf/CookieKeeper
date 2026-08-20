@@ -475,6 +475,18 @@
       "embedDescription": "Collez cet extrait avant la balise fermante '</head>' sur chaque page de votre site.",
       "copy": "Copier",
       "copied": "Copié !",
+      "embedOptions": {
+        "title": "Paramètres facultatifs",
+        "regionGating": {
+          "label": "N'afficher la bannière qu'en Europe",
+          "description": "Demandez le consentement dans l'UE/l'EEE, au Royaume-Uni et en Suisse, et laissez les traceurs s'exécuter par défaut partout ailleurs. En cas de doute, laissez cette option désactivée : demander à tout le monde est toujours autorisé."
+        },
+        "urlPassthrough": {
+          "label": "Garder les clics publicitaires mesurables",
+          "description": "Transmettez les identifiants de clic publicitaire Google via vos propres liens internes lorsque les cookies publicitaires sont refusés, afin que les conversions restent attribuables sans rien stocker sur l'appareil du visiteur."
+        },
+        "recopyHint": "Ces options réécrivent l'extrait ci-dessus : copiez-le à nouveau et remplacez celui de votre site."
+      },
       "widgetStatus": {
         "title": "État du widget",
         "description": "Indique si votre bannière a réellement été vue sur votre site.",

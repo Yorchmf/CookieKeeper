@@ -475,6 +475,18 @@
       "embedDescription": "Fügen Sie dieses Snippet vor dem schließenden '</head>'-Tag auf jeder Seite Ihrer Website ein.",
       "copy": "Kopieren",
       "copied": "Kopiert!",
+      "embedOptions": {
+        "title": "Optionale Einstellungen",
+        "regionGating": {
+          "label": "Banner nur in Europa anzeigen",
+          "description": "Fragen Sie in der EU/dem EWR, im Vereinigten Königreich und in der Schweiz nach einer Einwilligung und lassen Sie Tracker überall sonst standardmäßig zu. Lassen Sie dies im Zweifel aus – alle zu fragen ist immer zulässig."
+        },
+        "urlPassthrough": {
+          "label": "Anzeigenklicks messbar halten",
+          "description": "Geben Sie Google-Anzeigenklick-IDs über Ihre eigenen internen Links weiter, während Werbe-Cookies abgelehnt sind, damit Conversions zuordenbar bleiben, ohne etwas auf dem Gerät der Besucher zu speichern."
+        },
+        "recopyHint": "Änderungen schreiben das Snippet oben neu – kopieren Sie es erneut und ersetzen Sie das auf Ihrer Website."
+      },
       "widgetStatus": {
         "title": "Widget-Status",
         "description": "Ob Ihr Banner tatsächlich auf Ihrer Website gesehen wurde.",

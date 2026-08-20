@@ -24,7 +24,36 @@ export interface ConsentModeOptions {
    * a default we make for them.
    */
   urlPassthrough?: boolean;
+  /**
+   * Scope the denied defaults to [GDPR_REGIONS] and grant everywhere else. OFF
+   * unless the site owner adds `data-complyr-regions="gdpr"`, because it is only
+   * coherent alongside the matching banner gate: granting by default for a
+   * visitor we then show a consent banner to would contradict the banner.
+   */
+  gdprRegionsOnly?: boolean;
 }
+
+/**
+ * The countries whose visitors must be asked before anything non-essential is
+ * stored: the EU 27 (including the outermost regions Google lists separately),
+ * the rest of the EEA, the UK plus the Crown Dependencies and Gibraltar, and
+ * Switzerland. Fed to Consent Mode's `region` parameter, so Google — not us —
+ * does the geolocation: no IP ever reaches this code, and no round trip delays
+ * the default push.
+ *
+ * The list errs wide on purpose. Being on it costs a visitor a banner they may
+ * not have strictly needed; being off it wrongly means tags run before consent.
+ * Kept in step with `GdprRegions.IN_SCOPE_COUNTRIES` on the backend, which
+ * classifies the same countries for the banner half of the same flag — change
+ * one, change the other.
+ */
+export const GDPR_REGIONS: readonly string[] = (
+  'AT BE BG HR CY CZ DK EE FI FR DE GR HU IE IT LV LT LU MT NL PL PT RO SK SI ES SE ' +
+  'AX GF GP MQ RE YT MF ' +
+  'IS LI NO SJ ' +
+  'GB GG JE IM GI ' +
+  'CH'
+).split(' ');
 
 /**
  * Minimal gtag shim. Google's snippet pushes the `arguments` object (not an
@@ -37,6 +66,17 @@ function gtag(..._args: unknown[]): void {
 
 /** How long tags hold off firing while the banner applies a stored choice. */
 const WAIT_FOR_UPDATE_MS = 500;
+
+/**
+ * The decision behind the out-of-region fallback default. Written as a decision
+ * rather than a literal signal map so it can never drift out of step with
+ * [signalsFor] — every signal that exists is granted, by construction.
+ */
+const GRANT_EVERYTHING: ConsentDecision = {
+  marketing: true,
+  statistics: true,
+  preferences: true,
+};
 
 /**
  * All seven Consent Mode v2 signals, derived from one Complyr category decision.
@@ -74,13 +114,26 @@ function signalsFor(categories: ConsentDecision): Record<string, string> {
  * Push Consent Mode v2 defaults: everything the visitor can decide is denied
  * until they choose, plus the two `set` directives that shape what Google's tags
  * may send while consent is missing.
+ *
+ * With `gdprRegionsOnly` the denial is pushed FIRST scoped to [GDPR_REGIONS] and
+ * a granting fallback second — Google applies the most specific match, and the
+ * order is the one Google's own documentation prescribes. Without it (the
+ * default) a single, unscoped denial covers every visitor on earth.
  */
 export function setConsentDefaults(options: ConsentModeOptions = {}): void {
-  gtag('consent', 'default', {
+  const denied = {
     ...signalsFor({}),
     // Give the banner a short window to apply a stored choice before tags fire.
     wait_for_update: WAIT_FOR_UPDATE_MS,
-  });
+  };
+  if (options.gdprRegionsOnly === true) {
+    gtag('consent', 'default', { ...denied, region: GDPR_REGIONS });
+    // Everyone else: no banner is coming, so nothing will ever update these —
+    // and no wait_for_update, since there is nothing to wait for.
+    gtag('consent', 'default', signalsFor(GRANT_EVERYTHING));
+  } else {
+    gtag('consent', 'default', denied);
+  }
   // Purely privacy-enhancing and therefore unconditional here: with ad_storage
   // denied, it strips ad-click identifiers out of the requests Google Ads and
   // Floodlight tags make. updateConsent() lifts it only once marketing is

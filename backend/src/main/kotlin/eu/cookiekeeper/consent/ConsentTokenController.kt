@@ -41,10 +41,11 @@ class ConsentTokenController(
             throw MalformedSiteKeyException()
         }
         val minted = consentOriginToken.mint(siteKey, boundedOrigin(httpRequest))
+        val region = GdprRegions.classify(httpRequest.getHeader(COUNTRY_HEADER))
         return ResponseEntity
             .ok()
             .cacheControl(CacheControl.noStore())
-            .body(ApiResponse.success(ConsentTokenResponse(minted.token, minted.expiresInSeconds)))
+            .body(ApiResponse.success(ConsentTokenResponse(minted.token, minted.expiresInSeconds, region)))
     }
 
     /**
@@ -59,5 +60,14 @@ class ConsentTokenController(
     private companion object {
         /** Generous ceiling for a real `Origin` (scheme + host + optional port is ~253 chars max). */
         const val MAX_ORIGIN_HEADER_LENGTH = 253
+
+        /**
+         * Cloudflare's client-country header. Every host is proxied (`infra/terraform/environments`),
+         * so it is present in both deployed environments and simply absent on a bare workstation —
+         * where [GdprRegions.classify] returns null and the widget falls back to showing the banner.
+         * A spoofed value only ever costs the sender a banner they could have skipped, so it needs no
+         * stronger trust than that: the header is never persisted and never authorises anything.
+         */
+        const val COUNTRY_HEADER = "CF-IPCountry"
     }
 }

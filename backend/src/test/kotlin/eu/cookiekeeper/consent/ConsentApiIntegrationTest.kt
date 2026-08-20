@@ -473,4 +473,38 @@ class ConsentApiIntegrationTest {
             .andExpect(jsonPath("$.success").value(false))
             .andExpect(jsonPath("$.error.code").value("INVALID_SITE_KEY"))
     }
+
+    @Test
+    fun `a mint response carries the visitor's region bucket, and only a bucket`() {
+        val siteKey = createSiteKey(registeredUserCookie())
+
+        // In-scope visitor: the widget must show the banner and deny by default.
+        assertEquals("gdpr", mintRegion(siteKey, "DE"), "a German visitor is in scope")
+        // Out-of-scope: only then may a site with the region flag skip the banner.
+        assertEquals("other", mintRegion(siteKey, "US"), "a US visitor is out of scope")
+        // Cloudflare's own placeholder and a missing header both mean "we could not tell" — fail open.
+        assertEquals(null, mintRegion(siteKey, "XX"), "an unlocatable visitor gets no bucket")
+        assertEquals(null, mintRegion(siteKey, null), "a header-less request gets no bucket")
+    }
+
+    /** The `region` field of a mint response for a request carrying [country] as `CF-IPCountry`. */
+    private fun mintRegion(
+        siteKey: String,
+        country: String?,
+    ): String? {
+        val request = get("/api/v1/consent-token/{siteKey}", siteKey).header(HttpHeaders.ORIGIN, "https://shop.example.com")
+        country?.let { request.header("CF-IPCountry", it) }
+
+        val body =
+            mockMvc
+                .perform(request)
+                .andExpect(status().isOk)
+                .andReturn()
+                .response.contentAsString
+
+        // The country code itself must never reach the page — only the two-value bucket.
+        assertTrue(country == null || !body.contains(country), "the raw country code stays server-side")
+        val region = objectMapper.readTree(body).path("data").path("region")
+        return if (region.isNull) null else region.stringValue()
+    }
 }

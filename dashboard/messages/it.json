@@ -475,6 +475,18 @@
       "embedDescription": "Incolla questo snippet prima del tag di chiusura '</head>' in ogni pagina del tuo sito.",
       "copy": "Copia",
       "copied": "Copiato!",
+      "embedOptions": {
+        "title": "Impostazioni facoltative",
+        "regionGating": {
+          "label": "Mostra il banner solo in Europa",
+          "description": "Chiedi il consenso nell'UE/SEE, nel Regno Unito e in Svizzera e lascia che i tracker vengano eseguiti per impostazione predefinita altrove. Nel dubbio lascia l'opzione disattivata: chiedere a tutti è sempre consentito."
+        },
+        "urlPassthrough": {
+          "label": "Mantieni misurabili i clic sugli annunci",
+          "description": "Trasmetti gli ID di clic sugli annunci Google attraverso i tuoi link interni mentre i cookie pubblicitari sono rifiutati, così le conversioni restano attribuibili senza memorizzare nulla sul dispositivo del visitatore."
+        },
+        "recopyHint": "Modificandole viene riscritto lo snippet qui sopra: copialo di nuovo e sostituisci quello sul tuo sito."
+      },
       "widgetStatus": {
         "title": "Stato del widget",
         "description": "Se il tuo banner è stato effettivamente visto sul tuo sito.",

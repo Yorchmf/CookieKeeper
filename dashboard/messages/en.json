@@ -475,6 +475,18 @@
       "embedDescription": "Paste this snippet before the closing '</head>' tag on every page of your site.",
       "copy": "Copy",
       "copied": "Copied!",
+      "embedOptions": {
+        "title": "Optional settings",
+        "regionGating": {
+          "label": "Only show the banner in Europe",
+          "description": "Ask for consent in the EU/EEA, the UK and Switzerland, and let trackers run by default everywhere else. Leave this off if you are unsure — asking everyone is always allowed."
+        },
+        "urlPassthrough": {
+          "label": "Keep ad clicks measurable",
+          "description": "Carry Google ad click IDs across your own internal links while advertising cookies are declined, so conversions stay attributable without storing anything on the visitor's device."
+        },
+        "recopyHint": "Changing these rewrites the snippet above — copy it again and replace the one on your site."
+      },
       "widgetStatus": {
         "title": "Widget status",
         "description": "Whether your banner has actually been seen on your site.",

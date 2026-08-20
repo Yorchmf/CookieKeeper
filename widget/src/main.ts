@@ -20,13 +20,17 @@ import {
   type ConsentDecision,
 } from './consent-mode';
 import { fetchConfig, resolveTexts, type WidgetConfig } from './config';
-import { fetchOriginToken } from './origin-token';
+import { fetchOriginToken, visitorRegion } from './origin-token';
 import {
   isPreferencesOpen,
   removePreferences,
   renderPreferences,
 } from './preferences';
-import { grantedCategories, unblockScripts } from './script-blocking';
+import {
+  allBlockedCategories,
+  grantedCategories,
+  unblockScripts,
+} from './script-blocking';
 import {
   getOrCreateVid,
   readConsent,
@@ -52,6 +56,12 @@ declare global {
 // read our own <script> tag's attributes now, before any async work.
 const ownScript = readOwnScript();
 
+/** The only value `data-complyr-regions` accepts today. */
+const GDPR_REGION = 'gdpr';
+
+/** The server's verdict that a visitor is outside every region we gate on. */
+const OUT_OF_SCOPE_REGION = 'other';
+
 // Impressions are counted at most once per page load: Complyr.show() can render
 // the banner repeatedly (a visitor reopening it to withdraw consent), but that
 // is one banner *appearance*, not N. The interaction-rate denominator must stay
@@ -61,23 +71,33 @@ let impressionSent = false;
 // 1. Diagnostics opt-in (silent by default) — set before anything can warn().
 setDebug(readDebugFlag(ownScript));
 
-// 2. Consent Mode defaults — synchronous, before anything else.
-setConsentDefaults({ urlPassthrough: readUrlPassthroughFlag(ownScript) });
+// 2. Region targeting opt-in. Read before the defaults push because it decides
+// its shape, and because an embed attribute is the only source that can: config
+// arrives over the network, long after Consent Mode has to have spoken.
+const regionGated = readRegionsFlag(ownScript);
 
-// 3. Site key from our own <script data-complyr="pk_…"> tag.
+// 3. Consent Mode defaults — synchronous, before anything else.
+setConsentDefaults({
+  urlPassthrough: readUrlPassthroughFlag(ownScript),
+  gdprRegionsOnly: regionGated,
+});
+
+// 4. Site key from our own <script data-complyr="pk_…"> tag.
 const siteKey = ownScript?.getAttribute('data-complyr') ?? null;
 
-// 4. Public API, available even while config is still loading.
+// 5. Public API, available even while config is still loading.
 window.Complyr = {
   show: () => {
-    void loadAndShowBanner().catch((error: unknown) => {
+    // Forced: an explicit request to reopen the banner is a withdrawal path
+    // ("as easy to withdraw as to give"), so it outranks any region gate.
+    void loadAndShowBanner({ forced: true }).catch((error: unknown) => {
       warn('Complyr.show() failed', error);
     });
   },
   consent: () => readConsent(),
 };
 
-// 5. Apply a stored choice or show the banner. Errors fail silent-safe.
+// 6. Apply a stored choice or show the banner. Errors fail silent-safe.
 void init().catch((error: unknown) => {
   warn('init failed', error);
 });
@@ -108,6 +128,27 @@ function readUrlPassthroughFlag(script: HTMLScriptElement | null): boolean {
   return script?.hasAttribute('data-complyr-url-passthrough') === true;
 }
 
+/**
+ * Opt in to region targeting via `data-complyr-regions="gdpr"`: deny by default
+ * and show the banner only where consent is legally required, granting by
+ * default everywhere else. Off unless the site owner asks — the safe behaviour
+ * is the one that treats every visitor as protected.
+ *
+ * Deliberately a value, not a bare flag: "gdpr" is the only scope we can defend
+ * today, and naming it leaves room for others without a second attribute. An
+ * unrecognised value is ignored rather than guessed at, because guessing wrong
+ * here means running trackers on someone who should have been asked.
+ */
+function readRegionsFlag(script: HTMLScriptElement | null): boolean {
+  const value = script?.getAttribute('data-complyr-regions');
+  if (value === null || value === undefined) return false;
+  if (value.trim().toLowerCase() === GDPR_REGION) return true;
+  warn(
+    `ignoring unrecognised data-complyr-regions="${value}"; the only supported value is "${GDPR_REGION}" — showing the banner to everyone`,
+  );
+  return false;
+}
+
 async function init(): Promise<void> {
   // Retry any consent events a previous visit failed to deliver — audit
   // evidence must not be lost to a transient network blip.
@@ -124,7 +165,9 @@ async function init(): Promise<void> {
   await loadAndShowBanner();
 }
 
-async function loadAndShowBanner(): Promise<void> {
+async function loadAndShowBanner(
+  options: { forced?: boolean } = {},
+): Promise<void> {
   if (!siteKey) {
     // Misconfigured embed — do nothing, never break the page.
     warn('no data-complyr site key found on the embed script; banner skipped');
@@ -134,11 +177,24 @@ async function loadAndShowBanner(): Promise<void> {
   // would mount an interactive surface behind the inert background barrier.
   if (isPreferencesOpen()) return;
 
-  // Mint an origin token (ADR-13) in the background while the banner loads, so a
-  // fresh one is on hand by the time the visitor clicks. Fire-and-forget: it
-  // never blocks the banner and never throws; if it doesn't arrive the consent
-  // POST simply goes out tokenless (and still records).
-  void fetchOriginToken(siteKey);
+  if (regionGated && options.forced !== true) {
+    // The mint response carries the visitor's region bucket, so the gate needs
+    // its answer before it can decide — this is the one call site that awaits
+    // it. Bounded by the fetch's own timeout, and fails open: a failure, a
+    // timeout or an unlocatable visitor all leave the region unknown, and only
+    // a positive "out of scope" ever suppresses a banner.
+    await fetchOriginToken(siteKey);
+    if (visitorRegion() === OUT_OF_SCOPE_REGION) {
+      releaseScriptsWithoutConsent();
+      return;
+    }
+  } else {
+    // Mint an origin token (ADR-13) in the background while the banner loads, so
+    // a fresh one is on hand by the time the visitor clicks. Fire-and-forget: it
+    // never blocks the banner and never throws; if it doesn't arrive the consent
+    // POST simply goes out tokenless (and still records).
+    void fetchOriginToken(siteKey);
+  }
 
   const config = await fetchConfig(siteKey);
   const lang = navigator.language || config.defaultLanguage;
@@ -154,6 +210,21 @@ async function loadAndShowBanner(): Promise<void> {
     impressionSent = true;
     sendImpression(siteKey);
   }
+}
+
+/**
+ * An out-of-region visitor gets no banner, so no decision will ever arrive to
+ * unblock the site owner's tags — run them now. Consent Mode already granted
+ * them by default outside [GDPR_REGIONS], so this only makes the script-blocking
+ * half agree with the signals half.
+ *
+ * Writes no cookie and records no consent event on purpose: nothing was asked
+ * and nothing was chosen, and a consent event implying otherwise would be false
+ * audit evidence. The impression beacon stays silent for the same reason — it
+ * only ever fires after a banner has rendered.
+ */
+function releaseScriptsWithoutConsent(): void {
+  unblockScripts(allBlockedCategories());
 }
 
 /** Open the granular preferences panel, seeded with any prior choice. */

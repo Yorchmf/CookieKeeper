@@ -5,7 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { ScanHistory } from "@/components/scans/scan-history";
 import { BrandingCard } from "@/components/sites/branding-card";
-import { EmbedSnippet } from "@/components/sites/embed-snippet";
+import { EmbedOptionsSnippet } from "@/components/sites/embed-options-snippet";
 import { RenameSiteCard } from "@/components/sites/rename-site-card";
 import { VerifySiteCard } from "@/components/sites/verify-site-card";
 import { WidgetStatusCard } from "@/components/sites/widget-status-card";
@@ -126,7 +126,7 @@ export function SiteDetail({ siteId }: { siteId: string }) {
             <CardDescription>{t("detail.embedDescription")}</CardDescription>
           </CardHeader>
           <CardContent>
-            <EmbedSnippet snippet={data.embedSnippet} />
+            <EmbedOptionsSnippet snippet={data.embedSnippet} />
           </CardContent>
         </Card>
 

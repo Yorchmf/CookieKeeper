@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test } from 'vitest';
 import {
+  allBlockedCategories,
   blockedScripts,
   grantedCategories,
   unblockScripts,
@@ -71,6 +72,20 @@ describe('script-blocking (prior blocking, GDPR/ePrivacy)', () => {
       const found = blockedScripts();
       expect(found).toHaveLength(1);
       expect(found[0]!.getAttribute('data-complyr-category')).toBe('statistics');
+    });
+  });
+
+  describe('allBlockedCategories', () => {
+    test('collects every distinct category still waiting on the page', () => {
+      addBlocked('statistics', { 'data-src': 'https://x.test/a.js' });
+      addBlocked('statistics', { 'data-src': 'https://x.test/b.js' });
+      addBlocked('marketing', {}, '// pixel');
+
+      expect(allBlockedCategories()).toEqual(new Set(['statistics', 'marketing']));
+    });
+
+    test('is empty when nothing is blocked', () => {
+      expect(allBlockedCategories()).toEqual(new Set());
     });
   });
 

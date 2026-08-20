@@ -3,15 +3,19 @@ import {
   clearOriginToken,
   fetchOriginToken,
   freshOriginToken,
+  visitorRegion,
   TOKEN_MAX_AGE_MS,
 } from '../src/origin-token';
 
 /** A success envelope carrying a minted token, as the backend returns it. */
-function tokenResponse(token: string): Response {
-  return new Response(JSON.stringify({ success: true, data: { token }, error: null }), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
-  });
+function tokenResponse(token: string, region: string | null = null): Response {
+  return new Response(
+    JSON.stringify({ success: true, data: { token, region }, error: null }),
+    {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    },
+  );
 }
 
 describe('origin token', () => {
@@ -136,5 +140,57 @@ describe('origin token', () => {
 
     expect(fetchMock.mock.calls[0]![1]!.signal).toBeInstanceOf(AbortSignal);
     expect(freshOriginToken()).toBeUndefined();
+  });
+
+  test('a slow fetch is still bounded on an engine without AbortController', async () => {
+    // main.ts awaits this call on the region-gated path, so "no AbortController,
+    // no timeout" would mean an unbounded delay before the banner appears.
+    vi.stubGlobal('AbortController', undefined);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => new Promise(() => {})),
+    );
+    vi.useFakeTimers();
+
+    const pending = fetchOriginToken('pk_test');
+    await vi.advanceTimersByTimeAsync(3_000);
+
+    await expect(pending).resolves.toBeUndefined();
+    expect(freshOriginToken()).toBeUndefined();
+  });
+
+  test('holds the region bucket the mint response carries', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(tokenResponse('t.s', 'other'))),
+    );
+
+    await fetchOriginToken('pk_test');
+
+    expect(visitorRegion()).toBe('other');
+  });
+
+  test('holds no region when the server could not tell', async () => {
+    // A null bucket is the server saying "unknown", not "out of scope" — the
+    // caller must not be able to mistake one for the other.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(tokenResponse('t.s', null))),
+    );
+
+    await fetchOriginToken('pk_test');
+
+    expect(visitorRegion()).toBeNull();
+  });
+
+  test('holds no region when the fetch fails', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.reject(new Error('offline'))),
+    );
+
+    await fetchOriginToken('pk_test');
+
+    expect(visitorRegion()).toBeNull();
   });
 });
