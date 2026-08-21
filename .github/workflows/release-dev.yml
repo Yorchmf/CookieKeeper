@@ -243,18 +243,36 @@ jobs:
         with:
           ref: ${{ needs.version.outputs.tag }}
 
+      # deploy.sh refuses to run on the wrong machine, but scp happens first — so a swapped
+      # DEV_SSH_HOST/PRD_SSH_HOST secret would write a compose file into a freshly created
+      # /opt/cookiekeeper/dev/ on the production box before anything objected. Check first.
+      - name: Confirm this is the dev app host
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.DEV_SSH_HOST }}
+          username: ${{ secrets.DEV_SSH_USER }}
+          key: ${{ secrets.DEV_SSH_KEY }}
+          script: |
+            if [ "$(hostname -s)" != "cookiekeeper-dev-app" ]; then
+              echo "DEV_SSH_HOST resolves to $(hostname -s), not cookiekeeper-dev-app" >&2
+              exit 1
+            fi
+
       - uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DEV_SSH_HOST }}
           username: ${{ secrets.DEV_SSH_USER }}
           key: ${{ secrets.DEV_SSH_KEY }}
-          source: infra/compose.dev.yml,infra/scripts/deploy.sh
+          source: infra/compose.yml,infra/scripts/deploy.sh
           target: /opt/cookiekeeper/dev/
           strip_components: 1
 
       # deploy.sh reads the hand-maintained /opt/cookiekeeper/dev/.env for secrets and writes only
-      # .env.deploy (the image tag), so nothing here can overwrite a credential. Flyway migrates on
-      # container boot.
+      # .env.deploy (image tag, environment, subnet), so nothing here can overwrite a credential.
+      # Flyway migrates on container boot.
+      #
+      # No *_DIGEST is passed: dev is where these images are BUILT, so the tag was just published
+      # and there is nothing to promote from. release-prd pins them — see the comment there.
       - uses: appleboy/ssh-action@v1.2.2
         env:
           DEPLOY_TAG: ${{ needs.version.outputs.tag }}

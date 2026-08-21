@@ -163,8 +163,10 @@ cookiekeeper:
     # Tax configured (automatic_tax against a Tax-less account errors the Checkout create).
     automatic-tax: ${STRIPE_AUTOMATIC_TAX:true}
   mail:
-    # Which EmailSender delivers transactional mail. `smtp` (default) → Mailpit locally via spring.mail
-    # above; dev/prd override to `brevo` (see application-dev/prd.yml) to use Brevo's EU HTTP API.
+    # Which EmailSender delivers transactional mail. `smtp` (default) → Mailpit via spring.mail above.
+    # Only application-prd.yml pins `brevo` (Brevo's EU HTTP API). application-dev.yml deliberately
+    # re-states this same placeholder rather than pinning anything: a profile-specific literal would
+    # outrank MAIL_PROVIDER from the environment, and dev would mail real people (constraint #4).
     provider: ${MAIL_PROVIDER:smtp}
     brevo:
       # No default here on purpose: when provider=brevo the BrevoEmailSender bean fails fast at startup

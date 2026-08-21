@@ -1,0 +1,225 @@
+# The deployed application stack — ONE file for both environments.
+#
+# Run by infra/scripts/deploy.sh, never by hand:
+#   deploy.sh <dev|prd> <image_tag>
+# which resolves the project name, the Spring profile, the pinned subnet and the
+# `dev` compose profile from <env> and writes them to .env.deploy. Compose reads
+# .env (secrets, hand-maintained on the server) and .env.deploy (machine-written)
+# for interpolation; only .env is injected into containers.
+#
+# WHY ONE FILE: the same reasoning as infra/scripts/egress-firewall.sh, which
+# lists both environments' subnets so it is byte-identical on both machines. Two
+# near-identical files drift — the resource ceilings below are supposed to match
+# across environments so dev discovers a too-tight limit before prd does, and
+# that guarantee is worth more when it is structural than when it is a comment
+# asking the next person to edit both files.
+#
+# Container names get the `cookiekeeper-<env>-` prefix from the project name —
+# Caddy reaches them via the shared external `caddy-net` network, so the project
+# name is load-bearing (Caddyfile.<env> proxies to cookiekeeper-<env>-api-1).
+#
+# Images come from GHCR (built by CI). IMAGE_TAG and the optional *_DIGEST pins
+# come from .env.deploy; GHCR_OWNER from .env.
+#
+# NO POSTGRES HERE (ADR-24). The database is bare Postgres 16 on a dedicated host
+# (cookiekeeper-<env>-db) reached over that environment's private network —
+# 10.20.10.20:5432 for dev, 10.20.20.20:5432 for prd. There is no route between
+# the two private networks. DB_URL in .env carries the address plus the TLS
+# parameters; ./pgca.crt is the database's certificate, copied by hand at setup
+# (server-setup.md §3).
+#
+# Mail: dev delivers to the Mailpit container below (compose profile `dev`), NOT
+# to Brevo. Nothing sent from dev may reach a real inbox — a test signup must
+# never mail a real person (constraint #4), and dev traffic must not burn Brevo's
+# sending reputation. Set MAIL_PROVIDER=smtp / SMTP_HOST=mailpit / SMTP_PORT=1025
+# in dev's .env, and MAIL_PROVIDER=brevo in prd's. Mailpit is never started in
+# prd, so `MAIL_PROVIDER=smtp` there would silently send mail nowhere.
+#
+# RESOURCE LIMITS — sized for this stack ALONE on a Hetzner CX22 (2 vCPU / 4 GB),
+# leaving ~900 MB for the host, dockerd and Caddy. Identical in both environments
+# on purpose: dev is where you find out prd's limits are too tight, which it
+# cannot do if it has more headroom than prd. (Mailpit is the one dev-only
+# addition, and it is the smallest thing here.)
+# Resize the box → edit here once. deploy.sh overwrites this file on the server on
+# every deploy, so a server-side edit is lost. Re-run the k6 smoke test in
+# infra/load/ after changing any of them.
+#   mem_limit     hard ceiling; the container is OOM-killed rather than the kernel
+#                 picking a victim by size.
+#   memswap_limit == mem_limit means "no swap", so a leak fails fast instead of
+#                 thrashing the disk and taking the whole box down with it.
+#   cpus          ceiling, cpu_shares relative weight under contention. Both are
+#                 set on the scanner: a runaway crawl must not starve the API of
+#                 the CPU it needs to answer /api/v1/consent.
+#   pids_limit    fork-bomb backstop; Chromium spawns a process per tab.
+
+services:
+  api:
+    # ${API_DIGEST-} is empty on dev and `@sha256:…` on prd, where release-prd
+    # pins the exact digest release-dev published. `repo:tag@sha256:…` is a valid
+    # OCI reference and docker pulls the DIGEST, so a tag repointed in the
+    # registry between the two releases cannot change what production runs.
+    image: ghcr.io/${GHCR_OWNER}/cookiekeeper-api:${IMAGE_TAG}${API_DIGEST-}
+    restart: unless-stopped
+    env_file: ./.env
+    environment:
+      SPRING_PROFILES_ACTIVE: api,${ENV_NAME:?ENV_NAME missing — run via deploy.sh}
+      # `:?` fails the deploy loudly if .env is missing these — otherwise the backend
+      # would silently fall back to built-in local defaults, and DB_URL's default is
+      # localhost, which on this host is nothing at all.
+      DB_URL: ${DB_URL:?DB_URL missing from .env}
+      DB_USER: ${DB_USER:?DB_USER missing from .env}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD missing from .env}
+      # JDK 21 reads the cgroup limit, but defaults MaxRAMPercentage to 25% — a
+      # 320 MB heap inside a 1.25 GB container, with the rest spent on nothing. 70%
+      # leaves room for metaspace, code cache, thread stacks and direct buffers,
+      # which live OUTSIDE the heap and still count against mem_limit. Without this
+      # the container is either wasteful or OOM-killed.
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=70
+    volumes:
+      # The database's self-signed certificate, pinned as the trust root for
+      # sslmode=verify-ca. Read-only, and NOT copied by the deploy — like .env it is
+      # placed by hand, so automation cannot swap the thing that establishes trust.
+      - ./pgca.crt:/etc/ssl/pgca.crt:ro
+    expose:
+      - "8080"
+    # Gates `up --wait`: the deploy does not report success until the new API is
+    # actually serving. /actuator/health includes the DataSource indicator, so an
+    # unreachable database fails the deploy instead of leaving a container that is
+    # "running" and answering 503. The mail indicator is disabled in
+    # application.yml, so a down Mailpit deliberately does NOT flip this.
+    # curl is present in eclipse-temurin:21-jre (verified, not assumed).
+    # start_period covers Spring context startup + Flyway migration on a CX22.
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+    networks:
+      # Explicit priority, not sort order: the highest-priority network provides the
+      # default route, so outbound fetches leave with a `default` source address. The
+      # egress firewall (ADR-18) exempts far less on caddy-net, and which interface
+      # egress uses must not be an accident.
+      default:
+        priority: 100
+      caddy-net:
+        priority: 10
+    # No depends_on for the database: it is a separate always-on host, not a sibling
+    # container, so there is no local condition to wait for. If it is unreachable
+    # Flyway fails at boot and `restart: unless-stopped` retries — which is the
+    # correct behaviour, and louder than starting up half-working.
+    #
+    # No depends_on for mailpit either. It only ever guaranteed `service_started`,
+    # which says nothing about SMTP listening, and the SMTP connection is made
+    # lazily when mail is sent rather than at boot — so it bought nothing. It also
+    # cannot be expressed here: mailpit is behind a compose profile that is off in
+    # prd, and depends_on across a disabled profile is not portable.
+    mem_limit: 1280m
+    memswap_limit: 1280m
+    cpus: 2.0
+    cpu_shares: 2048
+    pids_limit: 512
+
+  scanner:
+    image: ghcr.io/${GHCR_OWNER}/cookiekeeper-scanner:${IMAGE_TAG}${SCANNER_DIGEST-}
+    restart: unless-stopped
+    env_file: ./.env
+    environment:
+      SPRING_PROFILES_ACTIVE: scanner,${ENV_NAME:?ENV_NAME missing — run via deploy.sh}
+      DB_URL: ${DB_URL:?DB_URL missing from .env}
+      DB_USER: ${DB_USER:?DB_USER missing from .env}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD missing from .env}
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=70
+    volumes:
+      - ./pgca.crt:/etc/ssl/pgca.crt:ro
+    # No ports at all — scanner is outbound-only (SSRF posture, §4.4), so there is
+    # nothing to probe and deliberately no healthcheck. `up --wait` treats it as
+    # ready once it is running; a scanner that boots and then dies is caught by the
+    # queue's visibility timeout, not by the deploy.
+    #
+    # Chromium puts renderer shared memory in /dev/shm, which docker sizes at 64 MB
+    # by default. A content-heavy page overruns that and the tab dies with a bare
+    # "Target crashed" — a scan failure that looks like the customer's site's fault.
+    shm_size: 512mb
+    # Lowest weight here: when the box is saturated the scanner is the only workload
+    # that may wait. An OOM kill is recoverable — ScanQueue leases jobs with a
+    # visibility timeout, so a job the killed worker held is reclaimed when the lease
+    # lapses rather than stuck in `running` forever.
+    mem_limit: 1408m
+    memswap_limit: 1408m
+    cpus: 1.0
+    cpu_shares: 512
+    pids_limit: 1024
+
+  # Catches ALL outgoing dev mail (SMTP :1025, web UI :8025) so no test email can
+  # reach a real inbox. Behind the `dev` compose profile — deploy.sh passes
+  # `--profile dev` only for dev, so prd never starts it.
+  # The UI is bound to loopback, never the public interface: captured mail contains
+  # magic links, password-reset tokens and recipient addresses. Read it through an
+  # SSH tunnel —
+  #   ssh -L 8025:127.0.0.1:8025 <user>@<dev-app-host>   then http://localhost:8025
+  # `latest` is deliberate here: dev-only, holds nothing durable, and a pin we cannot
+  # verify breaks the deploy. It is never used in prd.
+  mailpit:
+    image: axllent/mailpit:latest
+    profiles: ["dev"]
+    restart: unless-stopped
+    environment:
+      MP_MAX_MESSAGES: "500" # ring buffer — old test mail is dropped, not kept
+    ports:
+      - "127.0.0.1:8025:8025"
+    mem_limit: 128m
+    memswap_limit: 128m
+    cpus: 0.5
+    cpu_shares: 256
+    pids_limit: 64
+
+  dashboard:
+    image: ghcr.io/${GHCR_OWNER}/cookiekeeper-dashboard:${IMAGE_TAG}${DASHBOARD_DIGEST-}
+    restart: unless-stopped
+    env_file: ./.env
+    # No NEXT_PUBLIC_API_URL: the client uses same-origin /api/v1/* (Caddy proxies it
+    # to the api container) — runtime env can't affect NEXT_PUBLIC_* anyway, they are
+    # baked at build time.
+    expose:
+      - "3000"
+    # busybox wget, present in node:22-alpine (verified). --spider would still
+    # follow a redirect to an error page, so fetch the body and discard it.
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      default:
+        priority: 100
+      caddy-net:
+        priority: 10
+    depends_on:
+      - api
+    mem_limit: 384m
+    memswap_limit: 384m
+    cpus: 1.0
+    cpu_shares: 1024
+    pids_limit: 256
+
+networks:
+  caddy-net:
+    external: true
+  # APP_SUBNET is pinned so the egress firewall (ADR-18,
+  # infra/scripts/egress-firewall.sh) keeps matching after a `compose up`
+  # recreates the network — the rules are written per source subnet, and a
+  # renumbered subnet would silently stop being filtered.
+  #
+  # It is DERIVED FROM <env> BY deploy.sh, never hand-set: that script and the
+  # firewall's MESH_SUBNETS/DB_TARGETS defaults are the only two places these
+  # addresses appear, and deploy.sh refuses to run if they disagree. Putting it in
+  # the hand-edited .env instead would make "silently unfiltered" a typo away.
+  # 10.31.x is outside docker's default allocation pool, so it cannot collide with
+  # an auto-assigned network, and it does not overlap the 10.20.x Hetzner private
+  # networks that carry database traffic.
+  default:
+    ipam:
+      config:
+        - subnet: ${APP_SUBNET:?APP_SUBNET missing — run via deploy.sh}

@@ -1,8 +1,12 @@
 # Dev environment (Hetzner VPS, compose project complyr-dev, dev.* subdomains).
 cookiekeeper:
   mail:
-    # Deliver via Brevo's EU HTTP API (BREVO_API_KEY must be set; the bean fails fast if not).
-    provider: brevo
+    # DEFAULTS TO MAILPIT, and must. This used to hardcode `brevo`, which outranks the
+    # `${MAIL_PROVIDER:smtp}` in application.yml — so setting MAIL_PROVIDER=smtp in dev's .env
+    # did nothing and dev delivered real mail through Brevo. That is constraint #4 backwards:
+    # a test signup with a colleague's address mails a real person, and dev traffic burns
+    # Brevo's sending reputation. Only application-prd.yml pins `brevo`.
+    provider: ${MAIL_PROVIDER:smtp}
 
 logging:
   level:

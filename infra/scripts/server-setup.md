@@ -162,7 +162,9 @@ Three properties worth knowing before you change anything:
   network that is renamed, renumbered or created behind our back is filtered too
   — unknown traffic fails closed instead of falling through to the internet.
   Only the narrow RETURN exemptions are subnet-scoped, and those subnets are
-  pinned in `infra/compose.*.yml` and in `docker network create` (§4). Keep the
+  pinned by `infra/scripts/deploy.sh` (which derives `APP_SUBNET` from the
+  environment name and passes it to `infra/compose.yml`) and by
+  `docker network create` for `caddy-net` (§4). Keep the
   script's `MESH_SUBNETS` / `INGRESS_SUBNETS` / `DB_TARGETS` defaults in sync
   with them.
 - **`DB_TARGETS` is the one hole in the RFC1918 block, and it is scoped on both

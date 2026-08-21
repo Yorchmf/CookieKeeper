@@ -55,6 +55,18 @@ jobs:
   verify-images:
     needs: [guard, quality]
     runs-on: ubuntu-latest
+    # These digests are what the deploy job pins. Resolving the tag ONCE here and carrying the
+    # answer forward is the point: if this job only checked that the tag exists and the deploy job
+    # pulled it by name, a tag repointed in GHCR in between would put an unverified image into
+    # production, and both jobs would still be green.
+    #
+    # This closes the resolve→run window, NOT the dev→prd one: the tag is read here, at promotion
+    # time, so a repoint that happened after the dev release is pinned faithfully and reported as
+    # success. Closing that needs the digest recorded by release-dev and compared here.
+    outputs:
+      api: ${{ steps.digests.outputs.api }}
+      scanner: ${{ steps.digests.outputs.scanner }}
+      dashboard: ${{ steps.digests.outputs.dashboard }}
     steps:
       - name: Lowercase image owner
         id: owner
@@ -69,18 +81,26 @@ jobs:
       # If this fails, the tag was never released to dev. Fix that first — do not "just build it
       # here", because then prd would run an artifact that has never been exercised anywhere.
       - name: Resolve the digests release-dev published
+        id: digests
         env:
           OWNER: ${{ steps.owner.outputs.owner }}
           TAG: ${{ needs.guard.outputs.tag }}
         run: |
           set -euo pipefail
-          for image in cookiekeeper-api cookiekeeper-scanner cookiekeeper-dashboard; do
-            ref="ghcr.io/${OWNER}/${image}:${TAG}"
+          for component in api scanner dashboard; do
+            ref="ghcr.io/${OWNER}/cookiekeeper-${component}:${TAG}"
             if ! digest="$(docker buildx imagetools inspect --format '{{ .Manifest.Digest }}' "$ref" 2>/dev/null)"; then
               echo "::error::${ref} does not exist. Run release-dev for ${TAG} before promoting it."
               exit 1
             fi
-            echo "- \`${image}\` → \`${digest}\`" >> "$GITHUB_STEP_SUMMARY"
+            # deploy.sh rejects anything that is not sha256:<64 hex>, but failing here names the
+            # image and stops before production is touched at all.
+            if [[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+              echo "::error::${ref} resolved to '${digest}', which is not a sha256 digest."
+              exit 1
+            fi
+            echo "${component}=${digest}" >> "$GITHUB_OUTPUT"
+            echo "- \`cookiekeeper-${component}\` → \`${digest}\`" >> "$GITHUB_STEP_SUMMARY"
           done
 
   infra:
@@ -153,29 +173,53 @@ jobs:
           strip_components: 2
 
   deploy:
-    needs: [guard, infra, widget-cdn]
+    # verify-images is listed even though infra already depends on it: `needs` outputs are not
+    # inherited transitively, and without it the three digests below would silently resolve to the
+    # empty string — an unpinned deploy that looks exactly like a pinned one.
+    needs: [guard, verify-images, infra, widget-cdn]
     runs-on: ubuntu-latest
     environment: production
     steps:
       - uses: actions/checkout@v4
+
+      # deploy.sh refuses to run on the wrong machine, but scp happens first — so a swapped
+      # PRD_SSH_HOST/DEV_SSH_HOST secret would write a compose file into /opt/cookiekeeper/prd/
+      # on the dev box before anything objected. Check first.
+      - name: Confirm this is the prd app host
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.PRD_SSH_HOST }}
+          username: ${{ secrets.PRD_SSH_USER }}
+          key: ${{ secrets.PRD_SSH_KEY }}
+          script: |
+            if [ "$(hostname -s)" != "cookiekeeper-prd-app" ]; then
+              echo "PRD_SSH_HOST resolves to $(hostname -s), not cookiekeeper-prd-app" >&2
+              exit 1
+            fi
 
       - uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.PRD_SSH_HOST }}
           username: ${{ secrets.PRD_SSH_USER }}
           key: ${{ secrets.PRD_SSH_KEY }}
-          source: infra/compose.prd.yml,infra/scripts/deploy.sh
+          source: infra/compose.yml,infra/scripts/deploy.sh
           target: /opt/cookiekeeper/prd/
           strip_components: 1
 
+      # The tag says WHICH release; the digests say which bytes. deploy.sh turns each into a
+      # `repo:tag@sha256:…` reference, so docker pulls the manifest verify-images resolved rather
+      # than whatever the tag points at by the time this step runs.
       - uses: appleboy/ssh-action@v1.2.2
         env:
           DEPLOY_TAG: ${{ needs.guard.outputs.tag }}
+          API_DIGEST: ${{ needs.verify-images.outputs.api }}
+          SCANNER_DIGEST: ${{ needs.verify-images.outputs.scanner }}
+          DASHBOARD_DIGEST: ${{ needs.verify-images.outputs.dashboard }}
         with:
           host: ${{ secrets.PRD_SSH_HOST }}
           username: ${{ secrets.PRD_SSH_USER }}
           key: ${{ secrets.PRD_SSH_KEY }}
-          envs: DEPLOY_TAG
+          envs: DEPLOY_TAG,API_DIGEST,SCANNER_DIGEST,DASHBOARD_DIGEST
           script: |
             chmod +x /opt/cookiekeeper/prd/scripts/deploy.sh
             /opt/cookiekeeper/prd/scripts/deploy.sh prd "$DEPLOY_TAG"

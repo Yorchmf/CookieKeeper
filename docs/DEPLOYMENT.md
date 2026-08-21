@@ -41,7 +41,7 @@ Read this before touching anything — most operational mistakes are putting a v
 | Owner | Owns | Changed by |
 |-------|------|-----------|
 | **Terraform** (`infra/terraform/`) | The four servers, the private networks, the cloud firewalls, DNS records, Cloudflare cache/rate-limit rules | `terraform apply` — by hand for `platform/`, by the release pipelines for `environments/` |
-| **Docker Compose** (`infra/compose.*.yml`) | Which containers run on an app host, on which network, with which healthchecks and resource limits | committed to the repo, copied to the app host by the deploy job |
+| **Docker Compose** (`infra/compose.yml`) | Which containers run on an app host, on which network, with which healthchecks and resource limits | committed to the repo, copied to the app host by the deploy job |
 | **`.env` on the app host** | Every secret and every per-environment value | **you, by hand, over SSH** — `chmod 600`, never in git, never in Terraform |
 
 Secrets are deliberately *not* in Terraform: every Terraform variable is written to state in plaintext, so a secret passed as a variable becomes a secret sitting in an object-storage bucket. That is also why the `cookiekeeper` database role is created **without a password** by cloud-init and you set it by hand afterwards (§11.1) — a passwordless role cannot authenticate against the scram-only `pg_hba.conf`, so the host fails closed until an operator acts. And secrets are deliberately not in a secrets manager either — for a two-environment product that is more moving parts than the problem justifies. The mechanism is a file you edit over SSH, and the deploy scripts are built so nothing can ever overwrite it: `deploy.sh` writes only `.env.deploy`, which contains the image tag and nothing else.
@@ -423,7 +423,7 @@ After the first deploy, trigger a real signup verification email to an address o
 
 **Mailpit** accepts any SMTP mail and shows it in a web UI instead of delivering it. It runs in two places, for the same reason: nothing outside production may send email to a real person. A test signup with a colleague's address, a seeded fixture, a bug that mails the wrong recipient — on dev these all land in Mailpit and go no further. That is constraint #4 in practice, and it keeps dev traffic off Brevo's sending reputation and quota.
 
-Both `infra/compose.workstation.yml` and `infra/compose.dev.yml` declare the service; `infra/compose.prd.yml` deliberately does not.
+`infra/compose.workstation.yml` declares the service outright; in `infra/compose.yml` it sits behind the **`dev` compose profile**, which `deploy.sh` enables only when the environment is `dev`. Prd never starts it — which also means `MAIL_PROVIDER=smtp` in a prd `.env` would send mail nowhere at all.
 
 **On a workstation** the defaults in `.env.example` (`MAIL_PROVIDER=smtp`, `SMTP_HOST=mailpit`, `SMTP_PORT=1025`) already point at it — no Brevo key needed. Read captured mail at http://localhost:8025.
 
@@ -623,18 +623,30 @@ A test-mode Stripe price id is invalid against a live key and vice versa, so nev
 
 ## 10. Docker Compose stacks
 
-### 10.1 The three compose files
+### 10.1 The compose files
 
-They live in the repo, not on the server — the deploy job copies the relevant one across, which is what stops config from drifting between what you can read and what is running.
+They live in the repo, not on the server — the deploy job copies them across, which is what stops config from drifting between what you can read and what is running.
 
 | File | Compose project | Where it runs |
 |------|-----------------|---------------|
 | `infra/compose.workstation.yml` | `cookiekeeper-workstation` | your machine (builds from source, publishes ports, includes a `postgres` container) |
-| `infra/compose.dev.yml` | `cookiekeeper-dev` | `cookiekeeper-dev-app` → `/opt/cookiekeeper/dev/` |
-| `infra/compose.prd.yml` | `cookiekeeper-prd` | `cookiekeeper-prd-app` → `/opt/cookiekeeper/prd/` |
+| `infra/compose.yml` | `cookiekeeper-dev` / `cookiekeeper-prd` | both app hosts → `/opt/cookiekeeper/<env>/` |
 | `infra/caddy/compose.caddy.yml` | `cookiekeeper-caddy` | both app hosts → `/opt/cookiekeeper/caddy/` |
 
-The prd stack runs three services — `api`, `scanner`, `dashboard` — on its own default network, with `api` and `dashboard` additionally joined to the shared external `caddy-net` so Caddy can reach them. Dev runs the same three plus `mailpit` (§7.6).
+**One file serves both environments.** It was two, and they were 90% identical; the four things that actually differed are now inputs rather than duplicated text:
+
+| Difference | How it is expressed |
+|------------|---------------------|
+| Compose project name | `--project-name cookiekeeper-<env>`, from the argument |
+| Spring profile | `SPRING_PROFILES_ACTIVE: api,${ENV_NAME}` |
+| Container subnet | `${APP_SUBNET}` — derived from `<env>` by `deploy.sh`, never hand-set |
+| Mailpit | `profiles: ["dev"]`; `deploy.sh` passes `--profile dev` only for dev |
+
+`ENV_NAME` and `APP_SUBNET` use `${VAR:?message}`, so running `docker compose` by hand without them fails with a named error instead of quietly starting the wrong thing. The same reasoning already applies to `infra/scripts/egress-firewall.sh`, which lists both environments' subnets so it is byte-identical on both machines: two near-identical files drift, and the resource ceilings below are only a useful signal while dev and prd genuinely match.
+
+The deployed stack runs three services — `api`, `scanner`, `dashboard` — on its own default network, with `api` and `dashboard` additionally joined to the shared external `caddy-net` so Caddy can reach them. Dev adds `mailpit` (§7.6).
+
+> **One-time note after this change:** the app hosts still have a stale `compose.dev.yml` / `compose.prd.yml` in `/opt/cookiekeeper/<env>/` from before the merge. Nothing reads them — `deploy.sh` names `compose.yml` explicitly — but delete them so the next person debugging on the box does not read the wrong file.
 
 **There is no `postgres` service in either deployed stack** (ADR-24). The database is bare Postgres on its own machine, reached over the private network; `pgca.crt` next to the `.env` is bind-mounted into `api` and `scanner` at `/etc/ssl/pgca.crt` so the JDBC URL's `sslmode=verify-ca` has something to pin. The workstation file is the one place a Postgres container remains — nobody provisions a second machine to run tests on a laptop.
 
@@ -644,8 +656,8 @@ Every service in both deployed stacks carries `mem_limit`, `memswap_limit`, `cpu
 
 | Service | Memory | CPU ceiling | Weight |
 |---------|--------|-------------|--------|
-| `api` | 1024 MB | 2.0 | 2048 |
-| `scanner` | 1280 MB | 1.0 | 512 |
+| `api` | 1280 MB | 2.0 | 2048 |
+| `scanner` | 1408 MB | 1.0 | 512 |
 | `dashboard` | 384 MB | 1.0 | 1024 |
 | `mailpit` (dev only) | 128 MB | 0.5 | 256 |
 | `caddy` (own project) | 256 MB | 1.0 | 1024 |
@@ -660,33 +672,48 @@ Three details worth knowing before you change any of them:
 
 - **`JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=70`** on `api` and `scanner`. JDK 21 reads the cgroup limit but defaults to a 25% heap — a 256 MB heap inside a 1 GB container. 70% leaves headroom for metaspace, code cache, thread stacks and direct buffers, which sit outside the heap and still count against `mem_limit`.
 - **`shm_size: 512mb`** on `scanner`. Chromium keeps renderer shared memory in `/dev/shm`, which Docker sizes at 64 MB. A content-heavy page overruns it and the tab dies with a bare "Target crashed" — a scan failure that reads like the customer's site is broken.
-- **dev and prd are deliberately identical.** Dev is where you find out prd's limits are too tight, and it cannot do that with more headroom than prd. Resize the box → edit both files together and re-run the k6 smoke test in `infra/load/`. Editing them on the server does nothing lasting: `deploy.sh` rsyncs them from the repo.
+- **dev and prd are deliberately identical.** Dev is where you find out prd's limits are too tight, and it cannot do that with more headroom than prd. Since §10.1 that is structural rather than a convention to remember: resize the box → edit `infra/compose.yml` once and re-run the k6 smoke test in `infra/load/`. Editing it on the server does nothing lasting — the deploy job copies it from the repo on every run.
 
 The compose **project name** is load-bearing: Docker derives container DNS names from it, so `cookiekeeper-prd-api-1` is the hostname the Caddyfile proxies to. Renaming the project without updating the Caddyfile produces a 502 that looks like an application failure but is a DNS miss. (This exact mismatch existed in the repo and was fixed as part of the CookieKeeper rebrand.)
 
 ### 10.3 Images and tags
 
 ```yaml
-image: ghcr.io/${GHCR_OWNER}/cookiekeeper-api:${IMAGE_TAG}
+image: ghcr.io/${GHCR_OWNER}/cookiekeeper-api:${IMAGE_TAG}${API_DIGEST-}
 ```
 
-`GHCR_OWNER` comes from the hand-maintained `.env`; `IMAGE_TAG` comes from `.env.deploy`, which `deploy.sh` rewrites on every deploy. The two environments run the same three images and differ only by environment variables.
+`GHCR_OWNER` comes from the hand-maintained `.env`; the rest come from `.env.deploy`, which `deploy.sh` rewrites on every deploy. The two environments run the same three images and differ only by environment variables.
+
+`API_DIGEST` (and its scanner/dashboard siblings) is **empty on dev and `@sha256:…` on prd**. `repo:tag@sha256:…` is a valid OCI reference and Docker pulls the *digest*, so the tag is only a label. `verify-images` resolves each tag to a digest once and the deploy job pins that exact digest, so the three prd hosts' `pull`s cannot disagree with each other or with what the workflow checked. Dev passes no digests, because dev is where the images are built and there is nothing to promote from.
+
+**Be precise about what this guarantees.** It closes the window between *resolving* a tag and *running* it — a repoint during the release, a concurrent re-run, a retried job. It does **not** prove production runs the bytes dev exercised: `verify-images` reads the tag at prd-release time, so if the tag was repointed in GHCR *after* the dev release, it faithfully pins the new digest and reports success. Closing that wider window needs the digest recorded at `release-dev` time and compared here (tag annotation, GHCR label, or a build attestation) — worth doing, not done yet. GHCR tag immutability would also close it.
 
 ### 10.4 What the deploy actually does
 
-`infra/scripts/deploy.sh <dev|prd> <tag>`:
+`infra/scripts/deploy.sh <dev|prd> <tag>`, with the optional `API_DIGEST` / `SCANNER_DIGEST` / `DASHBOARD_DIGEST` in the environment:
 
 ```bash
-echo "IMAGE_TAG=${IMAGE_TAG}" > .env.deploy      # the only file automation writes
-docker compose --project-name cookiekeeper-<env> \
-               --file compose.<env>.yml \
-               --env-file .env --env-file .env.deploy \
-               pull
-docker compose … up -d --remove-orphans
+# refuses to run if `hostname -s` is not cookiekeeper-<env>-app  (a swapped SSH
+# secret would otherwise deploy the production tag onto dev, silently and green)
+# refuses to run if APP_SUBNET is absent from the installed egress firewall
+#   (ADR-18) — an unfiltered container network must never come up quietly
+
+cat > .env.deploy <<EOF                           # the only file automation writes
+IMAGE_TAG=…  ENV_NAME=…  APP_SUBNET=…  API_DIGEST=…  SCANNER_DIGEST=…  DASHBOARD_DIGEST=…
+EOF
+docker compose --project-name cookiekeeper-<env> --file compose.yml \
+               --env-file .env --env-file .env.deploy [--profile dev] pull
+docker compose … up -d --remove-orphans --wait --wait-timeout 240
 docker image prune -af --filter "until=168h"      # the 40GB disk needs this
 ```
 
-Flyway migrates on `api` container boot; there is no separate migration step. The prune keeps a week of images so a rollback to the previous tag doesn't have to re-pull.
+Flyway migrates on `api` container boot; there is no separate migration step. The prune filters on image **creation** time, not pull time, so a rollback target built more than a week ago will have been pruned — `up` re-pulls it automatically, so the rollback still works, just more slowly.
+
+**`--wait` is the health gate.** `api` and `dashboard` carry healthchecks, so the command does not return until they are actually serving — `api`'s is `/actuator/health`, which includes the DataSource indicator, so an unreachable database fails the deploy rather than leaving a container that is "running" and answering 503. Without this the first signal of a broken release was the smoke job several minutes later, after CI had already reported the deploy step green. `scanner` has no healthcheck on purpose: it exposes no ports at all (SSRF posture), so there is nothing to probe; a scanner that boots and dies is caught by the queue's visibility timeout instead.
+
+**If the stack does not come up healthy**, `deploy.sh` dumps `ps` and the last 50 log lines, then rewrites `.env.deploy` with the previous deploy's tag and digests and runs `up --wait` again. It exits non-zero either way, so the workflow still fails — the rollback restores service, it does not hide the failure.
+
+> **The rollback is the application only.** Flyway is forward-only and already ran on the new image's boot; it is **not** undone. This recovers the common case — a build that will not start — and for a bad migration it buys you an older app against an already-migrated schema, which may itself be wrong. Read the migration before trusting a green rollback.
 
 ---
 
@@ -977,9 +1004,15 @@ On the **app** host, the compose invocation is always project-scoped:
 
 ```bash
 cd /opt/cookiekeeper/<env>
-dc() { docker compose --project-name "cookiekeeper-<env>" --file "compose.<env>.yml" \
+dc() { docker compose --project-name "cookiekeeper-<env>" --file compose.yml \
        --env-file .env --env-file .env.deploy "$@"; }
+# on dev only, prefix with COMPOSE_PROFILES=dev or mailpit is invisible to it:
+#   COMPOSE_PROFILES=dev dc ps
 ```
+
+**Never set `COMPOSE_PROFILES=dev` on the prd box, and never put it in a `.env`.** It activates the profile with no `--profile` flag anywhere, and `up --remove-orphans` will *not* remove a profile-disabled container that is already running — so a Mailpit started on prd stays up until someone deletes it by hand, quietly swallowing real customer mail. `deploy.sh` exports `COMPOSE_PROFILES=""` on prd specifically to override a stray value in `.env`, and aborts if it finds a `mailpit` container in the prd project.
+
+Both `--env-file`s are required: `.env.deploy` carries `ENV_NAME` and `APP_SUBNET`, and compose refuses to render without them rather than guessing. If `dc` reports `required variable APP_SUBNET is missing a value`, you dropped that flag — not a broken deploy.
 
 There is no `postgres` service in that project — `dc ps` listing three containers (`api`, `dashboard`, `scanner`) is correct, not a crash.
 

@@ -38,7 +38,9 @@
 # (`br-+` matches every user-defined bridge, present and future), not on a source
 # subnet, so a network that is renamed, renumbered or created behind our back is
 # filtered too. Only the narrow RETURN exemptions are subnet-scoped, and those
-# subnets are PINNED in infra/compose.*.yml — keep the defaults below in sync.
+# subnets are PINNED by infra/scripts/deploy.sh, which derives APP_SUBNET from the
+# environment name and feeds it to infra/compose.yml — keep the defaults below in
+# sync with that `case` statement. deploy.sh refuses to run if they disagree.
 #
 # Usage:
 #   egress-firewall.sh [apply]   install/refresh the rules (idempotent)
@@ -65,7 +67,8 @@ HOST_BASE="COOKIEKEEPER-EGRESS-HOST"  # hooked into INPUT
 FWD6_BASE="COOKIEKEEPER-EGRESS6"
 HOST6_BASE="COOKIEKEEPER-EGRESS6-HOST"
 
-# Must match the `ipam` blocks in infra/compose.dev.yml / compose.prd.yml and the
+# Must match the APP_SUBNET values derived in infra/scripts/deploy.sh (which are what the `ipam`
+# block in infra/compose.yml is given) and the
 # `docker network create --subnet` for caddy-net (server-setup.md §4).
 #
 # Both environments are listed even though each app host now runs only ONE of
