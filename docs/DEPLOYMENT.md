@@ -27,7 +27,7 @@ Expect this to take the better part of a day the first time, most of it waiting 
 | 4 | `terraform apply` the **`platform/`** module **by hand** | §3.4 | `terraform output servers` lists four machines, all `running` |
 | 5 | Harden all four hosts (SSH key-only, fail2ban, unattended-upgrades) | `infra/scripts/server-setup.md` | You can SSH with a key and not with a password |
 | 6 | On each **app** host: install Docker, create `caddy-net`, bring up the Caddy stack | §5.3, `server-setup.md` §4 | `docker ps` shows `cookiekeeper-caddy` |
-| 7 | On each **app** host: install the container egress firewall and run `egress-firewall.sh verify` | ADR-18, `server-setup.md` §3 | `verify` passes. **`deploy.sh` treats a missing firewall as fatal** — skip this and step 14 stops dead |
+| 7 | On each **app** host: *confirm* cloud-init installed the container egress firewall — you do not install it | ADR-18, `server-setup.md` §3 | `systemctl is-active cookiekeeper-egress-firewall.timer` says `active` and `/usr/local/sbin/cookiekeeper-egress-firewall` exists. **`deploy.sh` treats a missing firewall as fatal** — if this is not true, step 14 stops dead |
 
 ### Stage C — database (the one hand step that cannot be automated)
 
@@ -60,6 +60,8 @@ Expect this to take the better part of a day the first time, most of it waiting 
 **Your first deploy has no rollback target.** `deploy.sh` recovers by restoring the last deploy that passed its health check, and on a virgin host there isn't one. If step 14 fails it will say `no distinct last-known-good deploy to roll back to`, leave the stack up so you can read it, and exit non-zero. That is correct behaviour, not a bug — read `deploy-failure-<timestamp>.log` next to the `.env` on the box (§10.4). From the second successful deploy onward, rollback is automatic.
 
 **If step 14 stops immediately**, it is almost always one of the Phase-1 refusals in §10.4 — a missing egress firewall (step 7), a wrong `MAIL_PROVIDER` (step 11), or a secret missing from `.env` (step 10). Each aborts with a named message before touching a container.
+
+**Run `cookiekeeper-egress-firewall verify` once per app host, after that host's first deploy** — dev after step 14, prd after step 16. It cannot be done earlier, and that is not an oversight: `apply` tolerates networks that do not exist yet (a rule naming an absent subnet matches nothing, which is exactly why cloud-init can run it at first boot), but `verify` attaches a throwaway container to each filtered network, so the stack has to have created them first. It is on the §13 checklist as a blocking item because presence is what `deploy.sh` checks — that the chains are actually loaded and correct is what `verify` checks, and nothing else does.
 
 Once all sixteen are done, work through §13 as a final audit — it covers the things that are easy to leave half-finished (backups, restore drill, rate limits, monitoring).
 
@@ -1054,7 +1056,7 @@ The alternative — a Cloudflare Origin Certificate (15-year, trusted only by Cl
 ### 13.7 Monitoring and security
 
 - [ ] Uptime monitoring live (two layers — see `infra/monitoring/uptime.md` and `uptime-check.sh`)
-- [ ] Container egress firewall installed and `egress-firewall.sh verify` passes on **both app hosts** (ADR-18), with `EGRESS_DB_TARGETS` pointing at that environment's database only
+- [ ] `cookiekeeper-egress-firewall verify` passes on **both app hosts** (ADR-18), with `EGRESS_DB_TARGETS` pointing at that environment's database only — installation is cloud-init's job now, but nothing except this command proves the chains are actually loaded
 - [ ] Database 5432 verified closed from the public internet and open only to the matching app host's private IP (§11.1) — a Hetzner cloud firewall cannot do this, so check `listen_addresses`, `ufw` and `pg_hba.conf` directly
 - [ ] Load smoke test run once against dev (`infra/load/README.md`) so the CX22 tuning is not theoretical
 - [ ] Rate limiting active at both layers: Cloudflare ruleset (Terraform) and the in-app filters
@@ -1110,7 +1112,7 @@ The common first-deploy case. Every Phase-1 guard (§10.4) aborts before any con
 | Message contains | Fix |
 |------------------|-----|
 | `refusing to deploy … this is not cookiekeeper-<env>-app` | You are on the wrong box, or `DEV_SSH_HOST`/`PRD_SSH_HOST` are swapped in the Actions secrets |
-| `cannot confirm container egress is filtered` | Install the egress firewall (`server-setup.md` §3). To deploy anyway — **only** knowingly, on dev — re-run with `DEPLOY_ALLOW_UNFILTERED=1` |
+| `cannot confirm container egress is filtered` | Cloud-init installs this at first boot, so on a Terraform-built host this means it failed — check `cloud-init status --long` and `systemctl status cookiekeeper-egress-firewall.service` before reinstalling by hand (`server-setup.md` §3.1). To deploy anyway — **only** knowingly, on dev — re-run with `DEPLOY_ALLOW_UNFILTERED=1` |
 | `MAIL_PROVIDER=brevo` on dev | Set `MAIL_PROVIDER=smtp` in `/opt/cookiekeeper/dev/.env`. Dev mail belongs in Mailpit (§7.6) |
 | `expected 'brevo'` on prd | Set `MAIL_PROVIDER=brevo` in `/opt/cookiekeeper/prd/.env` |
 | `mailpit ... in prd` | A previous run left the container behind. `docker rm -f cookiekeeper-prd-mailpit-1`, then redeploy |
@@ -1196,7 +1198,7 @@ The characteristic failures, in the order you will actually hit them:
 - **`no pg_hba.conf entry for host …`** — the app host is reaching Postgres from an address the database does not expect. Check `EGRESS_DB_TARGETS` and `pg_hba.conf` agree on the app host's private IP.
 - **`SSL error: certificate verify failed`** — `pgca.crt` on the app host no longer matches `/etc/postgresql/ssl/server.crt` on the database host. Re-copy it (§11.1); regenerating the certificate on the database host invalidates every app host copy.
 - **`password authentication failed`** — `DB_PASSWORD` in `.env` and the role password diverged. Rotate on the **server first**, then the `.env`; the reverse order leaves the app presenting a password the server was never told about.
-- **Times out from a container but works from the host** — ADR-18. Run `/opt/cookiekeeper/egress-firewall.sh verify` and confirm `EGRESS_DB_TARGETS` names this environment's database.
+- **Times out from a container but works from the host** — ADR-18. Run `/usr/local/sbin/cookiekeeper-egress-firewall verify` and confirm `EGRESS_DB_TARGETS` names this environment's database.
 
 Postgres binds only `localhost` and its private IP, and ufw only admits the matching app host. If you can reach 5432 from your laptop, that is the bug — and it is a serious one, because the Hetzner cloud firewall is structurally unable to catch it (it does not see private traffic).
 

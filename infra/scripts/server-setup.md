@@ -122,6 +122,20 @@ Backups also run on this host — §7.
 
 ## 3. Container egress firewall (ADR-18, blocking gate)
 
+**Cloud-init already installed and started this.** `cloud-init-app.yaml` writes the
+script and both units at first boot (Terraform `base64gzip`s them straight out of
+this repo, so the file on the box and the file in git cannot drift at provisioning
+time) and starts the timer before the service. Nothing in this section is a step
+you perform on a freshly provisioned host — the only thing you owe it is the
+`verify` run in §3.2, and that has to wait until the first deploy has created the
+environment's networks.
+
+It is baked into provisioning rather than left as a manual step because
+`deploy.sh` refuses to deploy without it: a provisioned-but-unfiltered app host is
+a state we would rather not be able to reach at all. §3.1 is for the two cases
+where you still touch it by hand — editing the script, or rebuilding a host
+outside Terraform.
+
 App hosts only. The scanner crawls domains nobody has proved they own.
 `ScanTargetValidator` resolves and rejects private targets in the app, but it
 cannot win a DNS-rebind race against the browser's own resolution — so the
@@ -180,8 +194,12 @@ Three properties worth knowing before you change anything:
   could forge it. It raises the cost of lateral movement; it is not a trust
   boundary you may lean on.
 
-Install it **root-owned and outside `/opt/cookiekeeper`**, which CI rsyncs into: the
-deploy key must not be able to rewrite the thing that constrains it.
+### 3.1 Rolling a change out to a running host
+
+`user_data` is in the server's `ignore_changes` and cloud-init runs once, so
+**editing `egress-firewall.sh` changes what the next newly provisioned host gets
+and nothing else.** Existing hosts need this, on each app host, after the change
+is merged:
 
 ```bash
 # from a repo checkout on the server (or scp the three files up)
@@ -193,6 +211,15 @@ systemctl daemon-reload
 systemctl enable --now cookiekeeper-egress-firewall.service cookiekeeper-egress-firewall.timer
 ```
 
+Identical to what cloud-init does, deliberately — same paths, same owner, same
+modes — so a hand-updated host and a fresh one are indistinguishable. Re-running
+it on a host that is already current is a no-op. Then re-run §3.2 on both hosts:
+the whole point of a rule change is that the assertion set changed with it.
+
+Note the install target: **root-owned and outside `/opt/cookiekeeper`**, which CI
+rsyncs into. The deploy key must not be able to rewrite the thing that constrains
+it.
+
 The service is `WantedBy=docker.service` because a docker daemon restart
 recreates `DOCKER-USER` and drops the jump; the timer re-applies on a wall-clock
 schedule every 2 min, which also retries a run that *failed* (dockerd rewrites
@@ -200,6 +227,14 @@ iptables constantly, so an xtables lock collision is routine). Applying is
 idempotent and atomic: the rules are built into a spare chain and the jump moves
 only once the build succeeded, so a half-finished run leaves the previous rules
 in force rather than an empty chain that filters nothing.
+
+### 3.2 Prove it — `verify` (blocking, before launch)
+
+Run this **after the first deploy of the environment**, not at provisioning time.
+`apply` is happy with networks that do not exist yet — a rule naming an absent
+subnet simply matches nothing, which is why cloud-init can run it before anything
+is deployed — but `verify` has to attach a container to each filtered network, so
+it needs the stack to have created them.
 
 Prove it, don't assume it — `verify` attaches a throwaway container to each
 filtered network and tries the connections that must fail *and* the ones that
@@ -499,7 +534,7 @@ Per **database** host:
 Per **application** host:
 
 - [ ] `psql "…sslmode=verify-ca&sslrootcert=…/pgca.crt" -c 'SELECT 1'` succeeds against its own database (§2.2) and the app starts
-- [ ] Container egress firewall installed and **`cookiekeeper-egress-firewall verify` PASSED** (ADR-18 blocking gate — metadata / host sshd / this box's public IP / the database host's port 22 all closed; the database's 5432, public internet and DNS still open)
+- [ ] **`cookiekeeper-egress-firewall verify` PASSED** on this host — installation is cloud-init's, this is the part that is yours (ADR-18 blocking gate — metadata / host sshd / this box's public IP / the database host's port 22 all closed; the database's 5432, public internet and DNS still open)
 - [ ] `daemon.json` has the EU resolvers **and** `"userland-proxy": false`; `net.bridge.bridge-nf-call-iptables=1` and `net.netfilter.nf_conntrack_helper=0` in `/etc/sysctl.d/`; IPv6 off on all docker networks (§3 prerequisites)
 - [ ] `caddy-net` has `--ip-range 10.31.30.128/25` so Caddy keeps `.2` (`docker network inspect caddy-net` → `IPRange` set; §4)
 - [ ] `.env` is `chmod 600`, has `CADDY_ENV`, and dev's `MAIL_PROVIDER=smtp` (no `BREVO_API_KEY` on dev — nothing from dev may reach a real inbox)

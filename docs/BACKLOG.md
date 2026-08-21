@@ -22,7 +22,7 @@ Status legend: ☐ open · ◐ in progress · ☑ done
 | # | Item | Why it blocks | Nature |
 |---|------|---------------|--------|
 | 1 | ☐ **Legal pages: privacy / terms / imprint** | Footer links to `/privacy` `/terms` `/imprint` exist; an EU SaaS cannot launch without them (imprint is mandatory under German TMG). Blocked on entity facts (company name, address, VAT), not engineering. | Needs owner input |
-| 2 | ☐ **Install egress firewall on VPS + `verify`** | Code committed (`infra/scripts/egress-firewall.sh` + systemd unit/timer). Fail-closed container egress is a data-exfil control; inert until installed on the box. | Ops (VPS) |
+| 2 | ☐ **Run `cookiekeeper-egress-firewall verify` on both app hosts** | The *install* half of this is now done by provisioning — `cloud-init-app.yaml` writes the script and both units at first boot, and `deploy.sh` refuses to deploy a host where the script is missing, so "inert because nobody installed it" is no longer reachable. What is still open is proof: nothing asserts the chains actually loaded, and `verify` can only run after the environment's first deploy has created the networks it probes. | Ops (VPS) |
 | 3 | ☐ **Run `restore-drill.sh --from-offsite` on VPS** | An untested backup is not a backup. Prove the age-encrypted off-site restore round-trips before relying on it. | Ops (VPS) |
 
 ## Tier 2 — Compliance & security hardening (pre-launch or fast-follow)

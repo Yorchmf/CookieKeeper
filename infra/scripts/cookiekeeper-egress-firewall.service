@@ -1,5 +1,5 @@
 # Reapplies the container egress firewall (ADR-18). Install to
-# /etc/systemd/system/cookiekeeper-egress-firewall.service — see server-setup.md §2.1.
+# /etc/systemd/system/cookiekeeper-egress-firewall.service — see server-setup.md §3.
 #
 # WantedBy=docker.service rather than multi-user.target: a docker daemon restart
 # recreates DOCKER-USER and silently drops our jump, so the rules have to be

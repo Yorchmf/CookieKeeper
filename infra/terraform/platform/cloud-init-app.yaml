@@ -5,9 +5,15 @@
 # Anything you need to change later belongs in infra/scripts/server-setup.md, not here.
 #
 # Deliberately minimal: this brings the machine to "Docker runs, deploy user exists, sshd is
-# hardened". Everything after that (Caddy, the egress firewall, the .env file, the Postgres CA
-# certificate) is in server-setup.md, because those steps need secrets or judgement and must not be
-# baked into an image-level config that lands in Terraform state.
+# hardened, container egress is filtered". Everything after that (Caddy, the .env file, the Postgres
+# CA certificate) is in server-setup.md, because those steps need secrets or judgement and must not
+# be baked into an image-level config that lands in Terraform state.
+#
+# The ADR-18 egress firewall is the one exception to "minimal", and it earns it: it contains no
+# secret, deploy.sh REFUSES to deploy without it, and the window it closes — a provisioned but
+# unfiltered app host — is exactly when someone is most likely to try "just this once". Installed
+# from the repo's own copies (main.tf base64gzips them in), so the file on the box and the file in
+# git cannot drift at provisioning time.
 #
 # This host runs NO database. Postgres lives on cookiekeeper-${environment}-db and is reached over
 # the private network (ADR-24).
@@ -73,6 +79,29 @@ write_files:
     content: |
       JAVA_TOOL_OPTIONS=-Dsun.net.inetaddr.ttl=30
 
+  # === ADR-18 container egress firewall ======================================================
+  # /usr/local/sbin, NOT /opt/cookiekeeper: that directory is what CI rsyncs into, and the deploy
+  # key must not be able to rewrite the thing that constrains it. root-owned, 0755.
+  #
+  # gz+b64 because the payload is bash (see main.tf) — cloud-init decodes it before writing.
+  - path: /usr/local/sbin/cookiekeeper-egress-firewall
+    encoding: gz+b64
+    owner: root:root
+    permissions: "0755"
+    content: ${egress_firewall}
+
+  - path: /etc/systemd/system/cookiekeeper-egress-firewall.service
+    encoding: gz+b64
+    owner: root:root
+    permissions: "0644"
+    content: ${egress_service}
+
+  - path: /etc/systemd/system/cookiekeeper-egress-firewall.timer
+    encoding: gz+b64
+    owner: root:root
+    permissions: "0644"
+    content: ${egress_timer}
+
 runcmd:
   # Docker CE from Docker's own repo (Ubuntu's docker.io lags badly).
   - install -m 0755 -d /etc/apt/keyrings
@@ -113,4 +142,22 @@ runcmd:
 
   - systemctl enable --now fail2ban unattended-upgrades
 
-final_message: "CookieKeeper ${environment} APP host ready after $UPTIME s. Continue with infra/scripts/server-setup.md."
+  # Egress firewall LAST, and deliberately not masked with `|| true`.
+  #
+  # Order: it hooks DOCKER-USER, so docker must exist (installed above) and caddy-net should already
+  # be created so the first apply covers it. `apply` does NOT require the per-environment compose
+  # networks to exist — a rule naming an absent subnet simply matches nothing — so running here,
+  # before any deploy, is correct rather than premature.
+  #
+  # The timer is enabled BEFORE the service is started, on purpose. dockerd rewrites iptables
+  # constantly at boot, so an xtables lock collision on this very first apply is plausible; with the
+  # timer already armed (OnBootSec=1min, then every 2 min) that failure self-heals. Letting the
+  # start fail loudly anyway is the point — it surfaces in `cloud-init status` and `systemctl
+  # --failed` instead of leaving a host that looks provisioned and filters nothing. This block is
+  # last so a failure costs only the final_message.
+  - systemctl daemon-reload
+  - systemctl enable cookiekeeper-egress-firewall.service cookiekeeper-egress-firewall.timer
+  - systemctl start cookiekeeper-egress-firewall.timer
+  - systemctl start cookiekeeper-egress-firewall.service
+
+final_message: "CookieKeeper ${environment} APP host ready after $UPTIME s. Container egress is filtered (ADR-18); run `cookiekeeper-egress-firewall verify` after the first deploy. Continue with infra/scripts/server-setup.md."

@@ -1,5 +1,5 @@
 # Backstop for the egress firewall (ADR-18). Install to
-# /etc/systemd/system/cookiekeeper-egress-firewall.timer — see server-setup.md §2.1.
+# /etc/systemd/system/cookiekeeper-egress-firewall.timer — see server-setup.md §3.
 #
 # The service already reruns with docker. This catches the slower drift, and the
 # case that matters most: a run that FAILED (an xtables lock collision with

@@ -95,8 +95,24 @@ resource "hcloud_server" "node" {
     ipv6_enabled = true
   }
 
+  # The ADR-18 egress firewall ships INSIDE the app host's user_data rather than being installed by
+  # hand afterwards: it is a blocking deploy requirement (deploy.sh refuses to run without it), so a
+  # freshly provisioned host that is not yet filtered is a host in a state we never want to exist.
+  #
+  # base64gzip, not a raw interpolation, for two independent reasons. (1) The script is bash — it is
+  # full of `${...}`, every one of which templatefile() would try to resolve as a Terraform variable
+  # and fail on. (2) Hetzner caps user_data at 32 KiB, and the three files are 27 KB raw on their
+  # own. gz+b64 brings the whole rendered document to ~22 KB, 67% of the cap. cloud-init decodes
+  # `encoding: gz+b64` itself.
+  #
+  # That headroom is finite, so it is a constraint rather than a footnote: roughly 10 KB of raw
+  # bash is left before this stops fitting. If egress-firewall.sh grows past that, the answer is to
+  # fetch it at boot from a pinned artefact, not to shave comments out of it.
   user_data = each.value.role == "app" ? templatefile("${path.module}/cloud-init-app.yaml", {
-    environment = each.value.environment
+    environment     = each.value.environment
+    egress_firewall = base64gzip(file("${path.module}/../../scripts/egress-firewall.sh"))
+    egress_service  = base64gzip(file("${path.module}/../../scripts/cookiekeeper-egress-firewall.service"))
+    egress_timer    = base64gzip(file("${path.module}/../../scripts/cookiekeeper-egress-firewall.timer"))
     }) : templatefile("${path.module}/cloud-init-db.yaml", {
     environment    = each.value.environment
     db_private_ip  = each.value.private_ip
@@ -121,6 +137,11 @@ resource "hcloud_server" "node" {
       # cloud-init only ever runs on first boot. Editing the templates later would show a permanent
       # diff that, if applied, recreates the machine for no benefit. Post-creation changes belong in
       # infra/scripts/server-setup.md.
+      #
+      # Note what this means now that the egress firewall is baked in above: editing
+      # egress-firewall.sh updates what a NEWLY PROVISIONED host gets and nothing else. Rolling a
+      # change out to a running host is still the `install` + `systemctl daemon-reload` in
+      # server-setup.md §3.1 — which is why that section stayed rather than being deleted.
       user_data,
     ]
   }

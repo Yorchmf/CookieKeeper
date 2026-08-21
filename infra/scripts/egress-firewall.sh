@@ -56,9 +56,12 @@
 #                            subnet may reach that one address on that one port
 #   EGRESS_CONTROL_TARGET    <ip> <port> that must stay reachable (verify only)
 #
-# Must run as root. Install it root-owned OUTSIDE the CI-rsynced tree
+# Must run as root. Installed root-owned OUTSIDE the CI-rsynced tree
 # (/usr/local/sbin/cookiekeeper-egress-firewall) so a compromised deploy key cannot
-# rewrite the thing that constrains it. See server-setup.md §2.1.
+# rewrite the thing that constrains it. On a new app host that install is done at
+# first boot by cloud-init-app.yaml, which Terraform base64gzips this file into;
+# editing this file therefore does NOT change a running host until you re-install
+# it by hand. See server-setup.md §3.1.
 # =============================================================================
 set -euo pipefail
 
