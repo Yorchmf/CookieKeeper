@@ -58,7 +58,7 @@ services:
     # pins the exact digest release-dev published. `repo:tag@sha256:…` is a valid
     # OCI reference and docker pulls the DIGEST, so a tag repointed in the
     # registry between the two releases cannot change what production runs.
-    image: ghcr.io/${GHCR_OWNER}/cookiekeeper-api:${IMAGE_TAG}${API_DIGEST-}
+    image: ghcr.io/${GHCR_OWNER:?GHCR_OWNER missing from .env — see .env.example}/cookiekeeper-api:${IMAGE_TAG}${API_DIGEST-}
     restart: unless-stopped
     env_file: ./.env
     environment:
@@ -121,7 +121,7 @@ services:
     pids_limit: 512
 
   scanner:
-    image: ghcr.io/${GHCR_OWNER}/cookiekeeper-scanner:${IMAGE_TAG}${SCANNER_DIGEST-}
+    image: ghcr.io/${GHCR_OWNER:?GHCR_OWNER missing from .env — see .env.example}/cookiekeeper-scanner:${IMAGE_TAG}${SCANNER_DIGEST-}
     restart: unless-stopped
     env_file: ./.env
     environment:
@@ -175,7 +175,7 @@ services:
     pids_limit: 64
 
   dashboard:
-    image: ghcr.io/${GHCR_OWNER}/cookiekeeper-dashboard:${IMAGE_TAG}${DASHBOARD_DIGEST-}
+    image: ghcr.io/${GHCR_OWNER:?GHCR_OWNER missing from .env — see .env.example}/cookiekeeper-dashboard:${IMAGE_TAG}${DASHBOARD_DIGEST-}
     restart: unless-stopped
     env_file: ./.env
     # No NEXT_PUBLIC_API_URL: the client uses same-origin /api/v1/* (Caddy proxies it
