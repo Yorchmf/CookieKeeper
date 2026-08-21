@@ -4,6 +4,67 @@ Complete setup instructions for all third-party services, environment configurat
 
 ---
 
+## 0. Start here — your first deploy, in order
+
+The rest of this document is organised by **topic** (Terraform, Cloudflare, Stripe, Compose…), which is what you want when you need to change one thing. It is the wrong shape when you have never deployed at all and need to know what to do first. This section is that path.
+
+Read §1 first for the shape of the system — it is short. Then work down this list. **Do not skip ahead**: almost every step depends on the one above it, and the deploy script refuses to run when a prerequisite is missing, by design (§10.4).
+
+Expect this to take the better part of a day the first time, most of it waiting for DNS and TLS.
+
+### Stage A — accounts and state (nothing exists yet)
+
+| # | Do this | Section | You are done when |
+|---|---------|---------|-------------------|
+| 1 | Create the Hetzner, Cloudflare, Stripe, Brevo, Sentry and GitHub accounts | §2 | All six exist; Brevo and Sentry are on their **EU** regions (you cannot change this later) |
+| 2 | Register the domain and point it at Cloudflare's nameservers | §4.1 | Cloudflare shows the zone as **Active** — this can take hours, so start it early |
+| 3 | Create the Hetzner Object Storage bucket for Terraform state | §3.3 | `terraform init` succeeds in both root modules |
+
+### Stage B — machines (Terraform builds four servers)
+
+| # | Do this | Section | You are done when |
+|---|---------|---------|-------------------|
+| 4 | `terraform apply` the **`platform/`** module **by hand** | §3.4 | `terraform output servers` lists four machines, all `running` |
+| 5 | Harden all four hosts (SSH key-only, fail2ban, unattended-upgrades) | `infra/scripts/server-setup.md` | You can SSH with a key and not with a password |
+| 6 | On each **app** host: install Docker, create `caddy-net`, bring up the Caddy stack | §5.3, `server-setup.md` §4 | `docker ps` shows `cookiekeeper-caddy` |
+| 7 | On each **app** host: install the container egress firewall and run `egress-firewall.sh verify` | ADR-18, `server-setup.md` §3 | `verify` passes. **`deploy.sh` treats a missing firewall as fatal** — skip this and step 14 stops dead |
+
+### Stage C — database (the one hand step that cannot be automated)
+
+| # | Do this | Section | You are done when |
+|---|---------|---------|-------------------|
+| 8 | On each **db** host: set the `cookiekeeper` role password by hand | §11.1 | `psql` authenticates from the matching app host over the private IP |
+| 9 | Generate the Postgres TLS cert; copy `server.crt` to the app host as `pgca.crt` | §11.1 | `pgca.crt` sits next to the `.env` and is readable by the container user |
+
+> Why by hand: cloud-init creates the role **without** a password, so the host fails closed until an operator acts. A password passed through Terraform would be written to state in plaintext (§1.1).
+
+### Stage D — configuration (the file automation can never write)
+
+| # | Do this | Section | You are done when |
+|---|---------|---------|-------------------|
+| 10 | Write `/opt/cookiekeeper/dev/.env` and `/opt/cookiekeeper/prd/.env` by hand, `chmod 600` | §9, §13.5 | Every variable in `.env.example` is accounted for in both |
+| 11 | Double-check `MAIL_PROVIDER`: **`smtp` on dev, `brevo` on prd** | §7.4 | Getting this backwards on dev mails real people. `deploy.sh` now refuses to deploy either mistake |
+| 12 | Set the GitHub Actions secrets, and create the `production` environment with a required reviewer | §8.5 | `DEV_SSH_HOST`/`PRD_SSH_HOST` are the **app** hosts — CI must never reach a database host |
+
+> **Do not put `ENV_NAME`, `APP_SUBNET`, `COMPOSE_PROFILES` or any `*_DIGEST` in these `.env` files.** They are machine-owned: `deploy.sh` derives and exports them per run, and a stale copy in `.env` is one of the few ways to make a deploy go quietly wrong. `.env.example` says so too.
+
+### Stage E — first deploy
+
+| # | Do this | Section | You are done when |
+|---|---------|---------|-------------------|
+| 13 | `terraform apply` the **`environments/`** module for workspace `dev` (the pipeline does this, but the first run is worth watching) | §3.5 | The six hostnames resolve and are proxied |
+| 14 | Dispatch **`release-dev`** from the Actions tab, on `main` | §8.2 | Tag pushed, images built, `smoke` green |
+| 15 | Log in, create a site, run a scan, embed the widget, record a consent | §13 | The flow works end to end against dev |
+| 16 | Only then dispatch **`release-prd`** on the `vX.Y.Z` tag that step 14 created, and approve the gate | §8.2 | `smoke` green against production hostnames |
+
+**Your first deploy has no rollback target.** `deploy.sh` recovers by restoring the last deploy that passed its health check, and on a virgin host there isn't one. If step 14 fails it will say `no distinct last-known-good deploy to roll back to`, leave the stack up so you can read it, and exit non-zero. That is correct behaviour, not a bug — read `deploy-failure-<timestamp>.log` next to the `.env` on the box (§10.4). From the second successful deploy onward, rollback is automatic.
+
+**If step 14 stops immediately**, it is almost always one of the Phase-1 refusals in §10.4 — a missing egress firewall (step 7), a wrong `MAIL_PROVIDER` (step 11), or a secret missing from `.env` (step 10). Each aborts with a named message before touching a container.
+
+Once all sixteen are done, work through §13 as a final audit — it covers the things that are easy to leave half-finished (backups, restore drill, rate limits, monitoring).
+
+---
+
 ## 1. Overview
 
 CookieKeeper runs on **four Hetzner CX22 servers** in Germany: an application host and a dedicated Postgres host for each of the exactly **two** environments, `dev` and `prd` (ADR-24). All customer data, backups, and infrastructure stay within the EU.
@@ -646,7 +707,7 @@ They live in the repo, not on the server — the deploy job copies them across, 
 
 The deployed stack runs three services — `api`, `scanner`, `dashboard` — on its own default network, with `api` and `dashboard` additionally joined to the shared external `caddy-net` so Caddy can reach them. Dev adds `mailpit` (§7.6).
 
-> **One-time note after this change:** the app hosts still have a stale `compose.dev.yml` / `compose.prd.yml` in `/opt/cookiekeeper/<env>/` from before the merge. Nothing reads them — `deploy.sh` names `compose.yml` explicitly — but delete them so the next person debugging on the box does not read the wrong file.
+> **If you deployed before this change:** the app hosts will still have a stale `compose.dev.yml` / `compose.prd.yml` in `/opt/cookiekeeper/<env>/`. Nothing reads them — `deploy.sh` names `compose.yml` explicitly — but delete them so the next person debugging on the box does not read the wrong file. On a host that has never been deployed to, there is nothing to clean up.
 
 **There is no `postgres` service in either deployed stack** (ADR-24). The database is bare Postgres on its own machine, reached over the private network; `pgca.crt` next to the `.env` is bind-mounted into `api` and `scanner` at `/etc/ssl/pgca.crt` so the JDBC URL's `sslmode=verify-ca` has something to pin. The workstation file is the one place a Postgres container remains — nobody provisions a second machine to run tests on a laptop.
 
@@ -690,28 +751,54 @@ image: ghcr.io/${GHCR_OWNER}/cookiekeeper-api:${IMAGE_TAG}${API_DIGEST-}
 
 ### 10.4 What the deploy actually does
 
-`infra/scripts/deploy.sh <dev|prd> <tag>`, with the optional `API_DIGEST` / `SCANNER_DIGEST` / `DASHBOARD_DIGEST` in the environment:
+`infra/scripts/deploy.sh <dev|prd> <tag>`, with the optional `API_DIGEST` / `SCANNER_DIGEST` / `DASHBOARD_DIGEST` in the environment. It runs in four phases: refuse, deploy, verify, recover.
+
+#### Phase 1 — the refusals
+
+Every one of these aborts before a single container is touched, and exits non-zero:
+
+| Guard | Why it exists |
+|-------|---------------|
+| `hostname -s` must be `cookiekeeper-<env>-app` | A swapped `DEV_SSH_HOST`/`PRD_SSH_HOST` secret would otherwise deploy the production tag onto dev, silently and green. Override for testing with `DEPLOY_EXPECT_HOST`. |
+| `/usr/local/sbin/cookiekeeper-egress-firewall` must exist and list this `APP_SUBNET` | An unfiltered container network must never come up quietly (ADR-18). **Fatal**, not a warning. Escape hatch: `DEPLOY_ALLOW_UNFILTERED=1`, which downgrades it to a loud warning. |
+| dev must **not** be `MAIL_PROVIDER=brevo`; prd must **be** `brevo` | Constraint #4. Backwards on dev, a test signup mails a real person and burns Brevo's sending reputation. Unset on prd sends production mail nowhere. |
+| prd must have no `mailpit` container from a previous run | `up --wait` does **not** remove an already-running container just because its profile is now disabled. Without this check, one bad deploy leaves Mailpit in production indefinitely. |
+| `.env` must contain `DB_URL`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, … | `compose.yml` guards these with `${VAR:?}`, so a missing secret is a named error rather than a container that boots with an empty password. |
+
+#### Phase 2 — the deploy
 
 ```bash
-# refuses to run if `hostname -s` is not cookiekeeper-<env>-app  (a swapped SSH
-# secret would otherwise deploy the production tag onto dev, silently and green)
-# refuses to run if APP_SUBNET is absent from the installed egress firewall
-#   (ADR-18) — an unfiltered container network must never come up quietly
-
 cat > .env.deploy <<EOF                           # the only file automation writes
 IMAGE_TAG=…  ENV_NAME=…  APP_SUBNET=…  API_DIGEST=…  SCANNER_DIGEST=…  DASHBOARD_DIGEST=…
 EOF
 docker compose --project-name cookiekeeper-<env> --file compose.yml \
-               --env-file .env --env-file .env.deploy [--profile dev] pull
+               --env-file .env --env-file .env.deploy pull
 docker compose … up -d --remove-orphans --wait --wait-timeout 240
 docker image prune -af --filter "until=168h"      # the 40GB disk needs this
 ```
 
-Flyway migrates on `api` container boot; there is no separate migration step. The prune filters on image **creation** time, not pull time, so a rollback target built more than a week ago will have been pruned — `up` re-pulls it automatically, so the rollback still works, just more slowly.
+> **Compose reads the shell environment *before* `--env-file`.** This is the single most important thing to know before editing this script. Writing a value into `.env.deploy` does **not** make it win — a variable of the same name already in the shell beats it. That is why `deploy.sh` `export`s every value it derives instead of relying on the file. A stale `API_DIGEST` in the environment once rendered `repo:tag` immediately followed by `sha256:…` with the `@` stripped: an invalid reference that fails at `pull`. If you add a variable to `.env.deploy`, export it too, or it is decorative.
 
-**`--wait` is the health gate.** `api` and `dashboard` carry healthchecks, so the command does not return until they are actually serving — `api`'s is `/actuator/health`, which includes the DataSource indicator, so an unreachable database fails the deploy rather than leaving a container that is "running" and answering 503. Without this the first signal of a broken release was the smoke job several minutes later, after CI had already reported the deploy step green. `scanner` has no healthcheck on purpose: it exposes no ports at all (SSRF posture), so there is nothing to probe; a scanner that boots and dies is caught by the queue's visibility timeout instead.
+Dev sets `COMPOSE_PROFILES=dev` (Mailpit); prd exports it **empty**, rather than just omitting it, for the same precedence reason. Flyway migrates on `api` container boot — there is no separate migration step.
 
-**If the stack does not come up healthy**, `deploy.sh` dumps `ps` and the last 50 log lines, then rewrites `.env.deploy` with the previous deploy's tag and digests and runs `up --wait` again. It exits non-zero either way, so the workflow still fails — the rollback restores service, it does not hide the failure.
+The prune filters on image **creation** time, not pull time, so a rollback target built more than a week ago will have been pruned. `up` re-pulls it automatically, so the rollback still works, just more slowly.
+
+#### Phase 3 — the health gate
+
+`api` and `dashboard` carry healthchecks, so `--wait` does not return until they are actually serving. `api`'s probe is `/actuator/health`, which includes the DataSource indicator, so an unreachable database fails the deploy instead of leaving a container that is "running" and answering 503. `scanner` has no healthcheck on purpose: it exposes no ports at all (SSRF posture), so there is nothing to probe — a scanner that boots and dies is caught by the queue's visibility timeout instead.
+
+**`--wait` alone is not trusted.** It returns exit 0 on the timeout path often enough to matter, so `deploy.sh` re-inspects every container afterwards and fails if any is not `running`, or has a health status that is neither `healthy` nor `none`. A deploy is green only if both checks agree.
+
+#### Phase 4 — recovery
+
+On failure the script writes `deploy-failure-<timestamp>.log` next to the `.env` — `ps` output plus the last 50 log lines per service — at mode `0600`. It is deliberately **not** sent back to CI: container logs can contain request data, and CI logs are far more widely readable than the box.
+
+Then it rolls back to the **last known good** deploy, which is `.env.deploy.lastgood` plus `compose.yml.lastgood` — both snapshotted only *after* a deploy has passed Phase 3. The distinction matters: rolling back to "the previous deploy" would happily restore a release that never came up either. Two cases behave differently on purpose:
+
+- **prd with no digest pins recorded** — refuses to roll back. An unpinned prd rollback would resolve tags afresh and could run bytes nobody verified.
+- **No `.env.deploy.lastgood` at all** (a host that has never had a successful deploy) — prints `no distinct last-known-good deploy to roll back to`, leaves the stack up for inspection, and exits 1. It does not roll back into a void. **This is the normal path for your very first deploy**, which by definition has nothing behind it.
+
+The script exits non-zero whether or not the rollback succeeds, so the workflow still fails. A rollback restores service; it does not hide the failure.
 
 > **The rollback is the application only.** Flyway is forward-only and already ran on the new image's boot; it is **not** undone. This recovers the common case — a build that will not start — and for a bad migration it buys you an older app against an already-migrated schema, which may itself be wrong. Read the migration before trusting a green rollback.
 
@@ -1015,6 +1102,33 @@ dc() { docker compose --project-name "cookiekeeper-<env>" --file compose.yml \
 Both `--env-file`s are required: `.env.deploy` carries `ENV_NAME` and `APP_SUBNET`, and compose refuses to render without them rather than guessing. If `dc` reports `required variable APP_SUBNET is missing a value`, you dropped that flag — not a broken deploy.
 
 There is no `postgres` service in that project — `dc ps` listing three containers (`api`, `dashboard`, `scanner`) is correct, not a crash.
+
+### `deploy.sh` refused to start (nothing was touched)
+
+The common first-deploy case. Every Phase-1 guard (§10.4) aborts before any container changes, and names itself in the message:
+
+| Message contains | Fix |
+|------------------|-----|
+| `refusing to deploy … this is not cookiekeeper-<env>-app` | You are on the wrong box, or `DEV_SSH_HOST`/`PRD_SSH_HOST` are swapped in the Actions secrets |
+| `cannot confirm container egress is filtered` | Install the egress firewall (`server-setup.md` §3). To deploy anyway — **only** knowingly, on dev — re-run with `DEPLOY_ALLOW_UNFILTERED=1` |
+| `MAIL_PROVIDER=brevo` on dev | Set `MAIL_PROVIDER=smtp` in `/opt/cookiekeeper/dev/.env`. Dev mail belongs in Mailpit (§7.6) |
+| `expected 'brevo'` on prd | Set `MAIL_PROVIDER=brevo` in `/opt/cookiekeeper/prd/.env` |
+| `mailpit ... in prd` | A previous run left the container behind. `docker rm -f cookiekeeper-prd-mailpit-1`, then redeploy |
+| `missing from .env` | That secret is absent from the hand-written `.env` — see §9.2 for the full list |
+
+### A deploy failed and rolled back (or refused to)
+
+`deploy-failure-<timestamp>.log` is written next to the `.env`, mode `0600`, containing `ps` plus the last 50 log lines per service. It is deliberately **not** returned to CI — container logs can carry request data. Read it on the box:
+
+```bash
+ls -t /opt/cookiekeeper/<env>/deploy-failure-*.log | head -1 | xargs less
+```
+
+Three outcomes are normal, depending on what the host had before:
+
+- **Rolled back** — the previous healthy release is running again. The workflow still fails, on purpose; the rollback restores service without hiding the breakage.
+- **`no distinct last-known-good deploy to roll back to`** — nothing has ever deployed successfully here, so the stack is left up for inspection. Expected on a first deploy.
+- **prd refused to roll back** — the recorded good deploy has no digest pins, and an unpinned prd rollback could run bytes nobody verified. Promote a known-good tag with `release-prd` instead.
 
 ### A deploy finished but the site is unchanged
 

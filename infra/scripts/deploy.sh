@@ -134,10 +134,10 @@ if [[ -r "$FIREWALL_SCRIPT" ]]; then
   fi
 elif [[ "${DEPLOY_ALLOW_UNFILTERED-}" == "1" ]]; then
   echo "!! WARNING: ${FIREWALL_SCRIPT} not readable and DEPLOY_ALLOW_UNFILTERED=1." >&2
-  echo "!! Deploying with UNVERIFIED container egress filtering. Install it (server-setup.md §4)." >&2
+  echo "!! Deploying with UNVERIFIED container egress filtering. Install it (server-setup.md §3)." >&2
 else
   echo "!! ${FIREWALL_SCRIPT} is not readable — cannot confirm container egress is filtered." >&2
-  echo "!! Install it (server-setup.md §4), or re-run with DEPLOY_ALLOW_UNFILTERED=1 to accept" >&2
+  echo "!! Install it (server-setup.md §3), or re-run with DEPLOY_ALLOW_UNFILTERED=1 to accept" >&2
   echo "!! running the scanner's untrusted-JS workload unfiltered." >&2
   exit 1
 fi
