@@ -5,6 +5,7 @@ import eu.cookiekeeper.billing.EntitlementService
 import eu.cookiekeeper.common.CookieKeeperProperties
 import eu.cookiekeeper.site.RescanCandidate
 import eu.cookiekeeper.site.SiteRepository
+import eu.cookiekeeper.site.SiteStatus
 import org.slf4j.LoggerFactory
 import org.springframework.core.NestedRuntimeException
 import org.springframework.scheduling.annotation.Scheduled
@@ -146,18 +147,34 @@ class ScheduledRescanJob(
 
     /**
      * The check-then-enqueue for one site, inside its own transaction. Mirrors [ScanRequestService.request]:
-     * take the per-site advisory lock, re-check for a live scan (so a concurrent manual re-scan or a second
-     * replica can't produce a duplicate), and enqueue a `SCHEDULED` scan only if none is in flight. Returns
-     * false when a live scan already exists.
+     * take the per-site advisory lock, re-check the site's status AND for a live scan (so a concurrent
+     * manual re-scan or a second replica can't produce a duplicate), and enqueue a `SCHEDULED` scan only
+     * if the site is still active and none is in flight. Returns false otherwise.
+     *
+     * The status re-check is necessary, not defensive: [selectDueSites] read `due` from
+     * [SiteRepository.findRescanCandidates] in an EARLIER, already-committed transaction, and this site's
+     * own enqueue can run anywhere from moments to the length of the whole batch later. In that window an
+     * account erasure ([AccountDeletionService][eu.cookiekeeper.account.AccountDeletionService], which
+     * archives sites under a per-USER lock this job never takes) can commit — without this re-check, this
+     * job would enqueue a scan for a site an erasure already tombstoned.
      */
     private fun enqueueDueSite(
         due: DueSite,
         availableAt: Instant,
     ): Boolean {
         scanRepository.acquireSiteScanLock(siteLockKey(due.siteId))
-        if (scanRepository.existsBySiteIdAndStatusIn(due.siteId, ScanRequestService.LIVE_STATUSES)) return false
-        scanQueue.enqueue(due.siteId, ScanTrigger.SCHEDULED, availableAt, due.priority)
-        return true
+        // findStatusById, not findById: this method's own transaction never loaded a SiteEntity for this
+        // id before now, so a plain findById would already re-query correctly here — but the projection
+        // is used anyway to match ScanRequestService's re-check and stay safe if that ever changes (see
+        // SiteRepository.findStatusById's doc on why an entity find can be silently served from the
+        // persistence context's identity map instead of hitting the database).
+        val canEnqueue =
+            siteRepository.findStatusById(due.siteId) == SiteStatus.ACTIVE &&
+                !scanRepository.existsBySiteIdAndStatusIn(due.siteId, ScanRequestService.LIVE_STATUSES)
+        if (canEnqueue) {
+            scanQueue.enqueue(due.siteId, ScanTrigger.SCHEDULED, availableAt, due.priority)
+        }
+        return canEnqueue
     }
 
     /**

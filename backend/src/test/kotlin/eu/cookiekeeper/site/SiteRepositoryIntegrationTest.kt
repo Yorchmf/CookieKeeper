@@ -10,6 +10,7 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase
 import org.springframework.context.annotation.Import
 import org.springframework.dao.DataIntegrityViolationException
+import org.springframework.jdbc.core.JdbcTemplate
 import java.time.Instant
 import java.util.UUID
 import kotlin.test.assertEquals
@@ -26,6 +27,9 @@ class SiteRepositoryIntegrationTest {
 
     @Autowired
     private lateinit var siteRepository: SiteRepository
+
+    @Autowired
+    private lateinit var jdbcTemplate: JdbcTemplate
 
     private fun newUser(): UserEntity =
         userRepository.saveAndFlush(
@@ -154,6 +158,38 @@ class SiteRepositoryIntegrationTest {
                 ),
             )
         }
+    }
+
+    @Test
+    fun `findStatusById re-queries past the identity map that would make a second findById stale`() {
+        // This is the whole reason ScanRequestService / ScheduledRescanJob re-check the status via a
+        // projection and not a second entity find. Load the entity once (populating this persistence
+        // context's identity map), then commit a status change OUT OF BAND on the shared connection
+        // (mirroring a concurrent account erasure archiving the site). A second findById would be served
+        // the cached ACTIVE instance from the identity map; findStatusById must issue a real SELECT and
+        // observe the ARCHIVED write.
+        val user = newUser()
+        val site = newSite(user.id, "race.example.com")
+
+        // First load — same as the request's ownership check. Establishes the managed instance.
+        assertEquals(SiteStatus.ACTIVE, siteRepository.findByIdAndUserId(site.id, user.id)?.status)
+
+        // Out-of-band archive, straight to the row, bypassing the persistence context entirely.
+        jdbcTemplate.update("UPDATE sites SET status = 'archived' WHERE id = ?", site.id)
+
+        // The identity-map hazard the projection exists to dodge: findById is answered from the L1 cache.
+        assertEquals(
+            SiteStatus.ACTIVE,
+            siteRepository.findById(site.id).orElseThrow().status,
+            "findById is served from the identity map and cannot see the out-of-band archive",
+        )
+
+        // The fix: a projection query has no identity-map short-circuit, so it sees the committed archive.
+        assertEquals(
+            SiteStatus.ARCHIVED,
+            siteRepository.findStatusById(site.id),
+            "findStatusById must re-query and observe the archive a concurrent erasure committed",
+        )
     }
 
     @Test

@@ -34,7 +34,17 @@ class ScanRequestService(
      * Ordering is deliberate. Ownership is checked first (404 for anyone else's site), then the
      * **entitlement before any state**: a Starter user must get the same upgrade prompt whether or not a
      * scan happens to be running, otherwise the 409 leaks that the feature would have worked. Only then
-     * do we take the per-site lock and re-check for a live scan.
+     * do we take the per-site lock and re-check the site's status and for a live scan.
+     *
+     * The status re-check happens AFTER the lock, against [SiteRepository.findStatusById] rather than
+     * trusting the ownership lookup above: [AccountDeletionService][eu.cookiekeeper.account.AccountDeletionService]
+     * archives a site under a per-USER lock this method never takes, so a concurrent erasure can commit
+     * between the ownership check and this point. The re-check MUST be a projection query, not another
+     * entity find by id — this whole method runs in one transaction/persistence context, and a second
+     * `EntityManager.find()` for an id already loaded above would return the SAME cached managed instance
+     * instead of re-querying, silently defeating the whole re-check (see [SiteRepository.findStatusById]'s
+     * doc). The projection has no such identity-map short-circuit, so it genuinely observes a concurrent
+     * erasure's committed archive instead of enqueuing a scan for a site it already tombstoned.
      *
      * Transactional so the lock, the check and the enqueue are one atomic decision — the lock releases at
      * commit, and [ScanQueue.enqueue]'s own `@Transactional` joins this one rather than opening a second.
@@ -49,13 +59,14 @@ class ScanRequestService(
         userId: UUID,
         siteId: UUID,
     ): UUID {
-        val site = siteRepository.findByIdAndUserId(siteId, userId) ?: throw SiteNotFoundException()
+        siteRepository.findByIdAndUserId(siteId, userId) ?: throw SiteNotFoundException()
         entitlementService.requireOnDemandRescan(userId)
-        // An archived site has no widget and nothing to keep current; 404 rather than 409/403 keeps it
-        // indistinguishable from a site that never existed, matching the rest of the site surface.
-        if (site.status != SiteStatus.ACTIVE) throw SiteNotFoundException()
 
         scanRepository.acquireSiteScanLock(advisoryLockKey(siteId))
+        // Re-read under the lock (see the method doc): an archived site has no widget and nothing to
+        // keep current, and 404 — not 409/403 — keeps it indistinguishable from a site that never
+        // existed, matching the rest of the site surface.
+        if (siteRepository.findStatusById(siteId) != SiteStatus.ACTIVE) throw SiteNotFoundException()
         if (scanRepository.existsBySiteIdAndStatusIn(siteId, LIVE_STATUSES)) throw ScanAlreadyInProgressException()
 
         // Stamp the claim-ordering tier from the owner's plan. Resolved here (not inside the queue) so the

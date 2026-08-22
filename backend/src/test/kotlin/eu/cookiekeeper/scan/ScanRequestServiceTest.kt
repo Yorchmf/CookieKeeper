@@ -51,6 +51,10 @@ class ScanRequestServiceTest {
 
     private fun stubSite(site: SiteEntity?) {
         every { siteRepository.findByIdAndUserId(siteId, userId) } returns site
+        // The status re-check under the per-site lock re-reads via the status projection, NOT another
+        // findById — a second entity find would be served from the persistence context's identity map and
+        // could never observe a concurrent erasure (see ScanRequestService.request / findStatusById docs).
+        every { siteRepository.findStatusById(siteId) } returns site?.status
     }
 
     private fun stubLiveScan(exists: Boolean) {
@@ -119,6 +123,19 @@ class ScanRequestServiceTest {
     @Test
     fun `an archived site is a 404 — it has no widget and nothing to keep current`() {
         stubSite(site(status = SiteStatus.ARCHIVED))
+
+        assertThrows<SiteNotFoundException> { service.request(userId, siteId) }
+        verify(exactly = 0) { scanQueue.enqueue(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `a site archived by a concurrent account erasure after the ownership check is still a 404`() {
+        // The ownership lookup (findByIdAndUserId) sees the site ACTIVE — an erasure hadn't committed
+        // yet — but by the time this request takes the per-site lock, AccountDeletionService's own
+        // per-user-locked transaction has archived it. The status projection re-read under the lock,
+        // which (unlike a second findById) genuinely re-queries past the identity map, must catch this.
+        every { siteRepository.findByIdAndUserId(siteId, userId) } returns site(status = SiteStatus.ACTIVE)
+        every { siteRepository.findStatusById(siteId) } returns SiteStatus.ARCHIVED
 
         assertThrows<SiteNotFoundException> { service.request(userId, siteId) }
         verify(exactly = 0) { scanQueue.enqueue(any(), any(), any(), any()) }

@@ -148,6 +148,22 @@ interface SiteRepository : JpaRepository<SiteEntity, UUID> {
         userId: UUID,
     ): SiteEntity?
 
+    /**
+     * The site's CURRENT status alone, deliberately NOT the entity. [findById] (JPA's `EntityManager.find`)
+     * returns an already-managed instance straight from the persistence context's identity map when one
+     * is already loaded for that id — it does NOT re-query — so it cannot observe a write another
+     * transaction committed after this one first loaded the entity (e.g. via [findByIdAndUserId] earlier
+     * in the same request). A JPQL projection query has no such identity-map short-circuit: it always
+     * issues a real `SELECT`. [ScanRequestService][eu.cookiekeeper.scan.ScanRequestService.request] and
+     * [ScheduledRescanJob][eu.cookiekeeper.scan.ScheduledRescanJob] both need exactly that — a genuinely
+     * fresh read taken after their per-site lock, to catch a concurrent account erasure that archived the
+     * site in between.
+     */
+    @Query("SELECT s.status FROM SiteEntity s WHERE s.id = :id")
+    fun findStatusById(
+        @Param("id") id: UUID,
+    ): SiteStatus?
+
     fun findBySiteKeyAndStatus(
         siteKey: String,
         status: SiteStatus,
