@@ -220,6 +220,7 @@ class StripeApiGateway(
                 status = subscription.status,
                 priceId = item?.price?.id,
                 currentPeriodEnd = item?.currentPeriodEnd?.let(Instant::ofEpochSecond),
+                subscriptionCreatedAt = Instant.ofEpochSecond(subscription.created),
             ).also {
                 // Note the type only; never log ids/metadata (customer-linkable). Aids audit of what was applied.
                 log.info("Parsed Stripe subscription event type={}", type)

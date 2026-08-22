@@ -62,6 +62,13 @@ sealed interface StripeEventData {
         val status: String,
         val priceId: String?,
         val currentPeriodEnd: Instant?,
+        // The Stripe SUBSCRIPTION OBJECT's own `created` — fixed at subscription creation and
+        // identical across every event this subscription ever fires. This is a lineage marker, unlike
+        // the EVENT's own `created` ([StripeWebhookEvent.created]), which is when a given webhook
+        // fired and tells you nothing about how old the subscription itself is. BillingWebhookService
+        // uses it to tell a genuinely newer replacement subscription apart from a straggling event on
+        // an already-superseded one, which a delivery-time watermark alone cannot do.
+        val subscriptionCreatedAt: Instant,
     ) : StripeEventData
 
     /** Any event type we log for idempotency/audit but take no action on. */

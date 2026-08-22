@@ -97,10 +97,12 @@ class BillingWebhookService(
 
     /**
      * Upsert the account's single subscription row from a `customer.subscription.*` event. A blocking,
-     * transaction-scoped advisory lock keyed on the subscription is taken FIRST, so a concurrent
-     * delivery of another event for the same subscription waits and then reads our just-committed
-     * state — closing the read-modify-write lost-update window the timestamp watermark alone can't
-     * (two threads could both read the old watermark and both save, last-writer-wins). Linking then
+     * transaction-scoped advisory lock keyed on the ACCOUNT (see [accountLockKey]) is taken FIRST, so
+     * ANY two concurrently-delivered events for this account — even ones naming two DIFFERENT Stripe
+     * subscriptions — wait on each other and read the other's just-committed state, instead of both
+     * reading the old row and racing to save it (last-writer-wins). Keying the lock on the subscription
+     * id alone would miss exactly that cross-subscription race: two different ids hash to two different
+     * locks and run unserialized against the same one-row-per-user record. [resolveExisting] then
      * prefers the Stripe subscription id, then the metadata user id we stamped at Checkout, then the
      * customer id — so an event is attributed even before our row carries the sub id.
      */
@@ -108,12 +110,14 @@ class BillingWebhookService(
         data: StripeEventData.SubscriptionChanged,
         eventCreatedAt: Instant,
     ) {
-        // Serialize all processing for THIS subscription before any read (see the method doc).
-        subscriptionRepository.acquireSubscriptionLock(advisoryLockKey(data.subscriptionId))
+        // Serialize all processing for THIS ACCOUNT before any read (see the method doc) — not just
+        // for this subscription id, so a foreign-subscription race can't slip past the lock.
+        subscriptionRepository.acquireSubscriptionLock(advisoryLockKey(accountLockKey(data)))
 
         val existing = resolveExisting(data)
-        if (isOutOfOrder(existing, data.status, eventCreatedAt)) {
-            log.info("Skipping out-of-order Stripe subscription event (older, or a same-second terminal-row reorder)")
+        val skipReason = skipReasonFor(existing, data, eventCreatedAt)
+        if (skipReason != null) {
+            log.info(skipReason)
             return
         }
 
@@ -123,6 +127,42 @@ class BillingWebhookService(
         val row = upsertRow(existing, data, plan, eventCreatedAt) ?: return
         subscriptionRepository.save(row)
         publishLifecycleEmails(existing, row)
+    }
+
+    /**
+     * The most-stable identifier available for this account, to serialize its billing events on.
+     * [StripeEventData.SubscriptionChanged.customerId] is preferred FIRST — not [userId] — because
+     * Stripe requires every subscription to carry a customer, so it is the one field guaranteed
+     * identical across ALL of an account's subscriptions. [userId] is our own Checkout-stamped
+     * metadata and can be absent on a subscription created out-of-band (e.g. a comped account set up
+     * directly in the Stripe dashboard); keying on userId when present would let that subscription's
+     * events lock on a DIFFERENT key than the account's other, metadata-bearing subscriptions,
+     * silently reopening the cross-subscription race this lock exists to close. subscriptionId is the
+     * last resort, only for an event with neither — which [newSubscription] drops anyway.
+     */
+    private fun accountLockKey(data: StripeEventData.SubscriptionChanged): String =
+        data.customerId ?: data.userId?.toString() ?: data.subscriptionId
+
+    /**
+     * Why this event must not be applied over [existing]'s current state, or null to proceed.
+     * [isOlderSubscriptionLineage] is checked whenever the event names a DIFFERENT subscription than
+     * the row currently tracks; [isOutOfOrder]'s redelivery-reordering guard only makes sense for
+     * events that share the row's CURRENT subscription (a lineage change resets what "in order" means,
+     * since the new subscription's own event-timing has nothing to do with the old one's watermark).
+     */
+    private fun skipReasonFor(
+        existing: SubscriptionEntity?,
+        data: StripeEventData.SubscriptionChanged,
+        eventCreatedAt: Instant,
+    ): String? {
+        val sameSubscription = existing != null && existing.stripeSubId == data.subscriptionId
+        return when {
+            !sameSubscription && isOlderSubscriptionLineage(existing, data) ->
+                "Skipping Stripe subscription event for an older, already-superseded subscription lineage"
+            sameSubscription && isOutOfOrder(existing, data.status, eventCreatedAt) ->
+                "Skipping out-of-order Stripe subscription event (older, or a same-second terminal-row reorder)"
+            else -> null
+        }
     }
 
     /**
@@ -149,6 +189,39 @@ class BillingWebhookService(
         subscriptionRepository.findByStripeSubId(data.subscriptionId)
             ?: data.userId?.let { subscriptionRepository.findByUserId(it) }
             ?: data.customerId?.let { subscriptionRepository.findByStripeCustomerId(it) }
+
+    /**
+     * True when [data] names a subscription STRICTLY OLDER, by its own Stripe-assigned creation time
+     * ([StripeEventData.SubscriptionChanged.subscriptionCreatedAt]), than the subscription [existing]
+     * already tracks ([SubscriptionEntity.stripeSubCreatedAt]) — i.e. this event belongs to a
+     * subscription the account has already moved on from.
+     *
+     * A delivery-time watermark ([isOutOfOrder]'s `stripeEventAt`) cannot make this distinction: Stripe's
+     * own dunning can retry an already-superseded subscription for days, and its terminal `deleted`
+     * event can carry an EVENT `created` later than our watermark, well after the customer re-subscribed
+     * on a genuinely new subscription. The subscription OBJECT's own `created`, by contrast, is fixed at
+     * creation and never changes across that subscription's whole event stream — so comparing lineage
+     * instead of delivery time correctly rejects the stale event regardless of when it happens to arrive,
+     * and correctly accepts a real replacement regardless of arrival order relative to the old
+     * subscription's own trailing events (its `subscriptionCreatedAt` is unconditionally later).
+     *
+     * [existing]'s lineage being unknown (`stripeSubCreatedAt == null` — a row written before V29, or the
+     * account's first-ever event) is treated as "not older" — permissive rather than guessing. This is a
+     * KNOWINGLY ACCEPTED, temporary reopening of the exact clobber this guard exists to prevent: a row
+     * that predates V29 has NO protection against a stale, older-lineage, cross-subscription event until
+     * its OWN next `customer.subscription.*` event stamps a real marker (which is not guaranteed to be
+     * "soon" — a stable subscription can go a long time between subscription-level events; invoices
+     * don't count). See [BillingWebhookServiceTest] for the pinned-behavior regression test. Acceptable
+     * pre-launch/low-volume; a Stripe API backfill of `stripe_sub_created_at` for existing rows removes
+     * the window entirely and should be revisited before real subscriber volume makes it worth doing.
+     */
+    private fun isOlderSubscriptionLineage(
+        existing: SubscriptionEntity?,
+        data: StripeEventData.SubscriptionChanged,
+    ): Boolean {
+        val currentLineage = existing?.stripeSubCreatedAt ?: return false
+        return !data.subscriptionCreatedAt.isAfter(currentLineage)
+    }
 
     /**
      * True when this event must NOT be applied over the row's current state, in two cases:
@@ -200,6 +273,7 @@ class BillingWebhookService(
             periodEnd = data.currentPeriodEnd ?: existing.periodEnd,
             updatedAt = now,
             stripeEventAt = eventCreatedAt,
+            stripeSubCreatedAt = data.subscriptionCreatedAt,
         ) ?: newSubscription(data, plan, eventCreatedAt, now)
     }
 
@@ -225,6 +299,7 @@ class BillingWebhookService(
             createdAt = now,
             updatedAt = now,
             stripeEventAt = eventCreatedAt,
+            stripeSubCreatedAt = data.subscriptionCreatedAt,
         )
     }
 
@@ -241,12 +316,13 @@ class BillingWebhookService(
     }
 
     /**
-     * Fold a Stripe subscription id into the 64-bit key `pg_advisory_xact_lock` takes (64-bit FNV-1a).
-     * A rare collision only makes two unrelated subscriptions serialize briefly — correctness holds.
+     * Fold an account lock key (see [accountLockKey]) into the 64-bit key `pg_advisory_xact_lock`
+     * takes (64-bit FNV-1a). A rare collision only makes two unrelated accounts serialize briefly —
+     * correctness holds.
      */
-    private fun advisoryLockKey(subscriptionId: String): Long {
+    private fun advisoryLockKey(key: String): Long {
         var hash = FNV_OFFSET_BASIS
-        for (byte in subscriptionId.toByteArray(Charsets.UTF_8)) {
+        for (byte in key.toByteArray(Charsets.UTF_8)) {
             hash = hash xor (byte.toLong() and BYTE_MASK)
             hash *= FNV_PRIME
         }

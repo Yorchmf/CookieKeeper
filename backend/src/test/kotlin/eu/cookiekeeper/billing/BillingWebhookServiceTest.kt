@@ -106,10 +106,14 @@ class BillingWebhookServiceTest {
     private val userId = UUID.randomUUID()
     private val eventCreated = Instant.parse("2026-08-01T11:59:00Z")
 
+    // Default lineage marker for "sub_1" — well before eventCreated, so tests overriding eventCreated
+    // via the watermark parameter still have a sane, earlier subscription-creation time.
+    private val sub1Created = eventCreated.minusSeconds(ONE_DAY_SECONDS)
+
     @BeforeEach
     fun stubSubscriptionLock() {
-        // Non-relaxed mock: the per-subscription advisory lock taken at the top of applySubscription
-        // must be stubbed for every path that reaches it.
+        // Non-relaxed mock: the account advisory lock taken at the top of applySubscription must be
+        // stubbed for every path that reaches it.
         every { subscriptionRepository.acquireSubscriptionLock(any()) } returns 1L
     }
 
@@ -120,6 +124,7 @@ class BillingWebhookServiceTest {
         status: String = "active",
         priceId: String? = "price_pro",
         eventId: String = "evt_1",
+        subscriptionCreatedAt: Instant = sub1Created,
     ) = StripeWebhookEvent(
         id = eventId,
         type = "customer.subscription.updated",
@@ -133,6 +138,7 @@ class BillingWebhookServiceTest {
                 status = status,
                 priceId = priceId,
                 currentPeriodEnd = eventCreated.plusSeconds(THIRTY_DAYS_SECONDS),
+                subscriptionCreatedAt = subscriptionCreatedAt,
             ),
     )
 
@@ -149,6 +155,7 @@ class BillingWebhookServiceTest {
         stripeEventAt: Instant?,
         plan: Plan = Plan.STARTER,
         status: String = "active",
+        stripeSubCreatedAt: Instant? = sub1Created,
     ) = SubscriptionEntity(
         userId = userId,
         stripeCustomerId = "cus_1",
@@ -159,6 +166,7 @@ class BillingWebhookServiceTest {
         createdAt = now.minusSeconds(ONE_DAY_SECONDS),
         updatedAt = now.minusSeconds(ONE_DAY_SECONDS),
         stripeEventAt = stripeEventAt,
+        stripeSubCreatedAt = stripeSubCreatedAt,
     )
 
     @Test
@@ -390,6 +398,163 @@ class BillingWebhookServiceTest {
 
         verify(exactly = 0) { eventPublisher.publishEvent(match<Any> { it is SubscriptionActivated }) }
         verify(exactly = 0) { eventPublisher.publishEvent(match<Any> { it is PaymentIssue }) }
+    }
+
+    @Test
+    fun `handle skips a late event for a superseded subscription even after the current one turns past_due`() {
+        // The row already moved on to a NEWER-lineage subscription (a re-subscribe), which has since
+        // gone past_due on its own. A stale dunning-conclusion event for the OLD, OLDER-lineage
+        // subscription — carrying a LATER event `created` than our watermark — must still not clobber
+        // the row: lineage, not current status, is what makes it foreign.
+        gateway.event =
+            subscriptionEvent(
+                subscriptionId = "sub_old",
+                status = "canceled",
+                eventId = "evt_late",
+                subscriptionCreatedAt = sub1Created.minusSeconds(THIRTY_DAYS_SECONDS),
+            )
+        every { stripeEventRepository.findByStripeEventId("evt_late") } returns
+            recorded(processedAt = null).copy(stripeEventId = "evt_late")
+        every { subscriptionRepository.findByStripeSubId("sub_old") } returns null
+        every { subscriptionRepository.findByUserId(userId) } returns
+            existingSubscription(stripeEventAt = eventCreated.minusSeconds(60), status = "past_due")
+                .copy(stripeSubId = "sub_new")
+
+        service.handle("{}", "sig")
+
+        verify(exactly = 0) { subscriptionRepository.save(any()) }
+        verify(exactly = 0) { eventPublisher.publishEvent(any()) }
+        verify { stripeEventRepository.markProcessedAndRedact("evt_late", now) }
+    }
+
+    @Test
+    fun `handle applies a new subscription's own event even while the old row still reads active`() {
+        // Out-of-order delivery: the NEW subscription's first event arrives BEFORE the old
+        // subscription's terminal event has landed, so the row still shows the old id as active. Since
+        // "sub_new" is a genuinely later lineage (subscriptionCreatedAt after the tracked one), it must
+        // apply immediately rather than being dropped as "foreign" — a customer's real re-subscribe
+        // must never be silently discarded just because Stripe delivered it first.
+        gateway.event =
+            subscriptionEvent(
+                subscriptionId = "sub_new",
+                status = "active",
+                subscriptionCreatedAt = eventCreated.plusSeconds(60),
+            )
+        every { stripeEventRepository.findByStripeEventId("evt_1") } returns recorded(processedAt = null)
+        every { subscriptionRepository.findByStripeSubId("sub_new") } returns null
+        every { subscriptionRepository.findByUserId(userId) } returns
+            existingSubscription(stripeEventAt = eventCreated.minusSeconds(60), status = "active")
+                .copy(stripeSubId = "sub_old")
+        val saved = slot<SubscriptionEntity>()
+        every { subscriptionRepository.save(capture(saved)) } answers { saved.captured }
+
+        service.handle("{}", "sig")
+
+        assertEquals("sub_new", saved.captured.stripeSubId)
+        assertEquals("active", saved.captured.status)
+        verify { stripeEventRepository.markProcessedAndRedact("evt_1", now) }
+    }
+
+    @Test
+    fun `handle adopts a new subscription id when the account's current subscription is past_due`() {
+        // A genuine re-subscribe: the new subscription's lineage is later, so adopting it applies
+        // regardless of the old subscription's current status.
+        gateway.event = subscriptionEvent(subscriptionId = "sub_new", status = "active", subscriptionCreatedAt = eventCreated)
+        every { stripeEventRepository.findByStripeEventId("evt_1") } returns recorded(processedAt = null)
+        every { subscriptionRepository.findByStripeSubId("sub_new") } returns null
+        every { subscriptionRepository.findByUserId(userId) } returns
+            existingSubscription(stripeEventAt = eventCreated.minusSeconds(60), status = "past_due")
+                .copy(stripeSubId = "sub_old")
+        val saved = slot<SubscriptionEntity>()
+        every { subscriptionRepository.save(capture(saved)) } answers { saved.captured }
+
+        service.handle("{}", "sig")
+
+        assertEquals("sub_new", saved.captured.stripeSubId)
+        assertEquals("active", saved.captured.status)
+        verify { stripeEventRepository.markProcessedAndRedact("evt_1", now) }
+    }
+
+    @Test
+    fun `handle adopts a new subscription id when the account's current subscription is already canceled`() {
+        gateway.event = subscriptionEvent(subscriptionId = "sub_new", status = "active", subscriptionCreatedAt = eventCreated)
+        every { stripeEventRepository.findByStripeEventId("evt_1") } returns recorded(processedAt = null)
+        every { subscriptionRepository.findByStripeSubId("sub_new") } returns null
+        every { subscriptionRepository.findByUserId(userId) } returns
+            existingSubscription(stripeEventAt = eventCreated.minusSeconds(60), status = "canceled")
+                .copy(stripeSubId = "sub_old")
+        val saved = slot<SubscriptionEntity>()
+        every { subscriptionRepository.save(capture(saved)) } answers { saved.captured }
+
+        service.handle("{}", "sig")
+
+        assertEquals("sub_new", saved.captured.stripeSubId)
+        verify { stripeEventRepository.markProcessedAndRedact("evt_1", now) }
+    }
+
+    @Test
+    fun `handle drops a same-created-second differing subscription id as foreign, not as a new lineage`() {
+        // Two different subscription ids should never share a creation instant in practice; if they
+        // somehow did, the conservative reading (not-after ⇒ foreign) is the safe one.
+        gateway.event = subscriptionEvent(subscriptionId = "sub_tied", status = "active", subscriptionCreatedAt = sub1Created)
+        every { stripeEventRepository.findByStripeEventId("evt_1") } returns recorded(processedAt = null)
+        every { subscriptionRepository.findByStripeSubId("sub_tied") } returns null
+        every { subscriptionRepository.findByUserId(userId) } returns
+            existingSubscription(stripeEventAt = eventCreated.minusSeconds(60), status = "active")
+
+        service.handle("{}", "sig")
+
+        verify(exactly = 0) { subscriptionRepository.save(any()) }
+        verify { stripeEventRepository.markProcessedAndRedact("evt_1", now) }
+    }
+
+    @Test
+    fun `handle applies over an unknown-lineage existing row rather than rejecting a foreign subscription id`() {
+        // Pinned, ACCEPTED-RISK behavior (see the V29 migration comment and isOlderSubscriptionLineage's
+        // doc): a row written before the lineage column existed has no marker to compare against, so a
+        // differing subscription id is treated as "not older" and applied — even though, in the exact
+        // scenario this feature exists to prevent, that event could be a stale cross-subscription
+        // clobber. This closes once the row's own next event stamps a real lineage marker. If this test
+        // starts failing, that is a deliberate policy change, not a regression to silently "fix."
+        gateway.event = subscriptionEvent(subscriptionId = "sub_foreign", status = "canceled")
+        every { stripeEventRepository.findByStripeEventId("evt_1") } returns recorded(processedAt = null)
+        every { subscriptionRepository.findByStripeSubId("sub_foreign") } returns null
+        every { subscriptionRepository.findByUserId(userId) } returns
+            existingSubscription(
+                stripeEventAt = eventCreated.minusSeconds(60),
+                status = "active",
+                stripeSubCreatedAt = null,
+            )
+        val saved = slot<SubscriptionEntity>()
+        every { subscriptionRepository.save(capture(saved)) } answers { saved.captured }
+
+        service.handle("{}", "sig")
+
+        assertEquals("sub_foreign", saved.captured.stripeSubId)
+        assertEquals("canceled", saved.captured.status)
+    }
+
+    @Test
+    fun `handle locks on the same key whether or not the event carries the user-id metadata`() {
+        // accountLockKey prefers customerId over userId specifically so two of the same account's
+        // subscriptions — one Checkout-created (carries userId metadata) and one created out-of-band
+        // (does not) — still serialize against each other. Verified by asserting the SAME lock key is
+        // derived for both, without needing to know the raw pre-hash string.
+        val lockKeys = mutableListOf<Long>()
+        every { subscriptionRepository.acquireSubscriptionLock(capture(lockKeys)) } returns 1L
+        every { stripeEventRepository.findByStripeEventId(any()) } returns recorded(processedAt = null)
+        every { subscriptionRepository.findByStripeSubId("sub_1") } returns null
+        every { subscriptionRepository.findByUserId(userId) } returns null
+        every { subscriptionRepository.findByStripeCustomerId("cus_shared") } returns null
+        every { subscriptionRepository.save(any()) } answers { firstArg() }
+
+        gateway.event = subscriptionEvent(userId = userId, customerId = "cus_shared", eventId = "evt_a")
+        service.handle("{}", "sig")
+        gateway.event = subscriptionEvent(userId = null, customerId = "cus_shared", eventId = "evt_b")
+        service.handle("{}", "sig")
+
+        assertEquals(2, lockKeys.size)
+        assertEquals(lockKeys[0], lockKeys[1], "same customerId must hash to the same lock key regardless of userId presence")
     }
 
     @Test

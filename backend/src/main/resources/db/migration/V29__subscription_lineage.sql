@@ -1,0 +1,23 @@
+-- === billing: subscription lineage marker (fixes stale-subscription clobber) ===
+-- BillingWebhookService one-row-per-user design (V12/V13) guarded against reordered redelivery with
+-- `stripe_event_at` — the last APPLIED EVENT's `created`. That watermark cannot tell a genuinely newer
+-- REPLACEMENT subscription apart from a straggling event on an already-superseded one: Stripe's own
+-- dunning retries on a subscription the customer already replaced can fire a terminal event (e.g.
+-- `deleted`) whose event-level `created` is LATER than the watermark, well after the replacement
+-- subscription was adopted — clobbering an active row with stale cancellation.
+--
+-- The fix needs the SUBSCRIPTION OBJECT's own `created`, which is fixed at subscription creation and
+-- identical across every event that subscription ever fires (unlike the event's `created`, which is
+-- when a given webhook happened to fire). Comparing that against the row's already-adopted subscription
+-- lineage — not the event-delivery watermark — is what lets the handler recognize "this event belongs
+-- to an older, already-replaced subscription" regardless of when the event itself arrived.
+--
+-- Nullable and with no backfill: existing rows simply have no known lineage yet, so the handler treats
+-- them permissively (accepting any differing-subscription event) until their OWN next applied event
+-- stamps a real marker. That is a knowingly accepted, temporary reopening of the exact clobber this
+-- migration exists to prevent — not guaranteed to close "soon" for a stable subscription that goes a
+-- long time between subscription-level events. See BillingWebhookService's isOlderSubscriptionLineage
+-- doc. Acceptable pre-launch/low-volume; a one-off Stripe API backfill of this column removes the
+-- window entirely and should be revisited before real subscriber volume makes it worth doing.
+ALTER TABLE subscriptions
+    ADD COLUMN stripe_sub_created_at timestamptz;

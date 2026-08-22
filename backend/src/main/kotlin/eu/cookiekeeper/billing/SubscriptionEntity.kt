@@ -49,6 +49,15 @@ data class SubscriptionEntity(
     // the first event stamps it.
     @Column(name = "stripe_event_at")
     val stripeEventAt: Instant? = null,
+    // The tracked subscription's OWN `created` (V29) — fixed at Stripe subscription creation, unlike
+    // [stripeEventAt] which is when the last APPLIED EVENT fired. BillingWebhookService compares an
+    // incoming event's subscription lineage against this, not against [stripeEventAt], to tell a
+    // genuinely newer replacement subscription apart from a straggling event on an already-superseded
+    // one — an event-delivery-time watermark alone cannot make that distinction. Null only for rows
+    // written before this column existed; they accept the next event unconditionally, which then
+    // stamps it.
+    @Column(name = "stripe_sub_created_at")
+    val stripeSubCreatedAt: Instant? = null,
 ) {
     /** True for the Stripe statuses that entitle the user to their plan. */
     val isActive: Boolean get() = status in ACTIVE_STATUSES
@@ -77,12 +86,14 @@ interface SubscriptionRepository : JpaRepository<SubscriptionEntity, UUID> {
     fun findByStripeCustomerId(stripeCustomerId: String): SubscriptionEntity?
 
     /**
-     * Transaction-scoped Postgres advisory lock keyed on a Stripe subscription, taken before the
-     * read-modify-write in [BillingWebhookService.applySubscription] so two concurrently-delivered
-     * events for the SAME subscription serialize instead of both reading the old `stripe_event_at`
-     * watermark and racing to save (last-writer-wins, which could strand e.g. `active` after
-     * `canceled`). Released automatically at commit/rollback; the wrapping `SELECT count(*)` just
-     * gives the native query a mappable non-void result (mirrors PolicyService's site lock).
+     * Transaction-scoped Postgres advisory lock keyed on the ACCOUNT (see
+     * [BillingWebhookService.accountLockKey]), taken before the read-modify-write in
+     * [BillingWebhookService.applySubscription] so two concurrently-delivered events for this
+     * account — even ones naming two DIFFERENT Stripe subscriptions — serialize instead of both
+     * reading the old row and racing to save (last-writer-wins, which could strand e.g. `active` after
+     * `canceled`, or let one subscription's write clobber another's). Released automatically at
+     * commit/rollback; the wrapping `SELECT count(*)` just gives the native query a mappable non-void
+     * result (mirrors PolicyService's site lock).
      */
     @Query(
         value = "SELECT count(*) FROM (SELECT pg_advisory_xact_lock(:key)) AS _lock",
