@@ -109,4 +109,28 @@ interface StripeEventRepository : JpaRepository<StripeEventEntity, UUID> {
         @Param("cutoff") cutoff: Instant,
         @Param("batchSize") batchSize: Int,
     ): Int
+
+    /**
+     * Nulls the raw [payload] of up to [batchSize] events that are STILL UNPROCESSED and received before
+     * [cutoff], returning the number redacted. Redact-on-process ([markProcessedAndRedact]) only ever
+     * fires on a successful apply; an event that keeps failing (a bug, an unattributable subscription)
+     * never reaches it, so without this its body — which for checkout/subscription events includes
+     * customer PII — would sit for the full retention window instead of a bounded few days
+     * ([eu.cookiekeeper.common.CookieKeeperProperties.Billing.stripeEventPoisonPayloadRetention]). The
+     * `payload IS NOT NULL` predicate makes an already-redacted or already-empty row a no-op match, so
+     * this is safe to run every cycle regardless of backlog state.
+     */
+    @Modifying
+    @Query(
+        value =
+            "UPDATE stripe_events SET payload = NULL WHERE ctid IN " +
+                "(SELECT ctid FROM stripe_events " +
+                "WHERE payload IS NOT NULL AND processed_at IS NULL AND received_at < :cutoff " +
+                "ORDER BY received_at LIMIT :batchSize)",
+        nativeQuery = true,
+    )
+    fun redactStalePoisonedPayloads(
+        @Param("cutoff") cutoff: Instant,
+        @Param("batchSize") batchSize: Int,
+    ): Int
 }

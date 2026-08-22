@@ -694,6 +694,12 @@ data class CookieKeeperProperties(
         // `stripe_events` inbox retention + prune batch (see [eu.cookiekeeper.billing.StripeWebhookReaper]).
         val stripeEventRetention: Duration = Duration.ofDays(DEFAULT_STRIPE_EVENT_RETENTION_DAYS),
         val stripeEventPruneBatchSize: Int = DEFAULT_STRIPE_EVENT_PRUNE_BATCH_SIZE,
+        // How long a webhook that keeps FAILING to apply may still hold its raw (PII-bearing) payload
+        // before the reaper redacts it early, ahead of the full retention window (see
+        // [eu.cookiekeeper.billing.StripeWebhookReaper]). Redact-on-process only fires on a SUCCESSFUL
+        // apply; a poison event (a bug, a permanently unattributable subscription) never processes, so
+        // without this its body would sit for the full [stripeEventRetention] instead of a few days.
+        val stripeEventPoisonPayloadRetention: Duration = Duration.ofDays(DEFAULT_STRIPE_EVENT_POISON_PAYLOAD_RETENTION_DAYS),
         // How far ahead of the trial's end the "ending soon" reminder goes out, and how many accounts
         // one nightly run will remind (see [eu.cookiekeeper.billing.TrialEndingReminderJob]).
         val trialReminderLeadTime: Duration = Duration.ofDays(DEFAULT_TRIAL_REMINDER_LEAD_DAYS),
@@ -714,6 +720,17 @@ data class CookieKeeperProperties(
             // A non-positive batch size makes the reaper delete nothing and loop until its per-run cap.
             require(stripeEventPruneBatchSize > 0) {
                 "cookiekeeper.billing.stripe-event-prune-batch-size must be positive (was $stripeEventPruneBatchSize)"
+            }
+            require(!stripeEventPoisonPayloadRetention.isZero && !stripeEventPoisonPayloadRetention.isNegative) {
+                "cookiekeeper.billing.stripe-event-poison-payload-retention must be a positive duration " +
+                    "(was $stripeEventPoisonPayloadRetention)"
+            }
+            // The redaction window must close BEFORE the row itself is deleted, or the payload it exists
+            // to protect would already be gone via the full-row delete and this window would never fire.
+            require(stripeEventPoisonPayloadRetention < stripeEventRetention) {
+                "cookiekeeper.billing.stripe-event-poison-payload-retention " +
+                    "($stripeEventPoisonPayloadRetention) must be shorter than stripe-event-retention " +
+                    "($stripeEventRetention)"
             }
             // A zero/negative lead makes the candidate window empty, so the reminder would silently never
             // fire; a lead longer than the trial itself would mail people on their signup day.
@@ -758,6 +775,11 @@ data class CookieKeeperProperties(
             // Rows per prune transaction. Steady-state webhook volume is tiny, so this only matters
             // when draining a backlog; kept small for short, vacuum-friendly DELETEs.
             const val DEFAULT_STRIPE_EVENT_PRUNE_BATCH_SIZE = 500
+
+            // Comfortably outlives Stripe's own automatic retry window (retries taper over ~72h), so a
+            // transiently-failing event still gets its normal redact-on-process before this ever applies
+            // — this only catches an event that is GENUINELY stuck (a bug, an unattributable event).
+            const val DEFAULT_STRIPE_EVENT_POISON_PAYLOAD_RETENTION_DAYS = 5L
 
             // Three days before the 14-day trial lapses: long enough to act on (a small business needs to
             // find a card and get sign-off), short enough that the deadline still feels real.

@@ -175,6 +175,27 @@ class BillingRepositoryIntegrationTest {
     @Test
     fun `tryAcquireAdvisoryXactLock grants the reaper lock inside the transaction`() {
         assertTrue(stripeEventRepository.tryAcquireAdvisoryXactLock(StripeWebhookReaper.ADVISORY_LOCK_KEY))
+        assertTrue(stripeEventRepository.tryAcquireAdvisoryXactLock(StripeWebhookReaper.ADVISORY_LOCK_KEY_REDACT))
+    }
+
+    @Test
+    fun `redactStalePoisonedPayloads nulls only unprocessed rows older than the cutoff`() {
+        // Poison: unprocessed and old — must be redacted.
+        stripeEventRepository.insertIfAbsent(UUID.randomUUID(), "evt_poison", "t", "{\"email\":\"x\"}", now.minusSeconds(100))
+        // Unprocessed but too recent — Stripe's own retry window hasn't lapsed yet, must survive untouched.
+        stripeEventRepository.insertIfAbsent(UUID.randomUUID(), "evt_recent", "t", "{\"email\":\"y\"}", now.plusSeconds(100))
+        // Old but already processed/redacted — payload is already null, must remain untouched (no-op match).
+        stripeEventRepository.insertIfAbsent(UUID.randomUUID(), "evt_done", "t", "{\"email\":\"z\"}", now.minusSeconds(100))
+        stripeEventRepository.markProcessedAndRedact("evt_done", now.minusSeconds(50))
+
+        val redacted = stripeEventRepository.redactStalePoisonedPayloads(now, batchSize = 10)
+        assertEquals(1, redacted, "only the old, unprocessed row is touched")
+
+        entityManager.clear()
+        val poison = requireNotNull(stripeEventRepository.findByStripeEventId("evt_poison"))
+        assertNull(poison.payload, "the poison event's PII-bearing body is redacted")
+        assertNull(poison.processedAt, "redaction alone does not mark it processed — it may still apply later")
+        assertEquals("{\"email\":\"y\"}", requireNotNull(stripeEventRepository.findByStripeEventId("evt_recent")).payload)
     }
 
     @Test
